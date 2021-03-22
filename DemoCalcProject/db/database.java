@@ -3,6 +3,7 @@ package db;
 import rsa.*;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 import java.io.FileInputStream;
@@ -20,9 +21,10 @@ class Database {
         //RSAKeyGen smartCardSignatureKey = new RSAKeyGen("smartCardSignature");
         //RSAKeyGen carSignatureKey = new RSAKeyGen("carSignature");
         //RSAKeyGen terminalSignatureKey = new RSAKeyGen("terminalSignature");
+        System.out.println(createHash("hello world".getBytes(StandardCharsets.UTF_8)));
     }
 
-    public void signCertificate(String inFile, String outFile){
+    /*public void signCertificate(String inFile, String outFile){
         byte[] hash = new byte[0];
         try {
             hash = createHash(readFileAsBytes(inFile));
@@ -30,9 +32,9 @@ class Database {
             e.printStackTrace();
         }
         RSADecrypt cert = new RSADecrypt(hash, outFile);
-    }
+    }*/
 
-    public byte[] createHash(byte[] toHash){
+    public static byte[] createHash(byte[] toHash){
         MessageDigest digest = null;
         try {
             digest = MessageDigest.getInstance("SHA-512");

@@ -1,5 +1,7 @@
 package rsa;
 
+import Interfaces.KeyWallet;
+
 import java.io.*;
 
 import java.security.*;
@@ -52,6 +54,32 @@ public class RSAEncrypt
       } catch (Exception e) {
          e.printStackTrace();
       }
+   }
+
+   public RSAEncrypt(){}
+
+   public static byte[] encrypt(PublicKey publickey, byte[] msg) {
+
+      Cipher encrypt_cipher = null;
+      try {
+         encrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         encrypt_cipher.init(Cipher.ENCRYPT_MODE, publickey);
+
+         byte[] ciphertext = encrypt_cipher.doFinal(msg);
+         return ciphertext;
+
+      } catch (NoSuchAlgorithmException e) {
+         e.printStackTrace();
+      } catch (NoSuchPaddingException e) {
+         e.printStackTrace();
+      } catch (BadPaddingException e) {
+         e.printStackTrace();
+      } catch (IllegalBlockSizeException e) {
+         e.printStackTrace();
+      } catch (InvalidKeyException e) {
+         e.printStackTrace();
+      }
+      return null;
    }
 
    /**
