@@ -15,10 +15,11 @@ public class RSAKeyGen
    /**
     * Generates an RSA public/private key pair.
     */
-   public RSAKeyGen() {
+   public RSAKeyGen(String keyPairName) {
+
       try {
          /* Generate keypair. */
-         System.out.println("Generating keys...");
+         System.err.println("Generating keys...");
          KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
          generator.initialize(1024);
          KeyPair keypair = generator.generateKeyPair();
@@ -26,14 +27,14 @@ public class RSAKeyGen
          RSAPrivateKey privatekey = (RSAPrivateKey)keypair.getPrivate();
 
          /* Write public key to file. */
-         writeKey(publickey, "publickey");
+         writeKey(publickey, keyPairName+ "_publickey");
 
          /* Write private key to file. */
-         writeKey(privatekey, "privatekey");
+         writeKey(privatekey, keyPairName + "_privatekey");
 
-         System.out.println("modulus = " + publickey.getModulus());
-         System.out.println("pubexpint = " + publickey.getPublicExponent());
-         System.out.println("privexpint = " + privatekey.getPrivateExponent());
+         System.err.println("modulus = " + publickey.getModulus());
+         System.err.println("pubexpint = " + publickey.getPublicExponent());
+         System.err.println("privexpint = " + privatekey.getPrivateExponent());
       } catch (Exception e) {
          e.printStackTrace();
       }
@@ -59,8 +60,5 @@ public class RSAKeyGen
     *
     * @param arg The command line arguments.
     */
-   public static void main(String[] arg) {
-      new RSAKeyGen();
-   }
 }
 
