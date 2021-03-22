@@ -1,0 +1,9 @@
+<ivy-module version="2.0">
+    <info organisation="org.openscdp" module="ocf-cc"/>
+    <publications>
+        <artifact name="ocf" type="jar"/>
+    </publications>
+    <dependencies>
+        <dependency org="org.slf4j" name="slf4j-api" rev="1.7.29" transitive="false"/>
+    </dependencies>
+</ivy-module>
