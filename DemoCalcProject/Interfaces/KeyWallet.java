@@ -8,6 +8,6 @@ public abstract class KeyWallet {
     public abstract void storePublicKey();
     public abstract void storePrivateKey();
     public abstract PublicKey getPublicKey();
-    public abstract PrivateKey getPrivateKey();
+    //public abstract PrivateKey getPrivateKey();
 
 }

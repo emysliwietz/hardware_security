@@ -101,6 +101,7 @@ public class Smartcard implements Receivable {
         private byte[] cardID;
         private byte[] cardCertificate;
         private SmartCardWallet scw = new SmartCardWallet();
+        private PrivateKey scPrivSK; //Placeholder
 
         public UUID generateNonce(){
             UUID nonce = UUID.randomUUID();
@@ -128,7 +129,7 @@ public class Smartcard implements Receivable {
         }
 
         public byte[] signAndHash(byte[] message){
-            return sign(createHash(message), scw.getPrivateKey());
+            return sign(createHash(message), scPrivSK);
         }
 
         public byte[] sign(byte[] message, PrivateKey privSK){
@@ -157,12 +158,6 @@ public class Smartcard implements Receivable {
             @Override
             public PublicKey getPublicKey() {
                 return pubk;
-            }
-
-            @Override
-            public PrivateKey getPrivateKey() {
-                //TODO: Make sure only smartcard is able to retrieve key
-                return privk;
             }
         }
     }
