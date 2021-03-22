@@ -55,6 +55,31 @@ public class RSADecrypt
       }
    }
 
+   public RSADecrypt(){}
+
+   public static byte[] decrypt(byte[] msg, PrivateKey privatekey){
+      Cipher decrypt_cipher = null;
+      try {
+         decrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         decrypt_cipher.init(Cipher.DECRYPT_MODE, privatekey);
+
+         byte[] ciphertext = decrypt_cipher.doFinal(msg);
+         return ciphertext;
+
+      } catch (NoSuchAlgorithmException e) {
+         e.printStackTrace();
+      } catch (NoSuchPaddingException e) {
+         e.printStackTrace();
+      } catch (BadPaddingException e) {
+         e.printStackTrace();
+      } catch (IllegalBlockSizeException e) {
+         e.printStackTrace();
+      } catch (InvalidKeyException e) {
+         e.printStackTrace();
+      }
+      return null;
+   }
+
    /**
     * Reads the PKCS#8 standard encoded RSA private key in
     * <code>filename</code>.

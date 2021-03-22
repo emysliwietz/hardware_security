@@ -3,6 +3,7 @@ package Smartcard;
 import Auto.Auto;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
+import rsa.RSADecrypt;
 import rsa.RSAEncrypt;
 
 import java.io.*;
@@ -55,7 +56,9 @@ public class Smartcard implements Receivable {
         byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
         //TODO: create and validate hash
         UUID nonceAuto = (UUID) msg2o[5];
-
+        byte[] msg3tmp = prepareMessage(nonceAuto);
+        byte[] nonceAutoHashSign = sc.signAndHash(msg3tmp);
+        send(auto, nonceAuto, nonceAutoHashSign);
     }
 
     public byte[] prepareMessage(Object ... objects){
@@ -124,7 +127,13 @@ public class Smartcard implements Receivable {
             return messageDigest;
         }
 
-        //public byte[] sign(byte[] message, )
+        public byte[] signAndHash(byte[] message){
+            return sign(createHash(message), scw.getPrivateKey());
+        }
+
+        public byte[] sign(byte[] message, PrivateKey privSK){
+            return RSADecrypt.decrypt(message, privSK);
+        }
 
         public byte[] unsign(byte[] signature, PublicKey pubSK){
             return RSAEncrypt.encrypt(pubSK, signature);
