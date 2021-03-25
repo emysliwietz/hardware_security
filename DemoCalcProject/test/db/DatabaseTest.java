@@ -1,27 +1,35 @@
 package db;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class DatabaseTest {
 
+    Database db;
+
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
+        db = new Database();
     }
 
     @org.junit.jupiter.api.AfterEach
     void tearDown() {
     }
 
-    @org.junit.jupiter.api.Test
-    void createHash() {
-        byte[] hello_world_hash = Database.createHash("Hello World".getBytes(StandardCharsets.UTF_8));
-        byte[] actual_sha_512_hello_world_hash = ("2c74fd17edafd80e8447b0d46741ee243b7eb74dd2149a0ab1b9246" +
-                "fb30382f27e853d8585719e0e67cbda0daa8f51671064615d645ae27" +
-                "acb15bfb1447f459b").getBytes(StandardCharsets.UTF_8);
-        Assertions.assertArrayEquals(actual_sha_512_hello_world_hash, hello_world_hash);
+    @Test
+    void generateKeyPair() {
+        Object[] keyPair = db.generateKeyPair();
+        Assertions.assertTrue(keyPair[0] instanceof PublicKey);
+        Assertions.assertTrue(keyPair[1] instanceof PrivateKey);
+    }
+
+    @Test
+    void issueCertificate() {
     }
 }

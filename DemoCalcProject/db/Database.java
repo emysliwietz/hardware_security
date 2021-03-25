@@ -1,5 +1,6 @@
 package db;
 
+import Interfaces.Communicator;
 import rsa.*;
 
 import java.math.BigInteger;
@@ -12,16 +13,26 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
 
-import static rsa.Util.readFileAsBytes;
 
+public class Database extends CryptoImplementation implements Communicator {
 
-public class Database {
-    public static void main(String[] args){
-        RSAKeyGen masterKey = new RSAKeyGen("master");
-        //RSAKeyGen smartCardSignatureKey = new RSAKeyGen("smartCardSignature");
-        //RSAKeyGen carSignatureKey = new RSAKeyGen("carSignature");
-        //RSAKeyGen terminalSignatureKey = new RSAKeyGen("terminalSignature");
-        System.out.println(createHash("hello world".getBytes(StandardCharsets.UTF_8)));
+    public Object[] generateKeyPair(){
+        /* Generate keypair. */
+        KeyPairGenerator generator = null;
+        try {
+            generator = KeyPairGenerator.getInstance("RSA");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+        generator.initialize(1024);
+        KeyPair keypair = generator.generateKeyPair();
+        RSAPublicKey publickey = (RSAPublicKey)keypair.getPublic();
+        RSAPrivateKey privatekey = (RSAPrivateKey)keypair.getPrivate();
+        Object[] keyPair = new Object[2];
+        keyPair[0] = publickey;
+        keyPair[1] = privatekey;
+        return keyPair;
     }
 
     /*public void signCertificate(String inFile, String outFile){
@@ -34,18 +45,6 @@ public class Database {
         RSADecrypt cert = new RSADecrypt(hash, outFile);
     }*/
 
-    public static byte[] createHash(byte[] toHash){
-        MessageDigest digest = null;
-        try {
-            digest = MessageDigest.getInstance("SHA-512");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return null;
-        }
-        digest.update(toHash);
-        byte[] messageDigest = digest.digest();
-        BigInteger hash = new BigInteger(1, messageDigest);
-        return hash.toString(16).getBytes(StandardCharsets.UTF_8);
-    }
+
 
 }

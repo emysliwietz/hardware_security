@@ -58,7 +58,7 @@ public class RSAEncrypt
 
    public RSAEncrypt(){}
 
-   public static byte[] encrypt(PublicKey publickey, byte[] msg) {
+   private byte[] encrypt(PublicKey publickey, byte[] msg) {
 
       Cipher encrypt_cipher = null;
       try {

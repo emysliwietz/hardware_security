@@ -57,7 +57,7 @@ public class RSADecrypt
 
    public RSADecrypt(){}
 
-   public static byte[] decrypt(byte[] msg, PrivateKey privatekey){
+   private byte[] decrypt(byte[] msg, PrivateKey privatekey){
       Cipher decrypt_cipher = null;
       try {
          decrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");

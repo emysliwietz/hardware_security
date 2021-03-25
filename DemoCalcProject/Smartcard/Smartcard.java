@@ -1,23 +1,18 @@
 package Smartcard;
 
 import Auto.Auto;
+import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
-import db.Database;
-import rsa.RSADecrypt;
-import rsa.RSAEncrypt;
+import rsa.CryptoImplementation;
+import rsa.RSACrypto;
 
-import java.io.*;
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.*;
 
-public class Smartcard implements Receivable {
+public class Smartcard implements Receivable, Communicator {
     private SmartcardCrypto sc;
-    private Queue<byte[]> inputQueue = new LinkedList<byte[]>();
     public PublicKey dbPubSK;
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
@@ -28,20 +23,11 @@ public class Smartcard implements Receivable {
         receiver.receive(prepareMessage(msgComponents));
     }
 
-    public byte[] waitForInput(){
-        while (inputQueue.isEmpty()){
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        return inputQueue.remove();
-    }
+
 
     public void insert(Auto auto){
         UUID nonceCard = sc.generateNonce();
-        send(auto, sc.cardCertificate, nonceCard);
+        send(auto, sc.getCertificate(), nonceCard);
         byte[] msg2b = waitForInput();
         Object[] msg2o = processMessage(msg2b);
         PublicKey autoPubSK = (PublicKey) msg2o[0];
@@ -58,79 +44,27 @@ public class Smartcard implements Receivable {
         //TODO: create and validate hash
         UUID nonceAuto = (UUID) msg2o[5];
         byte[] msg3tmp = prepareMessage(nonceAuto);
-        byte[] nonceAutoHashSign = sc.signAndHash(msg3tmp);
+        byte[] nonceAutoHashSign = sc.hashAndSign(msg3tmp);
         send(auto, nonceAuto, nonceAutoHashSign);
     }
 
-    public byte[] prepareMessage(Object ... objects){
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-        oos.writeObject(objects);
-        oos.flush();
-        oos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return bos.toByteArray();
-    }
 
-    public Object[] processMessage(byte[] message){
-        ByteArrayInputStream bis = new ByteArrayInputStream(message);
-        Object o = null;
-        try {
-            ObjectInputStream ois = new ObjectInputStream(bis);
-            o = ois.readObject();
-            ois.close();
-            bis.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return (Object[]) o;
-    }
 
     @Override
     public void receive(byte[] message) {
         inputQueue.add(message);
     }
 
-    private class SmartcardCrypto{
+    private class SmartcardCrypto extends CryptoImplementation {
 
-        private byte[] cardID;
-        private byte[] cardCertificate;
-        private SmartCardWallet scw = new SmartCardWallet();
-        private PrivateKey scPrivSK; //Placeholder
-
-        public UUID generateNonce(){
-            UUID nonce = UUID.randomUUID();
-            return nonce;
-        }
 
         public SmartcardCrypto(byte[] cardID, byte[] cardCertificate) {
-            this.cardID = cardID;
-            this.cardCertificate = cardCertificate;
+            super.ID = cardID;
+            super.certificate = cardCertificate;
+            super.rc = new SmartCardWallet();
         }
 
-        public byte[] createHash(byte[] toHash){
-            return Database.createHash(toHash);
-        }
-
-        public byte[] signAndHash(byte[] message){
-            return sign(createHash(message), scPrivSK);
-        }
-
-        public byte[] sign(byte[] message, PrivateKey privSK){
-            return RSADecrypt.decrypt(message, privSK);
-        }
-
-        public byte[] unsign(byte[] signature, PublicKey pubSK){
-            return RSAEncrypt.encrypt(pubSK, signature);
-        }
-
-        private class SmartCardWallet extends KeyWallet{
+        private class SmartCardWallet extends RSACrypto implements KeyWallet{
 
             private PrivateKey privk;
             private PublicKey pubk;
