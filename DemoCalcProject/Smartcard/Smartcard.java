@@ -18,6 +18,7 @@ public class Smartcard implements Receivable, Communicator {
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
+        manipulation = false;
     }
 
     public void send(Receivable receiver, Object... msgComponents){
@@ -26,7 +27,7 @@ public class Smartcard implements Receivable, Communicator {
 
 
 
-    public void insert(Auto auto){
+    public void insert(Auto auto){ //P1
         UUID nonceCard = sc.generateNonce();
         send(auto, sc.getCertificate(), nonceCard);
         byte[] msg2b = waitForInput();
@@ -35,7 +36,14 @@ public class Smartcard implements Receivable, Communicator {
         byte[] autoID = (byte[]) msg2o[1];
         byte[] autoCertHashSign = (byte[]) msg2o[2];
         byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
-        //TODO: create and validate hash
+
+        byte[] autoIDPubSKHash = sc.createHash(prepareMessage(autoPubSK, autoID));
+        if (autoCertHash != autoIDPubSKHash){
+            //TODO: throw error or something (tamper bit). Also stop further actions.
+            manipulation = true;
+            return;
+        }
+
         UUID nonceCardResponse = (UUID) msg2o[3];
         if (nonceCard != nonceCardResponse){
             manipulation = true;
