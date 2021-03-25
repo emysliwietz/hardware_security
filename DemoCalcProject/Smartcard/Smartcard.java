@@ -14,6 +14,7 @@ import java.util.*;
 public class Smartcard implements Receivable, Communicator {
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
+    private boolean manipulation;
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
@@ -37,6 +38,7 @@ public class Smartcard implements Receivable, Communicator {
         //TODO: create and validate hash
         UUID nonceCardResponse = (UUID) msg2o[3];
         if (nonceCard != nonceCardResponse){
+            manipulation = true;
             return; //Placeholder
         }
         byte[] nonceCardResponseHashSign = (byte[]) msg2o[4];
