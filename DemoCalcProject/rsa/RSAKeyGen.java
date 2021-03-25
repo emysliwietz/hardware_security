@@ -42,6 +42,30 @@ public class RSAKeyGen
       }
    }
 
+   public RSAKeyGen(){}
+
+   public static Object[] generateKeys() {
+      /* Generate keypair. */
+      System.err.println("Generating keys...");
+      KeyPairGenerator generator = null;
+      try {
+         generator = KeyPairGenerator.getInstance("RSA");
+      } catch (NoSuchAlgorithmException e) {
+         e.printStackTrace();
+      }
+      generator.initialize(1024);
+      KeyPair keypair = generator.generateKeyPair();
+      RSAPublicKey publickey = (RSAPublicKey)keypair.getPublic();
+      RSAPrivateKey privatekey = (RSAPrivateKey)keypair.getPrivate();
+      Object[] keyPair = new Object[2];
+      keyPair[0] = publickey;
+      keyPair[1] = privatekey;
+      return keyPair;
+      //System.err.println("modulus = " + publickey.getModulus());
+      //System.err.println("pubexpint = " + publickey.getPublicExponent());
+      //System.err.println("privexpint = " + privatekey.getPrivateExponent());
+   }
+
    /**
     * Writes <code>key</code> to file with name <code>filename</code> in
     * standard encoding (X.509 for RSA public key, PKCS#8 for RSA private key).

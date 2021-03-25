@@ -3,15 +3,11 @@ package db;
 import Interfaces.Communicator;
 import rsa.*;
 
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.security.*;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.UUID;
 
 
 public class Database extends CryptoImplementation implements Communicator {
@@ -35,15 +31,37 @@ public class Database extends CryptoImplementation implements Communicator {
         return keyPair;
     }
 
-    /*public void signCertificate(String inFile, String outFile){
-        byte[] hash = new byte[0];
-        try {
-            hash = createHash(readFileAsBytes(inFile));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        RSADecrypt cert = new RSADecrypt(hash, outFile);
-    }*/
+    public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
+        byte[] toHash = prepareMessage(pubk, id);
+        byte[] signedHash = hashAndSign(toHash);
+        byte[] certificate = prepareMessage(pubk, id, signedHash);
+        return certificate;
+    }
+
+    public Database(){
+
+    }
+
+    void generateStuff() {
+        Object [] dbKeyPair = generateKeyPair();
+        PublicKey dbPubSK = (PublicKey) dbKeyPair[0];
+        PrivateKey dbPrivSK = (PrivateKey) dbKeyPair[1];
+        Object [] scKeyPair = generateKeyPair();
+        PublicKey scPubSK = (PublicKey) scKeyPair[0];
+        PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
+        Object [] autoKeyPair = generateKeyPair();
+        PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
+        PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
+        Object [] rtKeyPair = generateKeyPair();
+        PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
+        PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
+        byte[] scID = UUID.randomUUID().toString().getBytes();
+        byte[] autoID = UUID.randomUUID().toString().getBytes();
+        byte[] rtID = UUID.randomUUID().toString().getBytes();
+        byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
+        byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
+        byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
+    }
 
 
 

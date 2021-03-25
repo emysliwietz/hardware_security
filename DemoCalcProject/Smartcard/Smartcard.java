@@ -51,7 +51,13 @@ public class Smartcard implements Receivable, Communicator {
         }
         byte[] nonceCardResponseHashSign = (byte[]) msg2o[4];
         byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
-        //TODO: create and validate hash
+
+        byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
+        if (nonceValidHash != nonceCardResponseHash){
+            //TODO: throw error or something (tamper bit). Also stop further actions.
+            manipulation = true;
+            return; //Placeholder probably
+        }
         UUID nonceAuto = (UUID) msg2o[5];
         byte[] msg3tmp = prepareMessage(nonceAuto);
         byte[] nonceAutoHashSign = sc.hashAndSign(msg3tmp);
