@@ -15,7 +15,7 @@ import java.security.interfaces.RSAPublicKey;
 import static rsa.Util.readFileAsBytes;
 
 
-class Database {
+public class Database {
     public static void main(String[] args){
         RSAKeyGen masterKey = new RSAKeyGen("master");
         //RSAKeyGen smartCardSignatureKey = new RSAKeyGen("smartCardSignature");
@@ -45,8 +45,7 @@ class Database {
         digest.update(toHash);
         byte[] messageDigest = digest.digest();
         BigInteger hash = new BigInteger(1, messageDigest);
-        System.out.println(hash.toString(16));
-        return messageDigest;
+        return hash.toString(16).getBytes(StandardCharsets.UTF_8);
     }
 
 }

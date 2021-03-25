@@ -3,6 +3,7 @@ package Smartcard;
 import Auto.Auto;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
+import db.Database;
 import rsa.RSADecrypt;
 import rsa.RSAEncrypt;
 
@@ -114,18 +115,7 @@ public class Smartcard implements Receivable {
         }
 
         public byte[] createHash(byte[] toHash){
-            MessageDigest digest = null;
-            try {
-                digest = MessageDigest.getInstance("SHA-512");
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-                return null;
-            }
-            digest.update(toHash);
-            byte[] messageDigest = digest.digest();
-            BigInteger hash = new BigInteger(1, messageDigest);
-            System.out.println(hash.toString(16));
-            return messageDigest;
+            return Database.createHash(toHash);
         }
 
         public byte[] signAndHash(byte[] message){
