@@ -7,6 +7,7 @@ import Interfaces.Receivable;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
+import java.math.BigDecimal;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.*;
@@ -14,7 +15,8 @@ import java.util.*;
 public class Smartcard implements Receivable, Communicator {
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
-    private boolean manipulation;
+    private boolean manipulation = false;
+    private int kilometerage; //TODO: Change to less storage intensive type (e.g. short or int)
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
@@ -27,7 +29,7 @@ public class Smartcard implements Receivable, Communicator {
 
 
 
-    public void insert(Auto auto){ //P1
+    public PublicKey insert(Auto auto){ //P1
         UUID nonceCard = sc.generateNonce();
         send(auto, sc.getCertificate(), nonceCard);
         byte[] msg2b = waitForInput();
@@ -41,13 +43,13 @@ public class Smartcard implements Receivable, Communicator {
         if (autoCertHash != autoIDPubSKHash){
             //TODO: throw error or something (tamper bit). Also stop further actions.
             manipulation = true;
-            return;
+            return null;
         }
 
         UUID nonceCardResponse = (UUID) msg2o[3];
         if (nonceCard != nonceCardResponse){
             manipulation = true;
-            return; //Placeholder
+            return null; //Placeholder
         }
         byte[] nonceCardResponseHashSign = (byte[]) msg2o[4];
         byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
@@ -56,15 +58,34 @@ public class Smartcard implements Receivable, Communicator {
         if (nonceValidHash != nonceCardResponseHash){
             //TODO: throw error or something (tamper bit). Also stop further actions.
             manipulation = true;
-            return; //Placeholder probably
+            return null; //Placeholder probably
         }
         UUID nonceAuto = (UUID) msg2o[5];
         byte[] msg3tmp = prepareMessage(nonceAuto);
         byte[] nonceAutoHashSign = sc.hashAndSign(msg3tmp);
         send(auto, nonceAuto, nonceAutoHashSign);
+        return autoPubSK;
     }
 
-
+    public void kilometerageUpdate(Auto auto, PublicKey autoPubSK){
+        byte[] receivedKmm = waitForInput();
+        Object[] receivedKmmO = processMessage(receivedKmm);
+        int oldKMM = kilometerage;
+        kilometerage = (int) receivedKmmO[0];
+        byte[] recKmmHashSign = (byte[]) receivedKmmO[1];
+        byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
+        byte[] validRecKmmHash = sc.createHash(prepareMessage(kilometerage));
+        if(recKmmHash != validRecKmmHash){
+            //TODO: throw error or something (tamper bit). Also stop further actions.
+        }
+        if (oldKMM >= kilometerage){
+            manipulation = true;
+            kilometerage = oldKMM; //TODO: Is this a security problem?
+        }
+        byte confirmation = (byte) 1;
+        byte[] confirmationHash = sc.hashAndSign(prepareMessage(confirmation, kilometerage));
+        send(auto, confirmation, kilometerage, confirmationHash);
+    }
 
     @Override
     public void receive(byte[] message) {

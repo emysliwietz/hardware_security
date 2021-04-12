@@ -7,6 +7,7 @@ import Smartcard.Smartcard;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
+import java.math.BigDecimal;
 import java.security.PublicKey;
 import java.util.UUID;
 
@@ -14,6 +15,8 @@ public class Auto implements Receivable, Communicator {
 
     private AutoCrypto ac;
     public PublicKey dbPubSK;
+    private boolean cardAuthenticated = false;
+    private int kilometerage = 0;
 
     @Override
     public void receive(byte[] message) {
@@ -24,7 +27,7 @@ public class Auto implements Receivable, Communicator {
         receiver.receive(prepareMessage(msgComponents));
     }
 
-    public void authenticateSmartCard(Smartcard sc){
+    public PublicKey authenticateSmartCard(Smartcard sc){
         byte[] msg1b = waitForInput();
         Object[] msg1o = processMessage(msg1b);
         PublicKey scPubSK = (PublicKey) msg1o[0];
@@ -50,11 +53,39 @@ public class Auto implements Receivable, Communicator {
         byte[] autoNonceHash = ac.createHash(prepareMessage(autoNonce));
         if (autoNonceRespHash != autoNonceHash){
             //TODO: throw error or something (logs). Also stop further actions.
+            return null;
         }
         else{
+            cardAuthenticated = true;
+            return scPubSK;
             //TODO: log success?
         }
 
+    }
+
+    public void kilometerageUpdate(PublicKey scPubSK, Smartcard sc){
+        if(!cardAuthenticated){
+            return;
+        }
+        byte[] curKmm = prepareMessage(kilometerage);
+        byte[] kmmSigned = ac.hashAndSign(curKmm);
+        send(sc, (Object) kmmSigned);
+        //TODO: Need waitForInput with timeout
+        byte[] confirmation = waitForInput();
+        Object[] confirmO = processMessage(confirmation);
+        byte confBYTE = (byte) confirmO[0];
+        int curKmmCard = (int) confirmO[1];
+        if (kilometerage != curKmmCard){
+            //TODO: Log discrepancy
+        }
+        byte[] confHashSigned = (byte[]) confirmO[2];
+        byte[] confHash = ac.unsign(confHashSigned, scPubSK);
+        byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
+        if (confHash != hashValidation){
+            //TODO: Throw error and log failure
+        } else {
+            //TODO: Log success
+        }
     }
 
     private static class AutoCrypto extends CryptoImplementation {
