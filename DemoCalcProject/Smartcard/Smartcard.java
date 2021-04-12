@@ -4,6 +4,7 @@ import Auto.Auto;
 import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
+import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
@@ -84,6 +85,25 @@ public class Smartcard implements Receivable, Communicator {
         byte confirmation = (byte) 1;
         byte[] confirmationHash = sc.hashAndSign(prepareMessage(confirmation, kilometerage));
         send(auto, confirmation, kilometerage, confirmationHash);
+    }
+
+    public void carReturn(ReceptionTerminal rt, PublicKey rtPubSK){
+        int seqNum1 = 0; //Placeholder
+        byte[] msg1Hash = sc.hashAndSign(prepareMessage(((byte) 56), seqNum1, manipulation));
+        send(rt, (byte) 56, seqNum1, manipulation, msg1Hash);
+        byte[] msg2b = waitForInput();
+        Object[] msg2 = processMessage(msg2b);
+        UUID kmmNonce = (UUID) msg2[0];
+        int seqNum2 = (int) msg2[1]; //Placeholder
+        byte[] msg2Hash = sc.unsign((byte[]) msg2[2], rtPubSK);
+        byte[] validMsg2Hash = sc.createHash(prepareMessage(kmmNonce, seqNum2));
+        if(msg2Hash != validMsg2Hash){
+            //TODO: Error; also check sequence number (not in this if clause (obviously))
+        }
+        byte[] msg3Hash = sc.hashAndSign(prepareMessage(kilometerage, kmmNonce, seqNum1 + 1));
+        send(rt, kilometerage, kmmNonce, seqNum1 + 1, msg3Hash);
+        kilometerage = 0;
+        //TODO: Remove certificate of car (e.g. by setting it to null)
     }
 
     @Override
