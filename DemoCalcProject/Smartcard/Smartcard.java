@@ -20,7 +20,6 @@ public class Smartcard implements Receivable, Communicator {
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
-        manipulation = false;
     }
 
     public void send(Receivable receiver, Object... msgComponents){

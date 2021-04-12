@@ -27,6 +27,10 @@ public class Auto implements Receivable, Communicator {
         receiver.receive(prepareMessage(msgComponents));
     }
 
+    public Auto(byte[] autoID, byte[] autoCertificate) {
+        ac = new Auto.Auto.AutoCrypto(autoID, autoCertificate);
+    }
+
     public PublicKey authenticateSmartCard(Smartcard sc){
         byte[] msg1b = waitForInput();
         Object[] msg1o = processMessage(msg1b);
