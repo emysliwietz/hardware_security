@@ -16,9 +16,13 @@ public class ReceptionTerminal implements Receivable, Communicator {
 
     private ReceptionTerminal.RTCrypto rtc;
     public PublicKey dbPubSK;
-    boolean cardAuthenticated = false;
-    UUID termNonce; //Placeholder
-    UUID scNonce; //Placeholder
+    private boolean cardAuthenticated = false;
+    private UUID termNonce; //Placeholder
+    private UUID scNonce; //Placeholder
+    private byte[] cardPubSK; //TEMP until better solution
+    private byte[] cardID; //TEMP see above
+    private Database database; //who knows at this point
+
 
 
     @Override
@@ -68,6 +72,77 @@ public class ReceptionTerminal implements Receivable, Communicator {
         if(msg3Hash != validMsg3Hash){
             //TODO: Error
         }
+    }
+
+    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    private void cardAuthentication(Smartcard sc){
+        byte[] response = waitForInput(); //Step 2
+        Object[] responseData = processMessage(response);
+
+        cardPubSK = (PublicKey) responseData[0];
+        byte[] cardID = (byte[]) responseData[1];
+        byte[] cardCertHashSign = (byte[]) responseData[2];
+        scNonce = (UUID) responseData[3];
+        byte[] cardCertHash = sc.unsign(cardCertHashSign, dbPubSK);
+
+        byte[] cardIDPubSKHash = sc.createHash(prepareMessage(cardPubSK, cardID));
+        if (cardCertHash != cardIDPubSKHash){ //Step 3
+            //TODO: Error
+            return null;
+        }
+
+        termNonce = sc.generateNonce();
+        send(sc, sc.getCertificate(), termNonce); //Step 4
+
+        byte[] response2 = waitForInput();
+        Object[] responseData2 = processMessage(response2);
+
+        byte[] receptionNonceUnsigned = sc.unsign(responseData2[0], cardPubSK);
+        byte[] nonceReceptionHash = sc.createHash(prepareMessage(nonceReception));
+        if (nonceReceptionHash != receptionNonceUnsigned){ //Step 7
+            //TODO: Error
+            return null;
+        }
+
+        byte[] noncePrepped = prepareMessage(scNonce);
+        byte[] nonceCardHashSign = sc.hashAndSign(noncePrepped);
+        send(sc, nonceCardHashSign); //Step 8
+
+        //Do we want some succes message back?
+        cardAuthenticated = true; //When to make it false again
+
+    }
+
+    /*Protocol 3 - Assignment of car to smartcard */
+    public void carAssignment(Smartcard sc){
+        if (!cardAuthenticated){ //Step 1
+            return; //TODO: Placeholder
+        }
+
+        byte[] response = waitForInput();
+        Object[] responseData = processMessage(response);
+
+        byte[] giveCarUnsigned = sc.unsign(responseData[0], cardPubSK);
+        byte[] giveCarHash = sc.createHash(prepareMessage(nonceReception+1)); //We still dont know if this works
+        if (giveCarUnsigned != giveCarHash){ //Step 3
+            //TODO: Error
+            return null;
+        }
+
+        byte[] message = prepareMessage(cardID);
+        send(database, message); //Step 4
+
+        byte[] response2 = waitForInput();
+        Object[] responseData2 = processMessage(response2);
+        byte[] autoPubSK = (PublicKey) responseData[0];
+        byte[] autoID = (byte[]) responseData[1];
+        byte[] autoCertHashSign = (byte[]) responseData[2];
+
+        System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
+        byte[] cert = prepareMessage(autoPubSk, autoID, autoCertHashSign, scNonce+1); //who knows if this works
+        send(sc, cert);//Step 6
+
+        // Success message?
     }
 
     private static class RTCrypto extends CryptoImplementation {

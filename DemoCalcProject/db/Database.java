@@ -42,6 +42,19 @@ public class Database extends CryptoImplementation implements Communicator {
 
     }
 
+    //Temporary filler function
+    public void carAssign(ReceptionTerminal reception){
+        byte[] response = waitForInput();
+        Object[] responseData = processMessage(response);
+        byte[] cardID = responseData[0];
+
+        //pretend it stores cardID and autoID
+        byte[] message = prepareMessage(autoCert);
+        send(reception, message);
+
+        return null;
+    }
+
     void generateStuff() {
         Object [] dbKeyPair = generateKeyPair();
         PublicKey dbPubSK = (PublicKey) dbKeyPair[0];
