@@ -67,6 +67,46 @@ public class Smartcard implements Receivable, Communicator {
         return autoPubSK;
     }
 
+    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    public void authReception(ReceptionTerminal reception) {
+        // How does the card know if it is in a terminal or a card?
+        // Potential solution: terminal or auto sends a basic message like "terminal!" or  "auto!"
+        //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
+        UUID nonceCard = sc.generateNonce();
+        send(reception, sc.getCertificate(), nonceCard); //Step 2
+        byte[] response = waitForInput(); //Step 4
+        Object[] responseData = processMessage(response);
+
+        PublicKey receptionPubSK = (PublicKey) responseData[0];
+        byte[] receptionID = (byte[]) responseData[1];
+        byte[] receptionCertHashSign = (byte[]) responseData[2];
+        UUID nonceReception = (UUID) responseData[3];
+        byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
+
+        byte[] receptionIDPubSKHash = sc.createHash(prepareMessage(receptionPubSK, receptionID));
+        if (receptionCertHash != receptionIDPubSKHash){ //Step 5
+            manipulation = true;
+            //TODO: Send message to terminal that process is stopped
+            return null;
+        }
+        byte[] noncePrepped = prepareMessage(nonceReception);
+        byte[] nonceReceptionHashSign = sc.hashAndSign(noncePrepped);
+        send(reception, nonceReceptionHashSign); //Step 6
+
+        byte[] response2 = waitForInput();
+        Object[] responseData2 = processMessage(response2);
+
+        byte[] cardNonceUnsigned = sc.unsign(responseData2[0], cardPubSK);
+        byte[] nonceCardHash = sc.createHash(prepareMessage(nonceCard));
+        if (nonceCardHash != cardNonceUnsigned){ //Step 9
+            //TODO: Error
+            return null;
+        }
+
+        //Maybe let the terminal know how it went
+
+    }
+
     public void kilometerageUpdate(Auto auto, PublicKey autoPubSK){
         byte[] receivedKmm = waitForInput();
         Object[] receivedKmmO = processMessage(receivedKmm);

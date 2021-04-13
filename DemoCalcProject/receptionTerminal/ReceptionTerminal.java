@@ -70,6 +70,44 @@ public class ReceptionTerminal implements Receivable, Communicator {
         }
     }
 
+    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    private void cardAuthentication(Smartcard sc){
+        byte[] response = waitForInput(); //Step 2
+        Object[] responseData = processMessage(response);
+
+        PublicKey cardPubSK = (PublicKey) responseData[0];
+        byte[] cardID = (byte[]) responseData[1];
+        byte[] cardCertHashSign = (byte[]) responseData[2];
+        UUID nonceCard = (UUID) responseData[3];
+        byte[] cardCertHash = sc.unsign(cardCertHashSign, dbPubSK);
+
+        byte[] cardIDPubSKHash = sc.createHash(prepareMessage(cardPubSK, cardID));
+        if (cardCertHash != cardIDPubSKHash){ //Step 3
+            //TODO: Error
+            return null;
+        }
+
+        UUID nonceReception = sc.generateNonce();
+        send(sc, sc.getCertificate(), nonceReception); //Step 4
+
+        byte[] response2 = waitForInput();
+        Object[] responseData2 = processMessage(response2);
+
+        byte[] receptionNonceUnsigned = sc.unsign(responseData2[0], cardPubSK);
+        byte[] nonceReceptionHash = sc.createHash(prepareMessage(nonceReception));
+        if (nonceReceptionHash != receptionNonceUnsigned){ //Step 7
+            //TODO: Error
+            return null;
+        }
+
+        byte[] noncePrepped = prepareMessage(nonceCard);
+        byte[] nonceCardHashSign = sc.hashAndSign(noncePrepped);
+        send(sc, nonceCardHashSign); //Step 8
+
+        //Do we want some succes message back?
+
+    }
+
     private static class RTCrypto extends CryptoImplementation {
 
         public RTCrypto(byte[] rtID, byte[] rtCertificate) {
