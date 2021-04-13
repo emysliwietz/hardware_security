@@ -18,6 +18,13 @@ public class Smartcard implements Receivable, Communicator {
     public PublicKey dbPubSK;
     private boolean manipulation = false;
     private int kilometerage; //TODO: Change to less storage intensive type (e.g. short or int)
+    boolean terminalAuthenticated = false; //in temporary storage
+    private UUID nonceReception; //TEMP because this should be yeeted when card is pulled out
+    private UUID nonceCard; //TEMP same as above
+
+    //This should actually be stored somehow?
+    private byte[] autoIDStored;
+    private PublicKey autoPubSKstored;
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
@@ -72,7 +79,7 @@ public class Smartcard implements Receivable, Communicator {
         // How does the card know if it is in a terminal or a card?
         // Potential solution: terminal or auto sends a basic message like "terminal!" or  "auto!"
         //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
-        UUID nonceCard = sc.generateNonce();
+        nonceCard = sc.generateNonce();
         send(reception, sc.getCertificate(), nonceCard); //Step 2
         byte[] response = waitForInput(); //Step 4
         Object[] responseData = processMessage(response);
@@ -80,7 +87,7 @@ public class Smartcard implements Receivable, Communicator {
         PublicKey receptionPubSK = (PublicKey) responseData[0];
         byte[] receptionID = (byte[]) responseData[1];
         byte[] receptionCertHashSign = (byte[]) responseData[2];
-        UUID nonceReception = (UUID) responseData[3];
+        nonceReception = (UUID) responseData[3];
         byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
 
         byte[] receptionIDPubSKHash = sc.createHash(prepareMessage(receptionPubSK, receptionID));
@@ -103,7 +110,44 @@ public class Smartcard implements Receivable, Communicator {
             return null;
         }
 
+        terminalAuthenticated = true;
         //Maybe let the terminal know how it went
+
+    }
+    /*Protocol 3 - Assignment of car to smartcard */
+    public void carAssignment(ReceptionTerminal reception){
+        if (!terminalAuthenticated){ //Step 1
+            return; //TODO: Placeholder
+        }
+        byte[] giveCarMsg = prepareMessage("Car?", nonceReception+1); //Does this work? We don't know :)
+        byte[] giveCarSigned = sc.hashAndSign(giveCarMsg);
+        send(reception, giveCarSigned); //Step 2
+
+        byte[] response = waitForInput();
+        Object[] responseData = processMessage(response);
+
+        byte[] autoPubSK = (PublicKey) responseData[0];
+        byte[] autoID = (byte[]) responseData[1];
+        byte[] autoCertHashSign = (byte[]) responseData[2];
+        UUID nonceCard2 = (UUID) responseData[3];
+        if (nonceCard2 != nonceCard+1){ //Step 7 - Sequence
+            //TODO: Error
+            return null;
+        }
+
+        byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
+
+        byte[] autoIDPubSKHash = sc.createHash(prepareMessage(autoPubSK, autoID));
+        if (autoCertHash != autoIDPubSKHash){ //Step 7 - certificate
+            manipulation = true;
+            //TODO: Send message to terminal that process is stopped
+            return null;
+        }
+        autoIDStored = autoID;
+        autoPubSKStored = autoPubSK; //Step 8
+        //State transition????
+
+        //Success message!
 
     }
 
