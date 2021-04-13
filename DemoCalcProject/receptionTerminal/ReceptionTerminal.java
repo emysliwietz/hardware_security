@@ -138,7 +138,7 @@ public class ReceptionTerminal implements Receivable, Communicator {
         byte[] autoID = (byte[]) responseData[1];
         byte[] autoCertHashSign = (byte[]) responseData[2];
 
-        System.out.println(autoID); //Step 5 - Kinda filler
+        System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
         byte[] cert = prepareMessage(autoPubSk, autoID, autoCertHashSign, scNonce+1); //who knows if this works
         send(sc, cert);//Step 6
 
