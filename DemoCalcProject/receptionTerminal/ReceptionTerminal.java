@@ -18,9 +18,9 @@ public class ReceptionTerminal implements Communicator {
     private ReceptionTerminal.RTCrypto rtc;
     public PublicKey dbPubSK;
     private boolean cardAuthenticated = false;
-    private UUID termNonce; //Placeholder
-    private UUID scNonce; //Placeholder
-    private byte[] cardPubSK; //TEMP until better solution
+    private short termNonce; //Placeholder
+    private short scNonce; //Placeholder
+    private PublicKey cardPubSK; //TEMP until better solution
     private byte[] cardID; //TEMP see above
     private Database database; //who knows at this point
 
@@ -52,14 +52,14 @@ public class ReceptionTerminal implements Communicator {
         if (manipulation){
             //TODO: Throw exception/error
         }
-        UUID kmmNonce = rtc.generateNonce();
+        short kmmNonce = rtc.generateNonce();
         int seqNum2 = 0; //Placeholder
         byte[] msg2Sign = rtc.hashAndSign(prepareMessage(kmmNonce, seqNum2));
         send(sc, kmmNonce, seqNum2, msg2Sign);
         byte[] msg3b = waitForInput();
         Object[] msg3 = processMessage(msg3b);
         int kilometerage = (int) msg3[0];
-        UUID kmmNonceResp = (UUID) msg3[1];
+        short kmmNonceResp = (short) msg3[1];
         if(kmmNonce != kmmNonceResp){
             //TODO: Error
         }
@@ -119,7 +119,7 @@ public class ReceptionTerminal implements Communicator {
         byte[] nonceCardHashSign = sc.hashAndSign(noncePrepped);
         send(sc, nonceCardHashSign); //Step 8
 
-        //Do we want some succes message back?
+        //Do we want some success message back?
         cardAuthenticated = true; //When to make it false again
 
     }
@@ -144,7 +144,8 @@ public class ReceptionTerminal implements Communicator {
         byte[] giveCarHash = sc.createHash(prepareMessage(nonceReception+1)); //We still dont know if this works
         if (giveCarUnsigned != giveCarHash){ //Step 3
             //TODO: Error
-            return null;
+            errorState("Hashes don't match carAssignment");
+            return;
         }
 
         byte[] message = prepareMessage(cardID);
@@ -164,7 +165,7 @@ public class ReceptionTerminal implements Communicator {
         byte[] autoCertHashSign = (byte[]) responseData2[2];
 
         System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
-        byte[] cert = prepareMessage(autoPubSk, autoID, autoCertHashSign, scNonce+1); //who knows if this works
+        byte[] cert = prepareMessage(autoPubSK, autoID, autoCertHashSign, scNonce+1); //who knows if this works
         send(sc, cert);//Step 6
 
         // Success message?

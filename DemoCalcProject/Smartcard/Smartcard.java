@@ -24,7 +24,7 @@ public class Smartcard implements Communicator {
 
     //This should actually be stored somehow?
     private byte[] autoIDStored;
-    private PublicKey autoPubSKstored;
+    private PublicKey autoPubSKStored;
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
@@ -102,7 +102,7 @@ public class Smartcard implements Communicator {
         if (receptionCertHash != receptionIDPubSKHash){ //Step 5
             manipulation = true;
             //TODO: Send message to terminal that process is stopped
-            return null;
+            return;
         }
         byte[] noncePrepped = prepareMessage(nonceReception);
         byte[] nonceReceptionHashSign = sc.hashAndSign(noncePrepped);
@@ -118,11 +118,12 @@ public class Smartcard implements Communicator {
         }
         Object[] responseData2 = processMessage(response2);
 
-        byte[] cardNonceUnsigned = sc.unsign(responseData2[0], cardPubSK);
+        byte[] cardNonceUnsigned = sc.unsign((byte[]) responseData2[0], receptionPubSK);
         byte[] nonceCardHash = sc.createHash(prepareMessage(nonceCard));
         if (nonceCardHash != cardNonceUnsigned){ //Step 9
-            //TODO: Error
-            return null;
+            errorState("Nonces in authReception response 2 do not match");
+            //TODO: error
+            return;
         }
 
         terminalAuthenticated = true;
@@ -154,7 +155,7 @@ public class Smartcard implements Communicator {
         UUID nonceCard2 = (UUID) responseData[3];
         if (nonceCard2 != nonceCard+1){ //Step 7 - Sequence
             //TODO: Error
-            return null;
+            return;
         }
 
         byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
@@ -163,7 +164,7 @@ public class Smartcard implements Communicator {
         if (autoCertHash != autoIDPubSKHash){ //Step 7 - certificate
             manipulation = true;
             //TODO: Send message to terminal that process is stopped
-            return null;
+            return;
         }
         autoIDStored = autoID;
         autoPubSKStored = autoPubSK; //Step 8
