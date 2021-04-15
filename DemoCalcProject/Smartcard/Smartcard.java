@@ -34,7 +34,13 @@ public class Smartcard implements Communicator {
     public PublicKey insert(Auto auto){ //P1
         UUID nonceCard = sc.generateNonce();
         send(auto, sc.getCertificate(), nonceCard);
-        byte[] msg2b = waitForInput();
+        byte[] msg2b = new byte[0];
+        try {
+            msg2b = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return (PublicKey) errorState("Timeout in insert");
+        }
         Object[] msg2o = processMessage(msg2b);
         PublicKey autoPubSK = (PublicKey) msg2o[0];
         byte[] autoID = (byte[]) msg2o[1];
@@ -76,7 +82,14 @@ public class Smartcard implements Communicator {
         //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
         nonceCard = sc.generateNonce();
         send(reception, sc.getCertificate(), nonceCard); //Step 2
-        byte[] response = waitForInput(); //Step 4
+        byte[] response = new byte[0]; //Step 4
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in authReception response 1");
+            return;
+        }
         Object[] responseData = processMessage(response);
 
         PublicKey receptionPubSK = (PublicKey) responseData[0];
@@ -95,7 +108,14 @@ public class Smartcard implements Communicator {
         byte[] nonceReceptionHashSign = sc.hashAndSign(noncePrepped);
         send(reception, nonceReceptionHashSign); //Step 6
 
-        byte[] response2 = waitForInput();
+        byte[] response2 = new byte[0];
+        try {
+            response2 = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in authReception response 2");
+            return;
+        }
         Object[] responseData2 = processMessage(response2);
 
         byte[] cardNonceUnsigned = sc.unsign(responseData2[0], cardPubSK);
@@ -118,7 +138,14 @@ public class Smartcard implements Communicator {
         byte[] giveCarSigned = sc.hashAndSign(giveCarMsg);
         send(reception, giveCarSigned); //Step 2
 
-        byte[] response = waitForInput();
+        byte[] response = new byte[0];
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in carAssignment response");
+            return;
+        }
         Object[] responseData = processMessage(response);
 
         byte[] autoPubSK = (PublicKey) responseData[0];
@@ -147,7 +174,14 @@ public class Smartcard implements Communicator {
     }
 
     public void kilometerageUpdate(Auto auto, PublicKey autoPubSK){
-        byte[] receivedKmm = waitForInput();
+        byte[] receivedKmm = new byte[0];
+        try {
+            receivedKmm = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in kilometerageUpdate km meter from car");
+            return;
+        }
         Object[] receivedKmmO = processMessage(receivedKmm);
         int oldKMM = kilometerage;
         kilometerage = (int) receivedKmmO[0];
@@ -170,7 +204,14 @@ public class Smartcard implements Communicator {
         int seqNum1 = 0; //Placeholder
         byte[] msg1Hash = sc.hashAndSign(prepareMessage(((byte) 56), seqNum1, manipulation));
         send(rt, (byte) 56, seqNum1, manipulation, msg1Hash);
-        byte[] msg2b = waitForInput();
+        byte[] msg2b = new byte[0];
+        try {
+            msg2b = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in waiting for message 2 carReturn");
+            return;
+        }
         Object[] msg2 = processMessage(msg2b);
         UUID kmmNonce = (UUID) msg2[0];
         int seqNum2 = (int) msg2[1]; //Placeholder
@@ -178,6 +219,7 @@ public class Smartcard implements Communicator {
         byte[] validMsg2Hash = sc.createHash(prepareMessage(kmmNonce, seqNum2));
         if(msg2Hash != validMsg2Hash){
             //TODO: Error; also check sequence number (not in this if clause (obviously))
+            errorState("Message hashes do not match in msg2 carReturn");
         }
         byte[] msg3Hash = sc.hashAndSign(prepareMessage(kilometerage, kmmNonce, seqNum1 + 1));
         send(rt, kilometerage, kmmNonce, seqNum1 + 1, msg3Hash);

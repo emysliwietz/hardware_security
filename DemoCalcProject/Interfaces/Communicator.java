@@ -6,6 +6,8 @@ import java.util.Queue;
 
 public interface Communicator extends Receivable {
 
+    final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
+
     default byte[] prepareMessage(Object ... objects){
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = null;
@@ -20,7 +22,11 @@ public interface Communicator extends Receivable {
         return bos.toByteArray();
     }
 
-
+    default Object errorState(String msg) {
+        System.err.println("I don't want to be here...");
+        System.err.println(msg);
+        return null;
+    }
 
     default void send(Receivable receiver, Object... msgComponents){
         receiver.receive(prepareMessage(msgComponents));
@@ -40,14 +46,21 @@ public interface Communicator extends Receivable {
         return (Object[]) o;
     }
 
-    default byte[] waitForInput(){
+    default byte[] waitForInput() throws MessageTimeoutException {
+        int totalwait = 0;
         while (inputQueue.isEmpty()){
             try {
                 Thread.sleep(100);
+                totalwait += 100;
+                if (totalwait > WAITING_TIMEOUT)
+                    throw new MessageTimeoutException();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
         return inputQueue.remove();
+    }
+
+    class MessageTimeoutException extends Exception {
     }
 }

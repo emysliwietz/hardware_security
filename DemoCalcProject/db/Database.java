@@ -45,7 +45,14 @@ public class Database extends CryptoImplementation implements Communicator {
 
     //Temporary filler function
     public void carAssign(ReceptionTerminal reception){
-        byte[] response = waitForInput();
+        byte[] response = new byte[0];
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Waiting for response carAssign");
+            return;
+        }
         Object[] responseData = processMessage(response);
         byte[] cardID = (byte[]) responseData[0];
 

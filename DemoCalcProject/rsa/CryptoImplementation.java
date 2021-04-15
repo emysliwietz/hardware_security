@@ -7,16 +7,27 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.UUID;
 
 public abstract class CryptoImplementation {
     protected byte[] ID;
     protected byte[] certificate;
     protected RSACrypto rc;
+    protected SecureRandom sr = new SecureRandom();
 
-    public UUID generateNonce(){
-        return UUID.randomUUID();
+    public short generateNonce(){
+        byte[] bytes = new byte[2];
+        sr.nextBytes(bytes);
+        return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
     }
+
+    /*
+        short s = Short.MAX_VALUE;
+        short p = (short) (s + 1);
+        System.out.println(s + 1 == p); // false
+        System.out.println((short) (s + 1) == p); // true
+     */
 
     public byte[] getCertificate() {
         return this.certificate;

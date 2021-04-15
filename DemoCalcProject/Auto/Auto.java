@@ -19,11 +19,17 @@ public class Auto implements Receivable, Communicator {
     private int kilometerage = 0;
 
     public Auto(byte[] autoID, byte[] autoCertificate) {
-        ac = new Auto.Auto.AutoCrypto(autoID, autoCertificate);
+        ac = new AutoCrypto(autoID, autoCertificate);
     }
 
     public PublicKey authenticateSmartCard(Smartcard sc){
-        byte[] msg1b = waitForInput();
+        byte[] msg1b = new byte[0];
+        try {
+            msg1b = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
+        }
         Object[] msg1o = processMessage(msg1b);
         PublicKey scPubSK = (PublicKey) msg1o[0];
         byte[] cardID = (byte[]) msg1o[1];
@@ -39,7 +45,13 @@ public class Auto implements Receivable, Communicator {
         byte[] cardNonceBytes = prepareMessage(cardNonce);
         byte[] cardNonceHashSign = ac.hashAndSign(cardNonceBytes);
         send(sc, ac.getCertificate(), cardNonce, cardNonceHashSign, autoNonce);
-        byte[] msg3b = waitForInput();
+        byte[] msg3b = new byte[0];
+        try {
+            msg3b = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return (PublicKey) errorState("Timeout in msg2 authenticate smartcard");
+        }
         Object[] msg3o = processMessage(msg3b);
         UUID autoNonceResp = (UUID) msg3o[0];
         byte[] autoNonceRespHashSign = (byte[]) msg3o[1];
@@ -66,7 +78,14 @@ public class Auto implements Receivable, Communicator {
         byte[] kmmSigned = ac.hashAndSign(curKmm);
         send(sc, (Object) kmmSigned);
         //TODO: Need waitForInput with timeout
-        byte[] confirmation = waitForInput();
+        byte[] confirmation = new byte[0];
+        try {
+            confirmation = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in waiting for update confirmation kilomerage Update");
+            return;
+        }
         Object[] confirmO = processMessage(confirmation);
         byte confBYTE = (byte) confirmO[0];
         int curKmmCard = (int) confirmO[1];

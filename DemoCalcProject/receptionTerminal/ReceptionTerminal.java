@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import java.security.PublicKey;
 import java.util.UUID;
 
-public class ReceptionTerminal implements Receivable, Communicator {
+public class ReceptionTerminal implements Communicator {
 
     private ReceptionTerminal.RTCrypto rtc;
     public PublicKey dbPubSK;
@@ -24,17 +24,6 @@ public class ReceptionTerminal implements Receivable, Communicator {
     private byte[] cardID; //TEMP see above
     private Database database; //who knows at this point
 
-
-
-    @Override
-    public void receive(byte[] message) {
-        inputQueue.add(message);
-    }
-
-    public void send(Receivable receiver, Object... msgComponents){
-        receiver.receive(prepareMessage(msgComponents));
-    }
-
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate);
     }
@@ -43,7 +32,14 @@ public class ReceptionTerminal implements Receivable, Communicator {
         if (!cardAuthenticated){
             return; //TODO: Placeholder
         }
-        byte[] msg1b = waitForInput();
+        byte[] msg1b = new byte[0];
+        try {
+            msg1b = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout message1 carReturn");
+            return;
+        }
         Object[] msg1o = processMessage(msg1b);
         int seqNum = (int) msg1o[1];
         //TODO: Check sequence number
@@ -77,32 +73,46 @@ public class ReceptionTerminal implements Receivable, Communicator {
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     private void cardAuthentication(Smartcard sc){
-        byte[] response = waitForInput(); //Step 2
+        byte[] response = new byte[0]; //Step 2
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout response cardAuthentication");
+            return;
+        }
         Object[] responseData = processMessage(response);
 
         cardPubSK = (PublicKey) responseData[0];
         byte[] cardID = (byte[]) responseData[1];
         byte[] cardCertHashSign = (byte[]) responseData[2];
-        scNonce = (UUID) responseData[3];
-        byte[] cardCertHash = sc.unsign(cardCertHashSign, dbPubSK);
+        scNonce = (short) responseData[3];
+        byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
 
-        byte[] cardIDPubSKHash = sc.createHash(prepareMessage(cardPubSK, cardID));
+        byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
         if (cardCertHash != cardIDPubSKHash){ //Step 3
-            //TODO: Error
-            return null;
+            errorState("Hash does not match known card");
+            return;
         }
 
-        termNonce = sc.generateNonce();
-        send(sc, sc.getCertificate(), termNonce); //Step 4
+        termNonce = rtc.generateNonce();
+        send(sc, rtc.getCertificate(), termNonce); //Step 4
 
-        byte[] response2 = waitForInput();
+        byte[] response2 = new byte[0];
+        try {
+            response2 = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout response 2 cardAuthentication");
+            return;
+        }
         Object[] responseData2 = processMessage(response2);
 
-        byte[] receptionNonceUnsigned = sc.unsign(responseData2[0], cardPubSK);
-        byte[] nonceReceptionHash = sc.createHash(prepareMessage(nonceReception));
+        byte[] receptionNonceUnsigned = rtc.unsign((byte[]) responseData2[0], cardPubSK);
+        byte[] nonceReceptionHash = rtc.createHash(prepareMessage(termNonce));
         if (nonceReceptionHash != receptionNonceUnsigned){ //Step 7
-            //TODO: Error
-            return null;
+            errorState("Hash does not match reception nonce.");
+            return;
         }
 
         byte[] noncePrepped = prepareMessage(scNonce);
@@ -120,7 +130,14 @@ public class ReceptionTerminal implements Receivable, Communicator {
             return; //TODO: Placeholder
         }
 
-        byte[] response = waitForInput();
+        byte[] response = new byte[0];
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Waiting for response carAssignment");
+            return;
+        }
         Object[] responseData = processMessage(response);
 
         byte[] giveCarUnsigned = sc.unsign(responseData[0], cardPubSK);
@@ -133,11 +150,18 @@ public class ReceptionTerminal implements Receivable, Communicator {
         byte[] message = prepareMessage(cardID);
         send(database, message); //Step 4
 
-        byte[] response2 = waitForInput();
+        byte[] response2 = new byte[0];
+        try {
+            response2 = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout response2 carAssignment");
+            return;
+        }
         Object[] responseData2 = processMessage(response2);
-        byte[] autoPubSK = (PublicKey) responseData[0];
-        byte[] autoID = (byte[]) responseData[1];
-        byte[] autoCertHashSign = (byte[]) responseData[2];
+        PublicKey autoPubSK = (PublicKey) responseData2[0];
+        byte[] autoID = (byte[]) responseData2[1];
+        byte[] autoCertHashSign = (byte[]) responseData2[2];
 
         System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
         byte[] cert = prepareMessage(autoPubSk, autoID, autoCertHashSign, scNonce+1); //who knows if this works
