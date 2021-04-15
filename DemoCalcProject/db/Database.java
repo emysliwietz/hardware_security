@@ -1,6 +1,7 @@
 package db;
 
 import Interfaces.Communicator;
+import receptionTerminal.ReceptionTerminal;
 import rsa.*;
 
 import java.security.*;
@@ -46,7 +47,7 @@ public class Database extends CryptoImplementation implements Communicator {
     public void carAssign(ReceptionTerminal reception){
         byte[] response = waitForInput();
         Object[] responseData = processMessage(response);
-        byte[] cardID = responseData[0];
+        byte[] cardID = (byte[]) responseData[0];
 
         //pretend it stores cardID and autoID
         byte[] message = prepareMessage(autoCert);

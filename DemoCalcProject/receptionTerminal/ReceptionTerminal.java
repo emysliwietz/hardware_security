@@ -5,6 +5,7 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
+import db.Database;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 

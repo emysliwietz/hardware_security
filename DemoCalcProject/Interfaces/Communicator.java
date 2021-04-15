@@ -4,9 +4,7 @@ import java.io.*;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public interface Communicator {
-
-    Queue<byte[]> inputQueue = new LinkedList<>();
+public interface Communicator extends Receivable {
 
     default byte[] prepareMessage(Object ... objects){
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -20,6 +18,12 @@ public interface Communicator {
             e.printStackTrace();
         }
         return bos.toByteArray();
+    }
+
+
+
+    default void send(Receivable receiver, Object... msgComponents){
+        receiver.receive(prepareMessage(msgComponents));
     }
 
     default Object[] processMessage(byte[] message){

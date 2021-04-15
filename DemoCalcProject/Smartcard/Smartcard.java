@@ -13,7 +13,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.*;
 
-public class Smartcard implements Receivable, Communicator {
+public class Smartcard implements Communicator {
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
     private boolean manipulation = false;
@@ -29,11 +29,6 @@ public class Smartcard implements Receivable, Communicator {
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
     }
-
-    public void send(Receivable receiver, Object... msgComponents){
-        receiver.receive(prepareMessage(msgComponents));
-    }
-
 
 
     public PublicKey insert(Auto auto){ //P1
@@ -188,11 +183,6 @@ public class Smartcard implements Receivable, Communicator {
         send(rt, kilometerage, kmmNonce, seqNum1 + 1, msg3Hash);
         kilometerage = 0;
         //TODO: Remove certificate of car (e.g. by setting it to null)
-    }
-
-    @Override
-    public void receive(byte[] message) {
-        inputQueue.add(message);
     }
 
     private class SmartcardCrypto extends CryptoImplementation {

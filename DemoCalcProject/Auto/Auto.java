@@ -18,15 +18,6 @@ public class Auto implements Receivable, Communicator {
     private boolean cardAuthenticated = false;
     private int kilometerage = 0;
 
-    @Override
-    public void receive(byte[] message) {
-        inputQueue.add(message);
-    }
-
-    public void send(Receivable receiver, Object... msgComponents){
-        receiver.receive(prepareMessage(msgComponents));
-    }
-
     public Auto(byte[] autoID, byte[] autoCertificate) {
         ac = new Auto.Auto.AutoCrypto(autoID, autoCertificate);
     }
