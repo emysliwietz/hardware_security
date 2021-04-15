@@ -56,7 +56,14 @@ public class ReceptionTerminal implements Communicator {
         int seqNum2 = 0; //Placeholder
         byte[] msg2Sign = rtc.hashAndSign(prepareMessage(kmmNonce, seqNum2));
         send(sc, kmmNonce, seqNum2, msg2Sign);
-        byte[] msg3b = waitForInput();
+        byte[] msg3b;
+        try {
+            msg3b = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in message3 carReturn response");
+            return;
+        }
         Object[] msg3 = processMessage(msg3b);
         int kilometerage = (int) msg3[0];
         short kmmNonceResp = (short) msg3[1];
@@ -116,7 +123,7 @@ public class ReceptionTerminal implements Communicator {
         }
 
         byte[] noncePrepped = prepareMessage(scNonce);
-        byte[] nonceCardHashSign = sc.hashAndSign(noncePrepped);
+        byte[] nonceCardHashSign = rtc.hashAndSign(noncePrepped);
         send(sc, nonceCardHashSign); //Step 8
 
         //Do we want some success message back?
@@ -140,8 +147,8 @@ public class ReceptionTerminal implements Communicator {
         }
         Object[] responseData = processMessage(response);
 
-        byte[] giveCarUnsigned = sc.unsign(responseData[0], cardPubSK);
-        byte[] giveCarHash = sc.createHash(prepareMessage(nonceReception+1)); //We still dont know if this works
+        byte[] giveCarUnsigned = rtc.unsign(prepareMessage(responseData[0]), cardPubSK);
+        byte[] giveCarHash = rtc.createHash(prepareMessage(termNonce+1)); //We still dont know if this works
         if (giveCarUnsigned != giveCarHash){ //Step 3
             //TODO: Error
             errorState("Hashes don't match carAssignment");

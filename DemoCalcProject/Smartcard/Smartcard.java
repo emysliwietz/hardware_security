@@ -19,8 +19,8 @@ public class Smartcard implements Communicator {
     private boolean manipulation = false;
     private int kilometerage; //TODO: Change to less storage intensive type (e.g. short or int)
     boolean terminalAuthenticated = false; //in temporary storage
-    private UUID nonceReception; //TEMP because this should be yeeted when card is pulled out
-    private UUID nonceCard; //TEMP same as above
+    private short nonceReception; //TEMP because this should be yeeted when card is pulled out
+    private short nonceCard; //TEMP same as above
 
     //This should actually be stored somehow?
     private byte[] autoIDStored;
@@ -32,7 +32,7 @@ public class Smartcard implements Communicator {
 
 
     public PublicKey insert(Auto auto){ //P1
-        UUID nonceCard = sc.generateNonce();
+        short nonceCard = sc.generateNonce();
         send(auto, sc.getCertificate(), nonceCard);
         byte[] msg2b = new byte[0];
         try {
@@ -54,7 +54,7 @@ public class Smartcard implements Communicator {
             return null;
         }
 
-        UUID nonceCardResponse = (UUID) msg2o[3];
+        short nonceCardResponse = (short) msg2o[3];
         if (nonceCard != nonceCardResponse){
             manipulation = true;
             return null; //Placeholder
@@ -68,7 +68,7 @@ public class Smartcard implements Communicator {
             manipulation = true;
             return null; //Placeholder probably
         }
-        UUID nonceAuto = (UUID) msg2o[5];
+        short nonceAuto = (short) msg2o[5];
         byte[] msg3tmp = prepareMessage(nonceAuto);
         byte[] nonceAutoHashSign = sc.hashAndSign(msg3tmp);
         send(auto, nonceAuto, nonceAutoHashSign);
@@ -77,7 +77,7 @@ public class Smartcard implements Communicator {
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void authReception(ReceptionTerminal reception) {
-        // How does the card know if it is in a terminal or a card?
+        // How does the card know if it is in a terminal or a car?
         // Potential solution: terminal or auto sends a basic message like "terminal!" or  "auto!"
         //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
         nonceCard = sc.generateNonce();
@@ -95,7 +95,7 @@ public class Smartcard implements Communicator {
         PublicKey receptionPubSK = (PublicKey) responseData[0];
         byte[] receptionID = (byte[]) responseData[1];
         byte[] receptionCertHashSign = (byte[]) responseData[2];
-        nonceReception = (UUID) responseData[3];
+        nonceReception = (short) responseData[3];
         byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
 
         byte[] receptionIDPubSKHash = sc.createHash(prepareMessage(receptionPubSK, receptionID));
@@ -152,8 +152,8 @@ public class Smartcard implements Communicator {
         PublicKey autoPubSK = (PublicKey) responseData[0];
         byte[] autoID = (byte[]) responseData[1];
         byte[] autoCertHashSign = (byte[]) responseData[2];
-        UUID nonceCard2 = (UUID) responseData[3];
-        if (nonceCard2 != nonceCard+1){ //Step 7 - Sequence
+        short nonceCard2 = (short) responseData[3];
+        if (nonceCard2 != ((short) (nonceCard+1))){ //Step 7 - Sequence
             //TODO: Error
             return;
         }
@@ -214,7 +214,7 @@ public class Smartcard implements Communicator {
             return;
         }
         Object[] msg2 = processMessage(msg2b);
-        UUID kmmNonce = (UUID) msg2[0];
+        short kmmNonce = (short) msg2[0];
         int seqNum2 = (int) msg2[1]; //Placeholder
         byte[] msg2Hash = sc.unsign((byte[]) msg2[2], rtPubSK);
         byte[] validMsg2Hash = sc.createHash(prepareMessage(kmmNonce, seqNum2));

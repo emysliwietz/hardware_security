@@ -57,7 +57,17 @@ public class Database extends CryptoImplementation implements Communicator {
         byte[] cardID = (byte[]) responseData[0];
 
         //pretend it stores cardID and autoID
-        byte[] message = prepareMessage(autoCert);
+
+        //just a fake generate for now so it wont throw an error
+        Object [] dbKeyPair = generateKeyPair();
+        PublicKey dbPubSK = (PublicKey) dbKeyPair[0];
+        PrivateKey dbPrivSK = (PrivateKey) dbKeyPair[1];
+        Object [] autoKeyPair = generateKeyPair();
+        PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
+        PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
+        byte[] autoID = UUID.randomUUID().toString().getBytes();
+
+        byte[] message = prepareMessage(issueCertificate(autoPubSK, autoID, dbPrivSK));
         send(reception, message);
     }
 

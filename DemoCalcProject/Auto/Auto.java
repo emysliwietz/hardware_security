@@ -40,8 +40,8 @@ public class Auto implements Receivable, Communicator {
         if (scCertHash != cardIDPubSKHash){
             //TODO: throw error or something (logs). Also stop further actions.
         }
-        UUID cardNonce = (UUID) msg1o[3];
-        UUID autoNonce = ac.generateNonce();
+        short cardNonce = (short) msg1o[3];
+        short autoNonce = ac.generateNonce();
         byte[] cardNonceBytes = prepareMessage(cardNonce);
         byte[] cardNonceHashSign = ac.hashAndSign(cardNonceBytes);
         send(sc, ac.getCertificate(), cardNonce, cardNonceHashSign, autoNonce);
@@ -53,7 +53,7 @@ public class Auto implements Receivable, Communicator {
             return (PublicKey) errorState("Timeout in msg2 authenticate smartcard");
         }
         Object[] msg3o = processMessage(msg3b);
-        UUID autoNonceResp = (UUID) msg3o[0];
+        short autoNonceResp = (short) msg3o[0];
         byte[] autoNonceRespHashSign = (byte[]) msg3o[1];
         byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
         //TODO: Validate hash and log success/failure
