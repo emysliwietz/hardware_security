@@ -149,7 +149,7 @@ public class Smartcard implements Communicator {
         }
         Object[] responseData = processMessage(response);
 
-        byte[] autoPubSK = (PublicKey) responseData[0];
+        PublicKey autoPubSK = (PublicKey) responseData[0];
         byte[] autoID = (byte[]) responseData[1];
         byte[] autoCertHashSign = (byte[]) responseData[2];
         UUID nonceCard2 = (UUID) responseData[3];

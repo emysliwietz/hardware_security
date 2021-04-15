@@ -59,11 +59,9 @@ public class Database extends CryptoImplementation implements Communicator {
         //pretend it stores cardID and autoID
         byte[] message = prepareMessage(autoCert);
         send(reception, message);
-
-        return null;
     }
 
-    void generateStuff() {
+    void generateStuff() { //TODO: Put those variables in global object array/mini-database
         Object [] dbKeyPair = generateKeyPair();
         PublicKey dbPubSK = (PublicKey) dbKeyPair[0];
         PrivateKey dbPrivSK = (PrivateKey) dbKeyPair[1];
