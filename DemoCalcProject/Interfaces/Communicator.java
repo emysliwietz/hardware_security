@@ -6,6 +6,7 @@ import java.util.Queue;
 
 public interface Communicator extends Receivable {
 
+    public static final byte SUCCESS_BYTE = (byte) 0xFF;
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
 
     default byte[] prepareMessage(Object ... objects){

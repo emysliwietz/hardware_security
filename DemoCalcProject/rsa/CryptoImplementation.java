@@ -22,6 +22,14 @@ public abstract class CryptoImplementation {
         return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
     }
 
+    public boolean areSubsequentNonces(short a, short aPlus1){
+        return (aPlus1 == (short) (a+1));
+    }
+
+    public boolean areSubsequentNonces(short a, short aPlusX, int x){
+        return (aPlusX == (short) (a+((short) x)));
+    }
+
     /*
         short s = Short.MAX_VALUE;
         short p = (short) (s + 1);

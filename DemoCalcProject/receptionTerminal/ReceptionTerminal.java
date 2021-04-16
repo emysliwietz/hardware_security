@@ -30,7 +30,8 @@ public class ReceptionTerminal implements Communicator {
 
     public void carReturn(Smartcard sc, PublicKey scPubSK){
         if (!cardAuthenticated){
-            return; //TODO: Placeholder
+            errorState("Card is not authenticated");
+            return;
         }
         byte[] msg1b = new byte[0];
         try {
@@ -41,19 +42,24 @@ public class ReceptionTerminal implements Communicator {
             return;
         }
         Object[] msg1o = processMessage(msg1b);
-        int seqNum = (int) msg1o[1];
-        //TODO: Check sequence number
+        short seqNum = (short) msg1o[1];
+        if(!rtc.areSubsequentNonces(termNonce,seqNum)){
+            errorState("Wrong sequence number in carReturn message 1");
+            return;
+        }
         boolean manipulation = (boolean) msg1o[2];
         byte[] msg1Hash = rtc.unsign(((byte[]) msg1o[3]), scPubSK);
         byte[] msg1ConfHash = rtc.createHash(prepareMessage(((byte) msg1o[0]), seqNum, manipulation));
         if(msg1Hash != msg1ConfHash){
-            //TODO: Error
+            errorState("Hashes don't match in carReturn message 1");
+            return;
         }
         if (manipulation){
-            //TODO: Throw exception/error
+            errorState("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify");
+            return;
         }
         short kmmNonce = rtc.generateNonce();
-        int seqNum2 = 0; //Placeholder
+        short seqNum2 = (short) (scNonce+1);
         byte[] msg2Sign = rtc.hashAndSign(prepareMessage(kmmNonce, seqNum2));
         send(sc, kmmNonce, seqNum2, msg2Sign);
         byte[] msg3b;
@@ -69,13 +75,22 @@ public class ReceptionTerminal implements Communicator {
         short kmmNonceResp = (short) msg3[1];
         if(kmmNonce != kmmNonceResp){
             //TODO: Error
+            errorState("Wrong kilometerage nonce returned");
+            return;
         }
-        int seqNum3 = (int) msg3[2];
+        short seqNum3 = (short) msg3[2];
+        if(!rtc.areSubsequentNonces(termNonce,seqNum3,2)){
+            errorState("Wrong sequence number in carReturn message 3");
+            return;
+        }
         byte[] msg3Hash = rtc.unsign(((byte[]) msg3[3]),scPubSK);
         byte[] validMsg3Hash = rtc.createHash(prepareMessage(kilometerage, kmmNonceResp, seqNum3));
         if(msg3Hash != validMsg3Hash){
             //TODO: Error
+            errorState("Hash in carReturn message 3 invalid");
+            return;
         }
+        send(sc, SUCCESS_BYTE, (short) (scNonce + 2), rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2))));
     }
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
@@ -114,19 +129,22 @@ public class ReceptionTerminal implements Communicator {
             return;
         }
         Object[] responseData2 = processMessage(response2);
-
-        byte[] receptionNonceUnsigned = rtc.unsign((byte[]) responseData2[0], cardPubSK);
-        byte[] nonceReceptionHash = rtc.createHash(prepareMessage(termNonce));
-        if (nonceReceptionHash != receptionNonceUnsigned){ //Step 7
-            errorState("Hash does not match reception nonce.");
+        short termNonceResp = (short) responseData2[0];
+        if(termNonceResp != termNonce){
+            errorState("Wrong nonce in message 3 of P2");
             return;
         }
 
-        byte[] noncePrepped = prepareMessage(scNonce);
-        byte[] nonceCardHashSign = rtc.hashAndSign(noncePrepped);
-        send(sc, nonceCardHashSign); //Step 8
+        byte[] receptionNonceHash = rtc.unsign((byte[]) responseData2[1], cardPubSK);
+        byte[] nonceReceptionHashValid = rtc.createHash(prepareMessage(termNonce));
+        if (nonceReceptionHashValid != receptionNonceHash){ //Step 7
+            errorState("Invalid hash in message 3 of P2");
+            return;
+        }
 
-        //Do we want some success message back?
+        byte[] nonceCardHashSign = rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, scNonce));
+        send(sc, SUCCESS_BYTE, scNonce, nonceCardHashSign); //Step 8
+
         cardAuthenticated = true; //When to make it false again
 
     }
@@ -137,7 +155,7 @@ public class ReceptionTerminal implements Communicator {
             return; //TODO: Placeholder
         }
 
-        byte[] response = new byte[0];
+        byte[] response;
         try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -146,12 +164,21 @@ public class ReceptionTerminal implements Communicator {
             return;
         }
         Object[] responseData = processMessage(response);
+        String request = (String) responseData[0];
+        if (!request.equals("Car?")){
+            errorState("Expected car request");
+            return;
+        }
+        short seqNum1 = (short) responseData[1];
+        if(!rtc.areSubsequentNonces(termNonce, seqNum1)){
+            errorState("Wrong sequence number in message 1 of P3");
+        }
 
-        byte[] giveCarUnsigned = rtc.unsign(prepareMessage(responseData[0]), cardPubSK);
-        byte[] giveCarHash = rtc.createHash(prepareMessage(termNonce+1)); //We still dont know if this works
-        if (giveCarUnsigned != giveCarHash){ //Step 3
+        byte[] giveCarHash= rtc.unsign(prepareMessage(responseData[2]), cardPubSK);
+        byte[] giveCarHashValid = rtc.createHash(prepareMessage("Car?", seqNum1)); //We still dont know if this works
+        if (giveCarHash != giveCarHashValid){ //Step 3
             //TODO: Error
-            errorState("Hashes don't match carAssignment");
+            errorState("Invalid hash in message 1 of P3");
             return;
         }
 
@@ -172,10 +199,34 @@ public class ReceptionTerminal implements Communicator {
         byte[] autoCertHashSign = (byte[]) responseData2[2];
 
         System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
-        byte[] cert = prepareMessage(autoPubSK, autoID, autoCertHashSign, scNonce+1); //who knows if this works
-        send(sc, cert);//Step 6
+        send(sc, autoPubSK, autoID, autoCertHashSign, (short) (scNonce+1),
+                rtc.hashAndSign(prepareMessage(autoPubSK, autoID, autoCertHashSign, (short) (scNonce+1))));//Step 6
 
         // Success message?
+        byte[] succMsgB;
+        try {
+            succMsgB = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout response2 carAssignment");
+            return;
+        }
+        Object[] succMsg = processMessage(succMsgB);
+        byte success = (byte) succMsg[0];
+        if(success != SUCCESS_BYTE){
+            errorState("Wrong byte code, expected 0xFF");
+            return;
+        }
+        short seqNum2 = (short) succMsg[1];
+        if(!rtc.areSubsequentNonces(termNonce, seqNum2, 2)){
+            errorState("Wrong sequence number in success message of P3");
+            return;
+        }
+        byte[] succHash = (byte[]) succMsg[2];
+        if(succHash != rtc.createHash(prepareMessage(success, seqNum2))){
+            errorState("Invalid hash in success message of P2");
+            return;
+        }
     }
 
     private static class RTCrypto extends CryptoImplementation {

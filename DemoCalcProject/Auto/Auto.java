@@ -64,6 +64,7 @@ public class Auto implements Receivable, Communicator {
         }
         else{
             cardAuthenticated = true;
+            send(sc, SUCCESS_BYTE, (short) (cardNonce + 1), ac.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (cardNonce + 1))));
             return scPubSK;
             //TODO: log success?
         }

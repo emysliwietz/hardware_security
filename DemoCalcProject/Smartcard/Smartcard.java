@@ -72,6 +72,29 @@ public class Smartcard implements Communicator {
         byte[] msg3tmp = prepareMessage(nonceAuto);
         byte[] nonceAutoHashSign = sc.hashAndSign(msg3tmp);
         send(auto, nonceAuto, nonceAutoHashSign);
+        byte[] succMb;
+        try {
+            succMb = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return (PublicKey) errorState("Timeout in insert");
+        }
+        Object[] succM = processMessage(succMb);
+        byte success = (byte) succM[0];
+        if(success != SUCCESS_BYTE){
+            errorState("Wrong code, expected 0xFF");
+            return null;
+        }
+        short nonceSucc = (short) succM[1];
+        if (!sc.areSubsequentNonces(nonceCard, nonceSucc)){
+            errorState("Wrong nonce in success message of P1");
+            return null;
+        }
+        byte[] succMHash = sc.unsign((byte[]) succM[2], autoPubSK);
+        if((sc.createHash(prepareMessage(success))) != succMHash){
+            errorState("Invalid hash in sucess message (P1)");
+            return null;
+        }
         return autoPubSK;
     }
 
@@ -106,7 +129,7 @@ public class Smartcard implements Communicator {
         }
         byte[] noncePrepped = prepareMessage(nonceReception);
         byte[] nonceReceptionHashSign = sc.hashAndSign(noncePrepped);
-        send(reception, nonceReceptionHashSign); //Step 6
+        send(reception, nonceReception, nonceReceptionHashSign); //Step 6
 
         byte[] response2 = new byte[0];
         try {
@@ -117,11 +140,20 @@ public class Smartcard implements Communicator {
             return;
         }
         Object[] responseData2 = processMessage(response2);
-
-        byte[] cardNonceUnsigned = sc.unsign((byte[]) responseData2[0], receptionPubSK);
-        byte[] nonceCardHash = sc.createHash(prepareMessage(nonceCard));
-        if (nonceCardHash != cardNonceUnsigned){ //Step 9
-            errorState("Nonces in authReception response 2 do not match");
+        byte success = (byte) responseData2[0];
+        if(success != SUCCESS_BYTE){
+            errorState("Wrong byte code, expected 0xFF");
+            return;
+        }
+        short nonceCardResp = (short) responseData2[1];
+        if(nonceCardResp != nonceCard){
+            errorState("Wrong nonce returned in message 4 of P2");
+            return;
+        }
+        byte[] cardNonceHash = sc.unsign((byte[]) responseData2[1], receptionPubSK);
+        byte[] nonceCardHashValid = sc.createHash(prepareMessage(success, nonceCard));
+        if (nonceCardHashValid != cardNonceHash){ //Step 9
+            errorState("Invalid hash in message 4 of P2");
             //TODO: error
             return;
         }
@@ -135,9 +167,10 @@ public class Smartcard implements Communicator {
         if (!terminalAuthenticated){ //Step 1
             return; //TODO: Placeholder
         }
+
         byte[] giveCarMsg = prepareMessage("Car?", nonceReception+1); //Does this work? We don't know :)
         byte[] giveCarSigned = sc.hashAndSign(giveCarMsg);
-        send(reception, giveCarSigned); //Step 2
+        send(reception, "Car?", (short)(nonceReception+1), giveCarSigned); //Step 2
 
         byte[] response = new byte[0];
         try {
@@ -155,6 +188,7 @@ public class Smartcard implements Communicator {
         short nonceCard2 = (short) responseData[3];
         if (nonceCard2 != ((short) (nonceCard+1))){ //Step 7 - Sequence
             //TODO: Error
+            errorState("Wrong sequence number in message 2 of P3");
             return;
         }
 
@@ -162,7 +196,8 @@ public class Smartcard implements Communicator {
 
         byte[] autoIDPubSKHash = sc.createHash(prepareMessage(autoPubSK, autoID));
         if (autoCertHash != autoIDPubSKHash){ //Step 7 - certificate
-            manipulation = true;
+            //manipulation = true;
+            errorState("Invalid car signature received");
             //TODO: Send message to terminal that process is stopped
             return;
         }
@@ -171,7 +206,7 @@ public class Smartcard implements Communicator {
         //State transition????
 
         //Success message!
-
+        send(reception, SUCCESS_BYTE, (short) (nonceReception+2), sc.createHash(prepareMessage(SUCCESS_BYTE, (short) (nonceReception+2))));
     }
 
     public void kilometerageUpdate(Auto auto, PublicKey autoPubSK){
@@ -202,10 +237,10 @@ public class Smartcard implements Communicator {
     }
 
     public void carReturn(ReceptionTerminal rt, PublicKey rtPubSK){
-        int seqNum1 = 0; //Placeholder
+        short seqNum1 = (short) (nonceReception + 1);
         byte[] msg1Hash = sc.hashAndSign(prepareMessage(((byte) 56), seqNum1, manipulation));
         send(rt, (byte) 56, seqNum1, manipulation, msg1Hash);
-        byte[] msg2b = new byte[0];
+        byte[] msg2b;
         try {
             msg2b = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -215,17 +250,50 @@ public class Smartcard implements Communicator {
         }
         Object[] msg2 = processMessage(msg2b);
         short kmmNonce = (short) msg2[0];
-        int seqNum2 = (int) msg2[1]; //Placeholder
+        short seqNum2 = (short) msg2[1];
+        if(!sc.areSubsequentNonces(nonceCard, seqNum2)){
+            errorState("Wrong sequence number in carReturn message 2");
+            return;
+        }
         byte[] msg2Hash = sc.unsign((byte[]) msg2[2], rtPubSK);
         byte[] validMsg2Hash = sc.createHash(prepareMessage(kmmNonce, seqNum2));
         if(msg2Hash != validMsg2Hash){
             //TODO: Error; also check sequence number (not in this if clause (obviously))
             errorState("Message hashes do not match in msg2 carReturn");
+            return;
         }
-        byte[] msg3Hash = sc.hashAndSign(prepareMessage(kilometerage, kmmNonce, seqNum1 + 1));
+        byte[] msg3Hash = sc.hashAndSign(prepareMessage(kilometerage, kmmNonce, (short) (seqNum1 + 1)));
         send(rt, kilometerage, kmmNonce, seqNum1 + 1, msg3Hash);
         kilometerage = 0;
+
         //TODO: Remove certificate of car (e.g. by setting it to null)
+        autoIDStored = null; //Placeholder
+        autoPubSKStored = null; //Placeholder
+
+        byte[] succMsgB;
+        try {
+            succMsgB = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Timeout in waiting for message 2 carReturn");
+            return;
+        }
+        Object[] succMsg = processMessage(succMsgB);
+        byte success = (byte) succMsg[0];
+        if(success != SUCCESS_BYTE){
+            errorState("Wrong code, expected 0xFF");
+            return;
+        }
+        short succNonce = (short) succMsg[1];
+        if (!sc.areSubsequentNonces(nonceCard, succNonce, 2)){
+            errorState("Wrong sequence number in success message of P4");
+            return;
+        }
+        byte[] succHash = sc.unsign((byte[]) succMsg[3], rtPubSK);
+        if(succHash != sc.createHash(prepareMessage(success,succNonce))){
+            errorState("Invalid hash in success message of Protocol 4");
+            return;
+        }
     }
 
     private class SmartcardCrypto extends CryptoImplementation {
