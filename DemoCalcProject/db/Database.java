@@ -114,7 +114,7 @@ public class Database extends CryptoImplementation implements Communicator {
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
         PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
         byte[] scID = UUID.randomUUID().toString().getBytes();
-        byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
+        //TODO: byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
 
         // actually store in DB, not the private key though
         // and send the info back
@@ -124,7 +124,7 @@ public class Database extends CryptoImplementation implements Communicator {
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
         byte[] autoID = UUID.randomUUID().toString().getBytes();
-        byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
+        //TODO: byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
 
         // actually store in DB, not the private key though
         // and send the info back
@@ -135,7 +135,7 @@ public class Database extends CryptoImplementation implements Communicator {
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
         byte[] rtID = UUID.randomUUID().toString().getBytes();
-        byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
+        //TODO: byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
 
         // actually store in DB, not the private key though
         // and send the info back
