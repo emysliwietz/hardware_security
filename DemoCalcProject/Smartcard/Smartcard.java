@@ -21,10 +21,12 @@ public class Smartcard implements Communicator {
     boolean terminalAuthenticated = false; //in temporary storage
     private short nonceReception; //TEMP because this should be yeeted when card is pulled out
     private short nonceCard; //TEMP same as above
+    public PublicKey rtPubSK;
 
     //This should actually be stored somehow?
     private byte[] autoIDStored;
-    private PublicKey autoPubSKStored;
+    public PublicKey autoPubSK;
+
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
@@ -115,13 +117,13 @@ public class Smartcard implements Communicator {
         }
         Object[] responseData = processMessage(response);
 
-        PublicKey receptionPubSK = (PublicKey) responseData[0];
+        rtPubSK = (PublicKey) responseData[0];
         byte[] receptionID = (byte[]) responseData[1];
         byte[] receptionCertHashSign = (byte[]) responseData[2];
         nonceReception = (short) responseData[3];
         byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
 
-        byte[] receptionIDPubSKHash = sc.createHash(prepareMessage(receptionPubSK, receptionID));
+        byte[] receptionIDPubSKHash = sc.createHash(prepareMessage(rtPubSK, receptionID));
         if (receptionCertHash != receptionIDPubSKHash){ //Step 5
             manipulation = true;
             //TODO: Send message to terminal that process is stopped
@@ -150,7 +152,7 @@ public class Smartcard implements Communicator {
             errorState("Wrong nonce returned in message 4 of P2");
             return;
         }
-        byte[] cardNonceHash = sc.unsign((byte[]) responseData2[1], receptionPubSK);
+        byte[] cardNonceHash = sc.unsign((byte[]) responseData2[1], rtPubSK);
         byte[] nonceCardHashValid = sc.createHash(prepareMessage(success, nonceCard));
         if (nonceCardHashValid != cardNonceHash){ //Step 9
             errorState("Invalid hash in message 4 of P2");
@@ -182,7 +184,7 @@ public class Smartcard implements Communicator {
         }
         Object[] responseData = processMessage(response);
 
-        PublicKey autoPubSK = (PublicKey) responseData[0];
+        autoPubSK = (PublicKey) responseData[0];
         byte[] autoID = (byte[]) responseData[1];
         byte[] autoCertHashSign = (byte[]) responseData[2];
         short nonceCard2 = (short) responseData[3];
@@ -202,14 +204,13 @@ public class Smartcard implements Communicator {
             return;
         }
         autoIDStored = autoID;
-        autoPubSKStored = autoPubSK; //Step 8
         //State transition????
 
         //Success message!
         send(reception, SUCCESS_BYTE, (short) (nonceReception+2), sc.createHash(prepareMessage(SUCCESS_BYTE, (short) (nonceReception+2))));
     }
 
-    public void kilometerageUpdate(Auto auto, PublicKey autoPubSK){
+    public void kilometerageUpdate(Auto auto){
         byte[] receivedKmm = new byte[0];
         try {
             receivedKmm = waitForInput();
@@ -236,7 +237,7 @@ public class Smartcard implements Communicator {
         send(auto, confirmation, kilometerage, confirmationHash);
     }
 
-    public void carReturn(ReceptionTerminal rt, PublicKey rtPubSK){
+    public void carReturn(ReceptionTerminal rt){
         short seqNum1 = (short) (nonceReception + 1);
         byte[] msg1Hash = sc.hashAndSign(prepareMessage(((byte) 56), seqNum1, manipulation));
         send(rt, (byte) 56, seqNum1, manipulation, msg1Hash);
@@ -268,7 +269,7 @@ public class Smartcard implements Communicator {
 
         //TODO: Remove certificate of car (e.g. by setting it to null)
         autoIDStored = null; //Placeholder
-        autoPubSKStored = null; //Placeholder
+        autoPubSK = null; //Placeholder
 
         byte[] succMsgB;
         try {

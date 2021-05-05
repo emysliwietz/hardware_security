@@ -23,15 +23,17 @@ public class ReceptionTerminal implements Communicator {
     private PublicKey cardPubSK; //TEMP until better solution
     private byte[] cardID; //TEMP see above
     private Database database; //who knows at this point
+    public PublicKey scPubSK;
+    public int kilometerage;
 
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate);
     }
 
-    public void carReturn(Smartcard sc, PublicKey scPubSK){
+    public int carReturn(Smartcard sc){
         if (!cardAuthenticated){
             errorState("Card is not authenticated");
-            return;
+            return -1;
         }
         byte[] msg1b = new byte[0];
         try {
@@ -39,24 +41,24 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout message1 carReturn");
-            return;
+            return -1;
         }
         Object[] msg1o = processMessage(msg1b);
         short seqNum = (short) msg1o[1];
         if(!rtc.areSubsequentNonces(termNonce,seqNum)){
             errorState("Wrong sequence number in carReturn message 1");
-            return;
+            return -1;
         }
         boolean manipulation = (boolean) msg1o[2];
         byte[] msg1Hash = rtc.unsign(((byte[]) msg1o[3]), scPubSK);
         byte[] msg1ConfHash = rtc.createHash(prepareMessage(((byte) msg1o[0]), seqNum, manipulation));
         if(msg1Hash != msg1ConfHash){
             errorState("Hashes don't match in carReturn message 1");
-            return;
+            return -1;
         }
         if (manipulation){
             errorState("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify");
-            return;
+            return -1;
         }
         short kmmNonce = rtc.generateNonce();
         short seqNum2 = (short) (scNonce+1);
@@ -68,33 +70,34 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in message3 carReturn response");
-            return;
+            return -1;
         }
         Object[] msg3 = processMessage(msg3b);
-        int kilometerage = (int) msg3[0];
+        kilometerage = (int) msg3[0];
         short kmmNonceResp = (short) msg3[1];
         if(kmmNonce != kmmNonceResp){
             //TODO: Error
             errorState("Wrong kilometerage nonce returned");
-            return;
+            return -1;
         }
         short seqNum3 = (short) msg3[2];
         if(!rtc.areSubsequentNonces(termNonce,seqNum3,2)){
             errorState("Wrong sequence number in carReturn message 3");
-            return;
+            return -1;
         }
         byte[] msg3Hash = rtc.unsign(((byte[]) msg3[3]),scPubSK);
         byte[] validMsg3Hash = rtc.createHash(prepareMessage(kilometerage, kmmNonceResp, seqNum3));
         if(msg3Hash != validMsg3Hash){
             //TODO: Error
             errorState("Hash in carReturn message 3 invalid");
-            return;
+            return -1;
         }
         send(sc, SUCCESS_BYTE, (short) (scNonce + 2), rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2))));
+        return kilometerage;
     }
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
-    private void cardAuthentication(Smartcard sc){
+    public void cardAuthentication(Smartcard sc){
         byte[] response = new byte[0]; //Step 2
         try {
             response = waitForInput();

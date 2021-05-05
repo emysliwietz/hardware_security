@@ -17,6 +17,7 @@ public class Auto implements Receivable, Communicator {
     public PublicKey dbPubSK;
     private boolean cardAuthenticated = false;
     private int kilometerage = 0;
+    public PublicKey scPubSK;
 
     public Auto(byte[] autoID, byte[] autoCertificate) {
         ac = new AutoCrypto(autoID, autoCertificate);
@@ -31,7 +32,7 @@ public class Auto implements Receivable, Communicator {
             return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
         }
         Object[] msg1o = processMessage(msg1b);
-        PublicKey scPubSK = (PublicKey) msg1o[0];
+        scPubSK = (PublicKey) msg1o[0];
         byte[] cardID = (byte[]) msg1o[1];
         byte[] scCertHashSign = (byte[]) msg1o[2];
         byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
@@ -71,7 +72,7 @@ public class Auto implements Receivable, Communicator {
 
     }
 
-    public void kilometerageUpdate(PublicKey scPubSK, Smartcard sc){
+    public void kilometerageUpdate(Smartcard sc){
         if(!cardAuthenticated){
             return;
         }
