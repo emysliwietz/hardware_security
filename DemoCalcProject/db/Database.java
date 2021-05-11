@@ -8,12 +8,8 @@ import java.security.*;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.*;
 import java.util.UUID;
-
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 
 
 public class Database extends CryptoImplementation implements Communicator {

@@ -79,7 +79,6 @@ public class Auto implements Receivable, Communicator {
         byte[] curKmm = prepareMessage(kilometerage);
         byte[] kmmSigned = ac.hashAndSign(curKmm);
         send(sc, (Object) kmmSigned);
-        //TODO: Need waitForInput with timeout
         byte[] confirmation = new byte[0];
         try {
             confirmation = waitForInput();
