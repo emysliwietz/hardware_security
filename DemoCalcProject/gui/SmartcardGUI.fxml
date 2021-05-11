@@ -30,13 +30,16 @@
             <Font name="Consolas" size="14.0" />
          </font></Label>
       <Label fx:id="right1" layoutX="554.0" layoutY="273.0" prefHeight="17.0" prefWidth="78.0" />
-      <Label fx:id="right2" layoutX="554.0" layoutY="296.0" prefHeight="17.0" prefWidth="78.0" />
+      <Label fx:id="right2" layoutX="554.0" layoutY="296.0" prefHeight="17.0" prefWidth="78.0" text="Report theft" />
       <Label fx:id="l0" layoutX="110.0" layoutY="239.0" prefHeight="28.0" prefWidth="58.0" />
       <Label fx:id="l1" layoutX="110.0" layoutY="268.0" prefHeight="28.0" prefWidth="58.0" />
       <Label fx:id="l2" layoutX="110.0" layoutY="291.0" prefHeight="28.0" prefWidth="58.0" />
       <Label fx:id="r0" layoutX="643.0" layoutY="236.0" prefHeight="28.0" prefWidth="58.0" />
       <Label fx:id="r1" layoutX="643.0" layoutY="268.0" prefHeight="28.0" prefWidth="58.0" />
-      <Label fx:id="r2" layoutX="643.0" layoutY="291.0" prefHeight="28.0" prefWidth="58.0" />
+      <Label fx:id="r2" layoutX="643.0" layoutY="291.0" onMouseClicked="#blockCard" prefHeight="28.0" prefWidth="58.0">
+         <cursor>
+            <Cursor fx:constant="HAND" />
+         </cursor></Label>
       <Label fx:id="r3" layoutX="643.0" layoutY="318.0" prefHeight="28.0" prefWidth="58.0" />
       <Label fx:id="l3" layoutX="103.0" layoutY="313.0" prefHeight="28.0" prefWidth="58.0" />
    </children>

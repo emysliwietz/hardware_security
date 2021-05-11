@@ -45,6 +45,7 @@ public class SmartcardGUIController {
     @FXML
     Label inscard;
 
+    //TODO: When sensible input available: replace states with states of sc
     private enum states{INIT,ASSIGNED}
     private states state = states.INIT;
     private Smartcard sc = new Smartcard(new byte[4], new byte[8]); //TODO
@@ -52,7 +53,26 @@ public class SmartcardGUIController {
     private ReceptionTerminal rt = new ReceptionTerminal(new byte[4], new byte[8]);
 
 
-    public void insert(){
+    private void blockCard(){
+        display.setText("Do you wish to report the theft of your card?");
+        right2.setText("Confirm");
+        left2.setText("Abort");
+        r2.setOnMouseClicked(event -> block());
+        l2.setOnMouseClicked(event -> ok());
+    }
+
+    private void block(){
+        display.setText("Card successfully blocked by employee");
+        sc.state = Smartcard.States.END_OF_LIFE;
+        left2.setText("");
+        l2.setOnMouseClicked(null);
+        right2.setText("OK");
+        r2.setOnMouseClicked(event -> ok());
+    }
+
+    private void insert(){
+        right2.setText("");
+        r2.setCursor(Cursor.DEFAULT);
         insLab.setOnMouseClicked(null);
         insLab.setCursor(Cursor.DEFAULT);
         inscard.setText("");
@@ -128,8 +148,12 @@ public class SmartcardGUIController {
     private void ok() {
         inscard.setText("Insert Card");
         inscard.setCursor(Cursor.HAND);
-        right2.setText("");
-        r2.setCursor(Cursor.DEFAULT);
+        right2.setText("Report theft");
+        r2.setCursor(Cursor.HAND);
+        r2.setOnMouseClicked(event -> blockCard());
+        left2.setText("");
+        l2.setCursor(Cursor.DEFAULT);
+        l2.setOnMouseClicked(null);
         display.setText("Welcome! Please insert your card.");
         insLab.setCursor(Cursor.HAND);
         insLab.setOnMouseClicked(event -> insert());

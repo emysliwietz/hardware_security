@@ -26,10 +26,13 @@ public class Smartcard implements Communicator {
     //This should actually be stored somehow?
     private byte[] autoIDStored;
     public PublicKey autoPubSK;
+    public enum States{EMPTY, ASSIGNED_NONE, ASSIGNED, END_OF_LIFE}
+    public States state = States.EMPTY;
 
 
     public Smartcard(byte[] cardID, byte[] cardCertificate) {
         sc = new SmartcardCrypto(cardID, cardCertificate);
+        state = States.ASSIGNED_NONE;
     }
 
 
@@ -156,7 +159,6 @@ public class Smartcard implements Communicator {
         byte[] nonceCardHashValid = sc.createHash(prepareMessage(success, nonceCard));
         if (nonceCardHashValid != cardNonceHash){ //Step 9
             errorState("Invalid hash in message 4 of P2");
-            //TODO: error
             return;
         }
 
@@ -189,7 +191,6 @@ public class Smartcard implements Communicator {
         byte[] autoCertHashSign = (byte[]) responseData[2];
         short nonceCard2 = (short) responseData[3];
         if (nonceCard2 != ((short) (nonceCard+1))){ //Step 7 - Sequence
-            //TODO: Error
             errorState("Wrong sequence number in message 2 of P3");
             return;
         }
@@ -205,7 +206,7 @@ public class Smartcard implements Communicator {
         }
         autoIDStored = autoID;
         //State transition????
-
+        state = States.ASSIGNED;
         //Success message!
         send(reception, SUCCESS_BYTE, (short) (nonceReception+2), sc.createHash(prepareMessage(SUCCESS_BYTE, (short) (nonceReception+2))));
     }
@@ -268,6 +269,7 @@ public class Smartcard implements Communicator {
         kilometerage = 0;
 
         //TODO: Remove certificate of car (e.g. by setting it to null)
+        state = States.ASSIGNED_NONE;
         autoIDStored = null; //Placeholder
         autoPubSK = null; //Placeholder
 
