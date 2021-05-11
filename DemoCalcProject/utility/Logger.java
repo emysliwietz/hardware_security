@@ -21,12 +21,24 @@ public class Logger {
         }
     }
 
-    public void log(String message, level lvl, String msgSrc){
+    public void log(String message, level lvl, String msgSrc, byte[] cardID){
         String timestamp = ZonedDateTime.now(
                 ZoneId.of("Europe/Amsterdam")
         ).toString();
         String lvls = " ".repeat(level.WARNING.toString().length() - lvl.toString().length()) + lvl.toString()+ " ";
-        String toFile = timestamp + lvls + message + " (" + msgSrc + ")";
+        String toFile = timestamp + lvls + "(" + cardID.toString() + ") " + message + " (Source: " + msgSrc + ")";
         pw.println(toFile);
+    }
+
+    public void info(String message, String msgSrc, byte[] cardID){
+        log(message, level.INFO, msgSrc, cardID);
+    }
+
+    public void warning(String message, String msgSrc, byte[] cardID){
+        log(message, level.WARNING, msgSrc, cardID);
+    }
+
+    public void fatal(String message, String msgSrc, byte[] cardID){
+        log(message, level.FATAL, msgSrc, cardID);
     }
 }

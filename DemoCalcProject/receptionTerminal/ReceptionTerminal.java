@@ -8,7 +8,9 @@ import Smartcard.Smartcard;
 import db.Database;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
+import utility.Logger;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.security.PublicKey;
 import java.util.UUID;
@@ -25,14 +27,18 @@ public class ReceptionTerminal implements Communicator {
     private Database database; //who knows at this point
     public PublicKey scPubSK;
     public int kilometerage;
+    private Logger rtLogger;
 
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate);
+        File logFile = new File(rtID.toString()+"_reception_terminal_log.txt");
+        rtLogger = new Logger(logFile);
     }
 
     public int carReturn(Smartcard sc){
         if (!cardAuthenticated){
             errorState("Card is not authenticated");
+            rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
             return -1;
         }
         byte[] msg1b = new byte[0];
@@ -41,12 +47,14 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout message1 carReturn");
+            rtLogger.warning("Timeout while waiting for message", "CarReturn message 1", cardID);
             return -1;
         }
         Object[] msg1o = processMessage(msg1b);
         short seqNum = (short) msg1o[1];
         if(!rtc.areSubsequentNonces(termNonce,seqNum)){
             errorState("Wrong sequence number in carReturn message 1");
+            rtLogger.fatal("Wrong sequence number", "carReturn message 1", cardID);
             return -1;
         }
         boolean manipulation = (boolean) msg1o[2];
@@ -54,10 +62,12 @@ public class ReceptionTerminal implements Communicator {
         byte[] msg1ConfHash = rtc.createHash(prepareMessage(((byte) msg1o[0]), seqNum, manipulation));
         if(msg1Hash != msg1ConfHash){
             errorState("Hashes don't match in carReturn message 1");
+            rtLogger.fatal("Hashes don't match", "carReturn message 1", cardID);
             return -1;
         }
         if (manipulation){
             errorState("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify");
+            rtLogger.warning("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify", "carReturn message 1", cardID);
             return -1;
         }
         short kmmNonce = rtc.generateNonce();
@@ -70,6 +80,7 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in message3 carReturn response");
+            rtLogger.warning("Timeout while waiting for response", "message3 carReturn", cardID);
             return -1;
         }
         Object[] msg3 = processMessage(msg3b);
@@ -78,11 +89,13 @@ public class ReceptionTerminal implements Communicator {
         if(kmmNonce != kmmNonceResp){
             //TODO: Error
             errorState("Wrong kilometerage nonce returned");
+            rtLogger.fatal("Wrong kilometerage nonce returned", "message 3 carReturn", cardID);
             return -1;
         }
         short seqNum3 = (short) msg3[2];
         if(!rtc.areSubsequentNonces(termNonce,seqNum3,2)){
             errorState("Wrong sequence number in carReturn message 3");
+            rtLogger.fatal("Wrong sequence number", "carReturn message 3", cardID);
             return -1;
         }
         byte[] msg3Hash = rtc.unsign(((byte[]) msg3[3]),scPubSK);
@@ -90,9 +103,13 @@ public class ReceptionTerminal implements Communicator {
         if(msg3Hash != validMsg3Hash){
             //TODO: Error
             errorState("Hash in carReturn message 3 invalid");
+            rtLogger.fatal("Invalid hash", "carReturn message 3", cardID);
             return -1;
         }
         send(sc, SUCCESS_BYTE, (short) (scNonce + 2), rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2))));
+        rtLogger.info("Car returned successfully", "carReturn", cardID);
+        cardAuthenticated = false;
+        cardID = null;
         return kilometerage;
     }
 
@@ -104,12 +121,13 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response cardAuthentication");
+            rtLogger.warning("Timeout while waiting for message", "cardAuthentication message 1", cardID);
             return;
         }
         Object[] responseData = processMessage(response);
 
         cardPubSK = (PublicKey) responseData[0];
-        byte[] cardID = (byte[]) responseData[1];
+        cardID = (byte[]) responseData[1];
         byte[] cardCertHashSign = (byte[]) responseData[2];
         scNonce = (short) responseData[3];
         byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
@@ -117,6 +135,7 @@ public class ReceptionTerminal implements Communicator {
         byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
         if (cardCertHash != cardIDPubSKHash){ //Step 3
             errorState("Hash does not match known card");
+            rtLogger.fatal("Invalid certificate: Hash does not match known card", "cardAuthentication message 1", cardID);
             return;
         }
 
@@ -147,7 +166,7 @@ public class ReceptionTerminal implements Communicator {
 
         byte[] nonceCardHashSign = rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, scNonce));
         send(sc, SUCCESS_BYTE, scNonce, nonceCardHashSign); //Step 8
-
+        rtLogger.info("Smartcard authenticated successfully", "cardAuthentification", cardID);
         cardAuthenticated = true; //When to make it false again
 
     }
@@ -212,6 +231,7 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response2 carAssignment");
+            rtLogger.warning("Aborting: timeout", "carAssignment message 3", cardID);
             return;
         }
         Object[] succMsg = processMessage(succMsgB);
@@ -223,13 +243,18 @@ public class ReceptionTerminal implements Communicator {
         short seqNum2 = (short) succMsg[1];
         if(!rtc.areSubsequentNonces(termNonce, seqNum2, 2)){
             errorState("Wrong sequence number in success message of P3");
+            rtLogger.fatal("Wrong sequence number ", "carAssignment success message", cardID);
             return;
         }
         byte[] succHash = (byte[]) succMsg[2];
         if(succHash != rtc.createHash(prepareMessage(success, seqNum2))){
-            errorState("Invalid hash in success message of P2");
+            errorState("Invalid hash in success message of P3");
+            rtLogger.fatal("Invalid hash", "carAssignment success message", cardID);
             return;
         }
+        rtLogger.info("Car " + autoID + " successfully assigned", "carAssignment", cardID);
+        cardID = null;
+        cardAuthenticated = false;
     }
 
     private static class RTCrypto extends CryptoImplementation {
