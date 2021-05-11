@@ -22,6 +22,16 @@ public class Auto implements Receivable, Communicator {
     private int kilometerage = 0;
     public PublicKey scPubSK;
     private Logger autoLogger;
+    private byte[] cardID  = null;
+
+    @Override
+    public Object errorState(String msg) {
+        System.err.println("I don't want to be here...");
+        System.err.println(msg);
+        cardAuthenticated = false;
+        cardID = null;
+        return null;
+    }
 
     public Auto(byte[] autoID, byte[] autoCertificate) {
         ac = new AutoCrypto(autoID, autoCertificate);
@@ -76,14 +86,16 @@ public class Auto implements Receivable, Communicator {
         else{
             cardAuthenticated = true;
             send(sc, SUCCESS_BYTE, (short) (cardNonce + 1), ac.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (cardNonce + 1))));
+            autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
             return scPubSK;
-            //TODO: log success?
         }
 
     }
 
     public void kilometerageUpdate(Smartcard sc){
         if(!cardAuthenticated){
+            errorState("Card not authenticated in kilometerageUpdate");
+            autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
             return;
         }
         byte[] curKmm = prepareMessage(kilometerage);
@@ -95,21 +107,24 @@ public class Auto implements Receivable, Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in waiting for update confirmation kilomerage Update");
+            autoLogger.warning("Aborting: Timeout", "kilometerageUpdate wait for update", cardID);
             return;
         }
         Object[] confirmO = processMessage(confirmation);
         byte confBYTE = (byte) confirmO[0];
         int curKmmCard = (int) confirmO[1];
         if (kilometerage != curKmmCard){
-            //TODO: Log discrepancy
+            errorState("Kilometerage does not match");
+            autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
         }
         byte[] confHashSigned = (byte[]) confirmO[2];
         byte[] confHash = ac.unsign(confHashSigned, scPubSK);
         byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
         if (confHash != hashValidation){
-            //TODO: Throw error and log failure
+            errorState("Invalid Hash in kilometerageUpdate");
+            autoLogger.fatal("Invalid Hash", "kilometerageUpdate", cardID);
         } else {
-            //TODO: Log success
+            autoLogger.info("Kilometerage successfully updated", "kilometerageUpdate", cardID);
         }
     }
 
