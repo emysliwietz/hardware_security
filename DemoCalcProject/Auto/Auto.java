@@ -35,17 +35,19 @@ public class Auto implements Receivable, Communicator {
             msg1b = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
+            autoLogger.warning("Aborting: timeout", "authenticateSmartCard message 1", cardID);
             return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
         }
         Object[] msg1o = processMessage(msg1b);
         scPubSK = (PublicKey) msg1o[0];
-        byte[] cardID = (byte[]) msg1o[1];
+        cardID = (byte[]) msg1o[1];
         byte[] scCertHashSign = (byte[]) msg1o[2];
         byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
-        // TODO: Validate hash
         byte[] cardIDPubSKHash = ac.createHash(prepareMessage(scPubSK, cardID));
         if (scCertHash != cardIDPubSKHash){
-            //TODO: throw error or something (logs). Also stop further actions.
+            errorState("Invalid cerificate: hash does not match");
+            autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
+            return null;
         }
         short cardNonce = (short) msg1o[3];
         short autoNonce = ac.generateNonce();
@@ -57,16 +59,18 @@ public class Auto implements Receivable, Communicator {
             msg3b = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
-            return (PublicKey) errorState("Timeout in msg2 authenticate smartcard");
+            autoLogger.warning("Aborting: Timeout", "authenticateSmartCard message 3", cardID);
+            return (PublicKey) errorState("Timeout in msg3 authenticate smartcard");
         }
         Object[] msg3o = processMessage(msg3b);
         short autoNonceResp = (short) msg3o[0];
         byte[] autoNonceRespHashSign = (byte[]) msg3o[1];
         byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
-        //TODO: Validate hash and log success/failure
         byte[] autoNonceHash = ac.createHash(prepareMessage(autoNonce));
         if (autoNonceRespHash != autoNonceHash){
             //TODO: throw error or something (logs). Also stop further actions.
+            errorState("Wrong nonce in P1 msg3 returned");
+            autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
             return null;
         }
         else{

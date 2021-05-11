@@ -29,6 +29,15 @@ public class ReceptionTerminal implements Communicator {
     public int kilometerage;
     private Logger rtLogger;
 
+    @Override
+    public Object errorState(String msg) {
+        System.err.println("I don't want to be here...");
+        System.err.println(msg);
+        cardAuthenticated = false;
+        cardID = null;
+        return null;
+    }
+
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate);
         File logFile = new File(rtID.toString()+"_reception_terminal_log.txt");
