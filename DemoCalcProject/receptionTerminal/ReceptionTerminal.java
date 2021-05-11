@@ -148,12 +148,14 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response 2 cardAuthentication");
+            rtLogger.warning("Aborting: Timeout", "cardAuthentication response 2", cardID);
             return;
         }
         Object[] responseData2 = processMessage(response2);
         short termNonceResp = (short) responseData2[0];
         if(termNonceResp != termNonce){
-            errorState("Wrong nonce in message 3 of P2");
+            errorState("Wrong nonce in message 3 of cardAuthentication");
+            rtLogger.fatal("Wrong nonce", "cardAuthentication message 3", cardID);
             return;
         }
 
@@ -161,6 +163,7 @@ public class ReceptionTerminal implements Communicator {
         byte[] nonceReceptionHashValid = rtc.createHash(prepareMessage(termNonce));
         if (nonceReceptionHashValid != receptionNonceHash){ //Step 7
             errorState("Invalid hash in message 3 of P2");
+            rtLogger.fatal("Invalid Hash", "cardAuthentication message 3", cardID);
             return;
         }
 
@@ -174,6 +177,7 @@ public class ReceptionTerminal implements Communicator {
     /*Protocol 3 - Assignment of car to smartcard */
     public void carAssignment(Smartcard sc){
         if (!cardAuthenticated){ //Step 1
+            rtLogger.warning("Aborting: Card not authenticated", "carAssignment", cardID);
             return; //TODO: Placeholder
         }
 
@@ -183,17 +187,20 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Waiting for response carAssignment");
+            rtLogger.warning("Aborting: Timeout", "carAssignment message 1", cardID);
             return;
         }
         Object[] responseData = processMessage(response);
         String request = (String) responseData[0];
         if (!request.equals("Car?")){
             errorState("Expected car request");
+            rtLogger.fatal("Expected car request, got " + request, "carAssignment", cardID);
             return;
         }
         short seqNum1 = (short) responseData[1];
         if(!rtc.areSubsequentNonces(termNonce, seqNum1)){
             errorState("Wrong sequence number in message 1 of P3");
+            rtLogger.fatal("Wrong sequence number", "carAssignment message 1", cardID);
         }
 
         byte[] giveCarHash= rtc.unsign(prepareMessage(responseData[2]), cardPubSK);
@@ -201,6 +208,7 @@ public class ReceptionTerminal implements Communicator {
         if (giveCarHash != giveCarHashValid){ //Step 3
             //TODO: Error
             errorState("Invalid hash in message 1 of P3");
+            rtLogger.fatal("Invalid Hash", "carAssingment message 1", cardID);
             return;
         }
 
@@ -213,6 +221,7 @@ public class ReceptionTerminal implements Communicator {
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response2 carAssignment");
+            rtLogger.warning("Aborting: Timeout", "carAssignment response 2",cardID);
             return;
         }
         Object[] responseData2 = processMessage(response2);
@@ -238,6 +247,7 @@ public class ReceptionTerminal implements Communicator {
         byte success = (byte) succMsg[0];
         if(success != SUCCESS_BYTE){
             errorState("Wrong byte code, expected 0xFF");
+            rtLogger.warning("Wrong byte, expected 0xFF, got " + success, "carAssignment", cardID);
             return;
         }
         short seqNum2 = (short) succMsg[1];
@@ -267,7 +277,6 @@ public class ReceptionTerminal implements Communicator {
 
         private static class RTWallet extends RSACrypto implements KeyWallet {
 
-
             @Override
             public void storePublicKey() {
 
@@ -279,9 +288,7 @@ public class ReceptionTerminal implements Communicator {
             }
 
             @Override
-            public PublicKey getPublicKey() {
-                return null;
-            }
+            public PublicKey getPublicKey() {return null;}
         }
     }
 }

@@ -6,9 +6,12 @@ import Interfaces.Receivable;
 import Smartcard.Smartcard;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
+import utility.Logger;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class Auto implements Receivable, Communicator {
@@ -18,13 +21,16 @@ public class Auto implements Receivable, Communicator {
     private boolean cardAuthenticated = false;
     private int kilometerage = 0;
     public PublicKey scPubSK;
+    private Logger autoLogger;
 
     public Auto(byte[] autoID, byte[] autoCertificate) {
         ac = new AutoCrypto(autoID, autoCertificate);
+        File logFile = new File(Arrays.toString(autoID) +"_auto_log.txt");
+        autoLogger = new Logger(logFile);
     }
 
     public PublicKey authenticateSmartCard(Smartcard sc){
-        byte[] msg1b = new byte[0];
+        byte[] msg1b;
         try {
             msg1b = waitForInput();
         } catch (MessageTimeoutException e) {
