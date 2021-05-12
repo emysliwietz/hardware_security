@@ -2,10 +2,10 @@ package db;
 
 import Interfaces.Communicator;
 import receptionTerminal.ReceptionTerminal;
-import rsa.*;
+import rsa.CryptoImplementation;
 
+import java.io.File;
 import java.security.*;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.*;
@@ -51,7 +51,9 @@ public class Database extends CryptoImplementation implements Communicator {
         //So I know how to find the tutorial again
         try{
             Class.forName("org.sqlite.JDBC");
-            c = DriverManager.getConnection("jdbc:sqlite:CarCompany.db"); //doesnt work yet but so we have the thing
+            File currentDir = new File("");
+            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "CarCompany.db";
+            c = DriverManager.getConnection(url); //doesnt work yet but so we have the thing
         } catch(Exception e){
             System.err.println(e.getClass().getName() + ": " + e.getMessage() );
             System.exit(0);
@@ -73,7 +75,7 @@ public class Database extends CryptoImplementation implements Communicator {
             return;
         }
         Object[] responseData = processMessage(response);
-        byte[] cardID = responseData[0].getBytes(); //Get card ID so DB knows which car is assigned to which card
+        byte[] cardID = (byte[]) responseData[0]; //Get card ID so DB knows which car is assigned to which card
 
         //Some function so it stores the link between an autoID and a cardID
 
@@ -82,11 +84,11 @@ public class Database extends CryptoImplementation implements Communicator {
         String sqlFindCar = "SELECT a.* FROM autos a LEFT JOIN rentrelations r ON a.id = r.autoID " +
                 "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1";
 
-        ResultSet rs = null;
+       // ResultSet rs = null;
 
         try (Connection conn = this.connect();
             Statement stmt = conn.createStatement();
-            rs = stmt.executeQuery(sqlFindCar)){
+            ResultSet rs = stmt.executeQuery(sqlFindCar)){
 
                 autoID = rs.getString("id");
             }
@@ -126,7 +128,7 @@ public class Database extends CryptoImplementation implements Communicator {
             return;
         }
         Object[] responseData = processMessage(response);
-        byte[] cardID = responseData[0].getBytes();
+        byte[] cardID = (byte[]) responseData[0];
 
         String sql = "DELETE FROM rentRelations WHERE cardID = ?";
 
@@ -144,26 +146,9 @@ public class Database extends CryptoImplementation implements Communicator {
 
     }
 
- /*   void generateStuff() { //TODO: Put those variables in global object array/mini-database
-        Object [] dbKeyPair = generateKeyPair();
-        PublicKey dbPubSK = (PublicKey) dbKeyPair[0];
-        PrivateKey dbPrivSK = (PrivateKey) dbKeyPair[1];
-        Object [] scKeyPair = generateKeyPair();
-        PublicKey scPubSK = (PublicKey) scKeyPair[0];
-        PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
-        Object [] autoKeyPair = generateKeyPair();
-        PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
-        PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
-        Object [] rtKeyPair = generateKeyPair();
-        PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
-        PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
-        byte[] scID = UUID.randomUUID().toString().getBytes();
-        byte[] autoID = UUID.randomUUID().toString().getBytes();
-        byte[] rtID = UUID.randomUUID().toString().getBytes();
-        byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
-        byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
-        byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
-    }*/
+    public void deleteCard(){
+        //
+    }
 
     void generateCard(){
         Object [] scKeyPair = generateKeyPair();
@@ -222,7 +207,7 @@ public class Database extends CryptoImplementation implements Communicator {
         try (Connection conn = this.connect(); //Store in DB
              Preparedstatement pstmt = conn.prepareStatement(sql)){
             //Potential error: Byte[] to String
-            pstmt.setString(1, rtID.toString();
+            pstmt.setString(1, rtID.toString());
             pstmt.setString(2, rtPubSK.toString());
             pstmt.setString(3, rtCERT.toString());
             pstmt.executeUpdate();
