@@ -53,7 +53,7 @@ public class Database extends CryptoImplementation implements Communicator {
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
             String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "CarCompany.db";
-            conn = DriverManager.getConnection(url); //doesnt work yet but so we have the thing
+            conn = DriverManager.getConnection(url);
         } catch(Exception e){
             System.err.println(e.getClass().getName() + ": " + e.getMessage() );
             System.exit(0);
@@ -155,6 +155,12 @@ public class Database extends CryptoImplementation implements Communicator {
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
         PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
         byte[] scID = UUID.randomUUID().toString().getBytes();
+        System.out.println("scPubSK");
+        System.out.println(scPubSK);
+        System.out.println("scID");
+        System.out.println(scID);
+        System.out.println("dbPrivSK");
+        System.out.println(dbPrivSK);
         byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
 
         String sql ="INSERT INTO cards(id,publickey,certificate) VALUES(?,?,?)";
