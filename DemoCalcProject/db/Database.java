@@ -13,7 +13,7 @@ import java.util.UUID;
 
 
 public class Database extends CryptoImplementation implements Communicator {
-    private Connection c;
+    private Connection conn;
     private PublicKey dbPubSK;
     private PrivateKey dbPrivSK;
 
@@ -45,7 +45,7 @@ public class Database extends CryptoImplementation implements Communicator {
     }
 
     public Database(){
-        c = null;
+        conn = null;
 
         //source for now: https://www.tutorialspoint.com/sqlite/sqlite_java.htm
         //So I know how to find the tutorial again
@@ -53,7 +53,7 @@ public class Database extends CryptoImplementation implements Communicator {
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
             String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "CarCompany.db";
-            c = DriverManager.getConnection(url); //doesnt work yet but so we have the thing
+            conn = DriverManager.getConnection(url); //doesnt work yet but so we have the thing
         } catch(Exception e){
             System.err.println(e.getClass().getName() + ": " + e.getMessage() );
             System.exit(0);
@@ -85,12 +85,14 @@ public class Database extends CryptoImplementation implements Communicator {
                 "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1";
 
        // ResultSet rs = null;
+        byte[] autoCert = null;
 
-        try (Connection conn = this.connect();
+        try (
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(sqlFindCar)){
 
                 autoID = rs.getString("id");
+                autoCert = rs.getString("certificate").getBytes();
             }
         catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -103,8 +105,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sqlSetRelation ="INSERT INTO rentRelations(autoID, cardID) VALUES(?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-             Preparedstatement pstmt = conn.prepareStatement(sqlSetRelation)){
+        try ( PreparedStatement pstmt = conn.prepareStatement(sqlSetRelation)){
             //Potential error: Byte[] to String
             pstmt.setString(1, autoID.toString());
             pstmt.setString(2, cardID.toString());
@@ -113,7 +114,7 @@ public class Database extends CryptoImplementation implements Communicator {
             System.out.println(e.getMessage());
         }
 
-        byte[] autoCert = rs.getString("certificate").getBytes(); //does this convert work? We dont know yet
+
         byte[] message = prepareMessage(autoCert);
         send(reception, message);
     }
@@ -132,8 +133,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql = "DELETE FROM rentRelations WHERE cardID = ?";
 
-        try (Connection conn = this.connect();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             // set the corresponding param
             pstmt.setString(1, cardID.toString());
@@ -159,8 +159,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql ="INSERT INTO cards(id,publickey,certificate) VALUES(?,?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-                Preparedstatement pstmt = conn.prepareStatement(sql)){
+        try ( PreparedStatement pstmt = conn.prepareStatement(sql)){
             //Potential error: Byte[] to String
             pstmt.setString(1, scID.toString());
             pstmt.setString(2, scPubSK.toString());
@@ -181,8 +180,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql ="INSERT INTO autos(id,publickey,certificate) VALUES(?,?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-             Preparedstatement pstmt = conn.prepareStatement(sql)){
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)){
             //Potential error: Byte[] to String
             pstmt.setString(1, autoID.toString());
             pstmt.setString(2, autoPubSK.toString());
@@ -204,8 +202,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql ="INSERT INTO terminals(id,publickey,certificate) VALUES(?,?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-             Preparedstatement pstmt = conn.prepareStatement(sql)){
+        try ( PreparedStatement pstmt = conn.prepareStatement(sql)){
             //Potential error: Byte[] to String
             pstmt.setString(1, rtID.toString());
             pstmt.setString(2, rtPubSK.toString());
