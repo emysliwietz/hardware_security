@@ -146,7 +146,7 @@ public class Auto implements Receivable, Communicator {
 
             @Override
             public void storePrivateKey() {
-
+                //super.privk = ??????
             }
 
             @Override

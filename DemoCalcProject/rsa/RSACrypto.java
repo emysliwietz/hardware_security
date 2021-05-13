@@ -13,7 +13,7 @@ import java.security.PublicKey;
 
 public abstract class RSACrypto {
 
-    private PrivateKey privk;
+    protected PrivateKey privk;
 
     public byte[] decrypt(byte[] msg){
         Cipher decrypt_cipher;
