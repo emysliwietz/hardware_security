@@ -18,12 +18,12 @@ import java.util.UUID;
 import db.convertKey;
 
 
-public class Database extends CryptoImplementation implements Communicator {
+public class Database implements Communicator {
     private Connection conn;
-    private PublicKey dbPubSK;
-    private PrivateKey dbPrivSK;
-    private byte[] databaseID;
-    private DatabaseCrypto dc;
+    protected PublicKey dbPubSK;
+    protected PrivateKey dbPrivSK;
+    protected byte[] databaseID;
+    protected DatabaseCrypto dc;
 
 
     public Object[] generateKeyPair(){
@@ -47,7 +47,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
         byte[] toHash = prepareMessage(pubk, id);
-        byte[] signedHash = hashAndSign(toHash);
+        byte[] signedHash = dc.hashAndSign(toHash);
         byte[] certificate = prepareMessage(pubk, id, signedHash);
         return certificate;
     }
@@ -69,8 +69,7 @@ public class Database extends CryptoImplementation implements Communicator {
                 //Store keys in database
                 String sqlSetKeys = "INSERT INTO database(id, publickey, privatekey) VALUES(?,?,?)";
 
-                try (
-                        PreparedStatement pstmt = conn.prepareStatement((sqlSetKeys))) {
+                try (PreparedStatement pstmt = conn.prepareStatement((sqlSetKeys))) {
                     pstmt.setString(1, new String(databaseID));
                     pstmt.setString(2, conv.publicToString(dbPubSK));
                     pstmt.setString(3, conv.privateToString(dbPrivSK));
@@ -92,8 +91,6 @@ public class Database extends CryptoImplementation implements Communicator {
     public Database(){
         conn = null;
 
-        //source for now: https://www.tutorialspoint.com/sqlite/sqlite_java.htm
-        //So I know how to find the tutorial again
         try{
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
@@ -105,10 +102,10 @@ public class Database extends CryptoImplementation implements Communicator {
         }
 
         setKeys();
-        byte[] dbCERT = issueCertificate(dbPubSK, databaseID, dbPrivSK);
 
-        //dc = new DatabaseCrypto(databaseID, null);
-        //dc.setCertificate(dbCERT);
+        dc = new DatabaseCrypto(databaseID, null);
+        byte[] dbCERT = issueCertificate(dbPubSK, databaseID, dbPrivSK); //rc = null
+        dc.setCertificate(dbCERT);
     }
 
     public void carAssign(ReceptionTerminal reception){
@@ -123,15 +120,12 @@ public class Database extends CryptoImplementation implements Communicator {
         Object[] responseData = processMessage(response);
         byte[] cardID = (byte[]) responseData[0]; //Get card ID so DB knows which car is assigned to which card
 
-        //Some function so it stores the link between an autoID and a cardID
-
         String autoID = null;
 
         String sqlFindCar = "SELECT a.* FROM autos a LEFT JOIN rentrelations r ON a.id = r.autoID " +
-                "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1";
+                "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1"; //Store link between auto and card
 
-       // ResultSet rs = null;
-        byte[] autoCert = null;
+       byte[] autoCert = null;
 
         try (
             Statement stmt = conn.createStatement();
@@ -162,6 +156,7 @@ public class Database extends CryptoImplementation implements Communicator {
 
         byte[] message = prepareMessage(autoCert);
         send(reception, message);
+        //Potentially get confirmation from terminal that they received it? or do we already ack stuff
     }
 
     public void carUnassign(ReceptionTerminal reception){
@@ -189,13 +184,43 @@ public class Database extends CryptoImplementation implements Communicator {
             System.out.println(e.getMessage());
         }
 
+        String confirmation = cardID.toString() + " has been removed from Rent Relations.";
+        byte[] message = prepareMessage(confirmation);
+        send(reception, message);
+        //Terminal might need to receive this message. We'll fix later. :)
     }
 
-    public void deleteCard(){
-        //
+    public void deleteCard(ReceptionTerminal reception){
+        byte[] response = new byte[0];
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Waiting for response carUnassign");
+            return;
+        }
+        Object[] responseData = processMessage(response);
+        byte[] cardID = (byte[]) responseData[0];
+
+        String sql = "DELETE FROM cards WHERE cardID = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            // set the corresponding param
+            pstmt.setString(1, new String(cardID));
+            // execute the delete statement
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        String confirmation = cardID.toString() + " has been removed from cards.";
+        byte[] message = prepareMessage(confirmation);
+        send(reception, message);
     }
 
-    void generateCard(){
+    void generateCard(ReceptionTerminal terminal){
         convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
@@ -213,11 +238,14 @@ public class Database extends CryptoImplementation implements Communicator {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
-
         // and send the info back
         // Private key and certificate must be send to terminal which sends it to the card
+        byte[] message = prepareMessage(scPrivSK, scCERT);
+        send(terminal, message);
+
+
     }
-    void generateAuto(){
+    void generateAuto(Auto auto){
         convertKey conv = new convertKey();
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
@@ -237,9 +265,11 @@ public class Database extends CryptoImplementation implements Communicator {
         }
 
         // Private key and certificate must be send to auto
+        byte[] message = prepareMessage(autoPrivSK, autoCERT);
+        send(auto, message);
     }
 
-    void generateTerminal(){
+    void generateTerminal(ReceptionTerminal terminal){
         convertKey conv = new convertKey();
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
@@ -260,6 +290,8 @@ public class Database extends CryptoImplementation implements Communicator {
 
         // and send the info back
         //private key and certificate must be send to terminal
+        byte[] message = prepareMessage(rtPrivSK, rtCERT);
+        send(terminal, message);
 
     }
 
@@ -268,7 +300,13 @@ public class Database extends CryptoImplementation implements Communicator {
         public DatabaseCrypto(byte[] databaseID, byte[] databaseCertificate) {
             super.ID = databaseID;
             super.certificate = databaseCertificate;
-            super.rc = new DatabaseWallet();
+            DatabaseWallet dbWallet = new DatabaseWallet();
+            dbWallet.storePrivateKey();
+            super.rc = dbWallet;
+        }
+
+        private void setCertificate(byte[] cert){
+            super.certificate = cert;
         }
 
         private class DatabaseWallet extends RSACrypto implements KeyWallet {

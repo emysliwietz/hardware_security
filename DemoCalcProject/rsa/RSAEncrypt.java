@@ -43,7 +43,7 @@ public class RSAEncrypt
          PublicKey publickey = readPublicKey("publickey");
 
          /* Create a cipher for encrypting. */
-         Cipher encrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         Cipher encrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
          encrypt_cipher.init(Cipher.ENCRYPT_MODE, publickey);
 
          /* Encrypt the secret message and store in file. */
@@ -62,7 +62,7 @@ public class RSAEncrypt
 
       Cipher encrypt_cipher = null;
       try {
-         encrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         encrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
          encrypt_cipher.init(Cipher.ENCRYPT_MODE, publickey);
 
          byte[] ciphertext = encrypt_cipher.doFinal(msg);
