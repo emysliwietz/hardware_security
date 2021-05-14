@@ -5,6 +5,7 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Smartcard.Smartcard;
 import gui.SmartcardGUI;
+import javafx.application.Application;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
@@ -96,7 +97,7 @@ public class Database implements Communicator {
         try{
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
-            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "\\db\\CarCompany.db";
+            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "\\DemoCalcProject\\db\\CarCompany.db";
             conn = DriverManager.getConnection(url);
         } catch(Exception e){
             System.err.println(e.getClass().getName() + ": " + e.getMessage() );
@@ -307,7 +308,9 @@ public class Database implements Communicator {
         Smartcard sc = db.generateCard();
         SmartcardGUI gui = new SmartcardGUI();
         gui.init(sc, auto, rt);
-        gui.launch();
+        //gui.launch();
+        Thread t1 = new Thread(() -> Application.launch(SmartcardGUI.class, args));
+        t1.start();
     }
 
     private class DatabaseCrypto extends CryptoImplementation {
