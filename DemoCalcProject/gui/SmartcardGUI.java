@@ -1,5 +1,7 @@
 package gui;
 
+import Auto.Auto;
+import Smartcard.Smartcard;
 import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -21,6 +23,9 @@ import java.io.IOException;
 
 public class SmartcardGUI extends Application {
 
+    Smartcard sc;
+    Auto a;
+    ReceptionTerminal rt;
 
     /*Label ins = (Label)loader.getNamespace().get("insLab");
     Label l0 = (Label)loader.getNamespace().get("left0");

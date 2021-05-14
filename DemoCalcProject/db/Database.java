@@ -3,6 +3,8 @@ package db;
 import Auto.Auto;
 import Interfaces.Communicator;
 import Interfaces.KeyWallet;
+import Smartcard.Smartcard;
+import gui.SmartcardGUI;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
@@ -220,7 +222,7 @@ public class Database implements Communicator {
         send(reception, message);
     }
 
-    void generateCard(ReceptionTerminal terminal){
+    Smartcard generateCard(){
         convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
@@ -240,8 +242,9 @@ public class Database implements Communicator {
         }
         // and send the info back
         // Private key and certificate must be send to terminal which sends it to the card
-        byte[] message = prepareMessage(scPrivSK, scCERT);
-        send(terminal, message);
+        return new Smartcard(scID, scCERT, scPrivSK);
+        //byte[] message = prepareMessage(scPrivSK, scCERT);
+        //send(terminal, message);
 
 
     }
@@ -265,8 +268,9 @@ public class Database implements Communicator {
         }
 
         // Private key and certificate must be send to auto
-        byte[] message = prepareMessage(autoPrivSK, autoCERT);
-        send(auto, message);
+        //byte[] message = prepareMessage(autoPrivSK, autoCERT);
+        return new Auto(autoID, autoCERT, autoPrivSK);
+        //send(auto, message);
     }
 
     void generateTerminal(ReceptionTerminal terminal){
@@ -290,9 +294,19 @@ public class Database implements Communicator {
 
         // and send the info back
         //private key and certificate must be send to terminal
-        byte[] message = prepareMessage(rtPrivSK, rtCERT);
-        send(terminal, message);
+        return new ReceptionTerminal(rtID, rtCERT, this, rtPrivSK);
+        //byte[] message = prepareMessage(rtPrivSK, rtCERT);
+        //send(terminal, message);
 
+    }
+
+    public static void main(String[] args) {
+        Database db = new Database();
+        ReceptionTerminal rt = db.generateTerminal();
+        Auto auto = db.generateAuto();
+        Smartcard sc = db.generateCard();
+        SmartcardGUI gui = new SmartcardGUI(sc, auto, rt);
+        gui.launch();
     }
 
     private class DatabaseCrypto extends CryptoImplementation {
@@ -301,7 +315,7 @@ public class Database implements Communicator {
             super.ID = databaseID;
             super.certificate = databaseCertificate;
             DatabaseWallet dbWallet = new DatabaseWallet();
-            dbWallet.storePrivateKey();
+            dbWallet.storePrivateKey(dbPrivSK);
             super.rc = dbWallet;
         }
 
@@ -318,8 +332,8 @@ public class Database implements Communicator {
             }
 
             @Override
-            public void storePrivateKey() {
-                super.privk = dbPrivSK;
+            public void storePrivateKey(PrivateKey privateKey) {
+                super.privk = privateKey;
             }
 
             @Override

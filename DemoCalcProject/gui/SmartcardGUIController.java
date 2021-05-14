@@ -2,6 +2,7 @@ package gui;
 
 import Auto.Auto;
 import Smartcard.Smartcard;
+import db.Database;
 import javafx.fxml.FXML;
 import javafx.scene.Cursor;
 import javafx.scene.control.Label;
@@ -45,12 +46,19 @@ public class SmartcardGUIController {
     @FXML
     Label inscard;
 
+
     //TODO: When sensible input available: replace states with states of sc
     private enum states{INIT,ASSIGNED}
     private states state = states.INIT;
-    private Smartcard sc = new Smartcard(new byte[4], new byte[8]); //TODO
-    private Auto a = new Auto(new byte[4], new byte[8]);
-    private ReceptionTerminal rt = new ReceptionTerminal(new byte[4], new byte[8]);
+    private Smartcard sc;
+    private Auto a;
+    private ReceptionTerminal rt;
+
+    public void setVars(Smartcard sc, Auto a, ReceptionTerminal rt){
+        this.sc = sc;
+        this.a = a;
+        this.rt = rt;
+    }
 
 
     @FXML

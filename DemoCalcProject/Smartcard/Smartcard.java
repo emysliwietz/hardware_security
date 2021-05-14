@@ -4,6 +4,7 @@ import Auto.Auto;
 import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
+import db.Database;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
@@ -30,8 +31,8 @@ public class Smartcard implements Communicator {
     public States state = States.EMPTY;
 
 
-    public Smartcard(byte[] cardID, byte[] cardCertificate) {
-        sc = new SmartcardCrypto(cardID, cardCertificate);
+    public Smartcard(byte[] cardID, byte[] cardCertificate, PrivateKey privateKey) {
+        sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         state = States.ASSIGNED_NONE;
     }
 
@@ -302,10 +303,11 @@ public class Smartcard implements Communicator {
     private class SmartcardCrypto extends CryptoImplementation {
 
 
-        public SmartcardCrypto(byte[] cardID, byte[] cardCertificate) {
+        public SmartcardCrypto(byte[] cardID, byte[] cardCertificate, PrivateKey privateKey) {
             super.ID = cardID;
             super.certificate = cardCertificate;
             super.rc = new SmartCardWallet();
+            ((KeyWallet) super.rc).storePrivateKey(privateKey);
         }
 
         private class SmartCardWallet extends RSACrypto implements KeyWallet{
@@ -319,8 +321,9 @@ public class Smartcard implements Communicator {
             }
 
             @Override
-            public void storePrivateKey() {
+            public void storePrivateKey(PrivateKey privateKey) {
                 //TODO: Make sure only database is able to set key
+                super.privk = privateKey;
             }
 
             @Override

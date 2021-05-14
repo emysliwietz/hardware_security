@@ -4,12 +4,14 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
+import db.Database;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 import utility.Logger;
 
 import java.io.File;
 import java.math.BigDecimal;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.UUID;
@@ -33,8 +35,8 @@ public class Auto implements Receivable, Communicator {
         return null;
     }
 
-    public Auto(byte[] autoID, byte[] autoCertificate) {
-        ac = new AutoCrypto(autoID, autoCertificate);
+    public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey) {
+        ac = new AutoCrypto(autoID, autoCertificate, privateKey);
         File logFile = new File(Arrays.toString(autoID) +"_auto_log.txt");
         autoLogger = new Logger(logFile);
     }
@@ -130,10 +132,11 @@ public class Auto implements Receivable, Communicator {
 
     private static class AutoCrypto extends CryptoImplementation {
 
-        public AutoCrypto(byte[] autoID, byte[] autoCertificate) {
+        public AutoCrypto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey) {
             super.ID = autoID;
             super.certificate = autoCertificate;
             super.rc = new AutoWallet();
+            ((KeyWallet) super.rc).storePrivateKey(privateKey);
         }
 
         private static class AutoWallet extends RSACrypto implements KeyWallet {
@@ -145,8 +148,8 @@ public class Auto implements Receivable, Communicator {
             }
 
             @Override
-            public void storePrivateKey() {
-                //super.privk = ??????
+            public void storePrivateKey(PrivateKey privateKey) {
+                super.privk = privateKey;
             }
 
             @Override

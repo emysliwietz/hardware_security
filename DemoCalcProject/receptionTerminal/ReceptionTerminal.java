@@ -12,6 +12,7 @@ import utility.Logger;
 
 import java.io.File;
 import java.math.BigDecimal;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.UUID;
 
@@ -38,10 +39,11 @@ public class ReceptionTerminal implements Communicator {
         return null;
     }
 
-    public ReceptionTerminal(byte[] rtID, byte[] rtCertificate) {
-        rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate);
+    public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey) {
+        rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate, privateKey);
         File logFile = new File(rtID.toString()+"_reception_terminal_log.txt");
         rtLogger = new Logger(logFile);
+        database = db;
     }
 
     public int carReturn(Smartcard sc){
@@ -119,6 +121,17 @@ public class ReceptionTerminal implements Communicator {
         rtLogger.info("Car returned successfully", "carReturn", cardID);
         cardAuthenticated = false;
         cardID = null;
+        byte[] message = prepareMessage(cardID);
+        Thread t1 = new Thread(() -> send(database, message));
+        Thread t2 = new Thread(() -> database.carUnassign(this));
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            //TODO: t2.join();?????
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         return kilometerage;
     }
 
@@ -222,7 +235,19 @@ public class ReceptionTerminal implements Communicator {
         }
 
         byte[] message = prepareMessage(cardID);
-        send(database, message); //Step 4
+        //send(database, message); //Step 4
+        //database.carAssign(this);
+
+        Thread t1 = new Thread(() -> send(database, message));
+        Thread t2 = new Thread(() -> database.carAssign(this));
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            //TODO: t2.join();?????
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         byte[] response2 = new byte[0];
         try {
@@ -278,10 +303,11 @@ public class ReceptionTerminal implements Communicator {
 
     private static class RTCrypto extends CryptoImplementation {
 
-        public RTCrypto(byte[] rtID, byte[] rtCertificate) {
+        public RTCrypto(byte[] rtID, byte[] rtCertificate, PrivateKey privateKey) {
             super.ID = rtID;
             super.certificate = rtCertificate;
             super.rc = new RTWallet();
+            ((KeyWallet) super.rc).storePrivateKey(privateKey);
         }
 
         private static class RTWallet extends RSACrypto implements KeyWallet {
@@ -292,8 +318,8 @@ public class ReceptionTerminal implements Communicator {
             }
 
             @Override
-            public void storePrivateKey() {
-
+            public void storePrivateKey(PrivateKey privateKey) {
+                super.privk = privateKey;
             }
 
             @Override
