@@ -54,12 +54,12 @@ class SmartcardTest {
 
     @Test
     void publicKeySize() {
-        Database db = new Database();
+        /* Database db = new Database();
         Object[] kp = db.generateKeyPair();
         RSAPublicKey pk = (RSAPublicKey) kp[0];
         print(pk);
         print("");
-        Smartcard sc = new Smartcard(new byte[1], new byte[1]);
+        //Smartcard sc = new Smartcard(new byte[1], new byte[1]);
         byte[] mp = sc.prepareMessage(pk);
         print("Byte array of public key using prepareMessage: (length: " + mp.length + "b)");
         print(mp);
@@ -81,6 +81,6 @@ class SmartcardTest {
         print("Byte array of private key using build-in method: (length: " + prke.length + "b)");
         print(pke);
         print("");
-        print("Build-in is " + ((mpr.length + 0.0) / prke.length) + " times smaller than our garbage code");
+        print("Build-in is " + ((mpr.length + 0.0) / prke.length) + " times smaller than our garbage code");*/
     }
 }

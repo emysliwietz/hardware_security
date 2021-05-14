@@ -18,6 +18,7 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
+import receptionTerminal.ReceptionTerminal;
 
 import java.io.IOException;
 
@@ -41,10 +42,20 @@ public class SmartcardGUI extends Application {
         launch(args);
     }
 
+    public SmartcardGUI(Smartcard sc,
+                        Auto a,
+                        ReceptionTerminal rt) {
+        this.sc = sc;
+        this.a = a;
+        this.rt = rt;
+    }
+
     @Override
     public void start(Stage primaryStage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
         Parent root = loader.load();
+        SmartcardGUIController controller = loader.getController();
+        controller.setVars(sc, a, rt);
         /*MediaView media = (MediaView)loader.getNamespace().get("media");
         /*HBox hb = new HBox();
         Button b = new Button("Hallo");*/

@@ -248,7 +248,7 @@ public class Database implements Communicator {
 
 
     }
-    void generateAuto(Auto auto){
+    Auto generateAuto(){
         convertKey conv = new convertKey();
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
@@ -273,7 +273,7 @@ public class Database implements Communicator {
         //send(auto, message);
     }
 
-    void generateTerminal(ReceptionTerminal terminal){
+    ReceptionTerminal generateTerminal(){
         convertKey conv = new convertKey();
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
