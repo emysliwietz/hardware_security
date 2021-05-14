@@ -223,7 +223,7 @@ public class Database implements Communicator {
         send(reception, message);
     }
 
-    Smartcard generateCard(){
+    public Smartcard generateCard(){
         convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
@@ -249,7 +249,7 @@ public class Database implements Communicator {
 
 
     }
-    Auto generateAuto(){
+    public Auto generateAuto(){
         convertKey conv = new convertKey();
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
@@ -274,7 +274,7 @@ public class Database implements Communicator {
         //send(auto, message);
     }
 
-    ReceptionTerminal generateTerminal(){
+    public ReceptionTerminal generateTerminal(){
         convertKey conv = new convertKey();
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
@@ -307,7 +307,7 @@ public class Database implements Communicator {
         Auto auto = db.generateAuto();
         Smartcard sc = db.generateCard();
         SmartcardGUI gui = new SmartcardGUI();
-        gui.init(sc, auto, rt);
+        //gui.init(sc, auto, rt);
         //gui.launch();
         Thread t1 = new Thread(() -> Application.launch(SmartcardGUI.class, args));
         t1.start();

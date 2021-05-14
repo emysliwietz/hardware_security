@@ -2,6 +2,7 @@ package gui;
 
 import Auto.Auto;
 import Smartcard.Smartcard;
+import db.Database;
 import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -39,18 +40,25 @@ public class SmartcardGUI extends Application {
     TextArea display = (TextArea)loader.getNamespace().get("display");*/
 
     public static void main(String[] args) {
+        //gui.launch();
+        //Thread t1 = new Thread(() -> Application.launch(SmartcardGUI.class, args));
+        //t1.start();
         launch(args);
     }
 
 
-    public void init(Smartcard sc,
+    /*public void init(Smartcard sc,
                      Auto a,
                      ReceptionTerminal rt) {
 
-    }
+    }*/
 
     @Override
     public void start(Stage primaryStage) throws IOException {
+        Database db = new Database();
+        rt = db.generateTerminal();
+        a = db.generateAuto();
+        sc = db.generateCard();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
         Parent root = loader.load();
         SmartcardGUIController controller = loader.getController();
