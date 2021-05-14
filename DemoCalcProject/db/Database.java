@@ -1,21 +1,29 @@
 package db;
 
+import Auto.Auto;
 import Interfaces.Communicator;
+import Interfaces.KeyWallet;
 import receptionTerminal.ReceptionTerminal;
-import rsa.*;
+import rsa.CryptoImplementation;
+import rsa.RSACrypto;
 
+import java.io.File;
 import java.security.*;
-
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.*;
+import java.util.Base64;
 import java.util.UUID;
 
+import db.convertKey;
 
-public class Database extends CryptoImplementation implements Communicator {
-    private Connection c;
-    private PublicKey dbPubSK;
-    private PrivateKey dbPrivSK;
+
+public class Database implements Communicator {
+    private Connection conn;
+    protected PublicKey dbPubSK;
+    protected PrivateKey dbPrivSK;
+    protected byte[] databaseID;
+    protected DatabaseCrypto dc;
 
 
     public Object[] generateKeyPair(){
@@ -39,30 +47,67 @@ public class Database extends CryptoImplementation implements Communicator {
 
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
         byte[] toHash = prepareMessage(pubk, id);
-        byte[] signedHash = hashAndSign(toHash);
+        byte[] signedHash = dc.hashAndSign(toHash);
         byte[] certificate = prepareMessage(pubk, id, signedHash);
         return certificate;
     }
 
-    public Database(){
-        c = null;
+    //Get and set the database keys and id
+    private void setKeys() {
+        convertKey conv = new convertKey();
+        String sqlGetKeys = "SELECT db.* FROM database db LIMIT 1";
 
-        //source for now: https://www.tutorialspoint.com/sqlite/sqlite_java.htm
-        //So I know how to find the tutorial again
+        try (
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sqlGetKeys)) {
+            if (rs.next() == false) { //Generate keys if they do not exist yet
+                Object[] dbKeyPair = generateKeyPair();
+                dbPubSK = (PublicKey) dbKeyPair[0];
+                dbPrivSK = (PrivateKey) dbKeyPair[1];
+                databaseID = UUID.randomUUID().toString().getBytes();
+
+                //Store keys in database
+                String sqlSetKeys = "INSERT INTO database(id, publickey, privatekey) VALUES(?,?,?)";
+
+                try (PreparedStatement pstmt = conn.prepareStatement((sqlSetKeys))) {
+                    pstmt.setString(1, new String(databaseID));
+                    pstmt.setString(2, conv.publicToString(dbPubSK));
+                    pstmt.setString(3, conv.privateToString(dbPrivSK));
+                    pstmt.executeUpdate();
+                } catch (SQLException e) {
+                    System.out.println(e.getMessage());
+                }
+
+            } else { //Otherwise, grab them from the database
+                dbPubSK = conv.stringToPublic(rs.getString("publickey"));
+                dbPrivSK = conv.stringToPrivate(rs.getString("privatekey"));
+                databaseID = rs.getString("id").getBytes();
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    }
+
+    public Database(){
+        conn = null;
+
         try{
             Class.forName("org.sqlite.JDBC");
-            c = DriverManager.getConnection("jdbc:sqlite:CarCompany.db"); //doesnt work yet but so we have the thing
+            File currentDir = new File("");
+            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "\\db\\CarCompany.db";
+            conn = DriverManager.getConnection(url);
         } catch(Exception e){
             System.err.println(e.getClass().getName() + ": " + e.getMessage() );
             System.exit(0);
         }
 
-        Object [] dbKeyPair = generateKeyPair(); //maybe also get this from the database?
-        dbPubSK = (PublicKey) dbKeyPair[0];
-        dbPrivSK = (PrivateKey) dbKeyPair[1];
+        setKeys();
+
+        dc = new DatabaseCrypto(databaseID, null);
+        byte[] dbCERT = issueCertificate(dbPubSK, databaseID, dbPrivSK); //rc = null
+        dc.setCertificate(dbCERT);
     }
 
-    //Temporary filler function
     public void carAssign(ReceptionTerminal reception){
         byte[] response = new byte[0];
         try {
@@ -73,22 +118,21 @@ public class Database extends CryptoImplementation implements Communicator {
             return;
         }
         Object[] responseData = processMessage(response);
-        byte[] cardID = responseData[0].getBytes(); //Get card ID so DB knows which car is assigned to which card
-
-        //Some function so it stores the link between an autoID and a cardID
+        byte[] cardID = (byte[]) responseData[0]; //Get card ID so DB knows which car is assigned to which card
 
         String autoID = null;
 
         String sqlFindCar = "SELECT a.* FROM autos a LEFT JOIN rentrelations r ON a.id = r.autoID " +
-                "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1";
+                "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1"; //Store link between auto and card
 
-        ResultSet rs = null;
+       byte[] autoCert = null;
 
-        try (Connection conn = this.connect();
+        try (
             Statement stmt = conn.createStatement();
-            rs = stmt.executeQuery(sqlFindCar)){
+            ResultSet rs = stmt.executeQuery(sqlFindCar)){
 
                 autoID = rs.getString("id");
+                autoCert = rs.getString("certificate").getBytes();
             }
         catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -101,19 +145,18 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sqlSetRelation ="INSERT INTO rentRelations(autoID, cardID) VALUES(?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-             Preparedstatement pstmt = conn.prepareStatement(sqlSetRelation)){
-            //Potential error: Byte[] to String
-            pstmt.setString(1, autoID.toString());
-            pstmt.setString(2, cardID.toString());
+        try ( PreparedStatement pstmt = conn.prepareStatement(sqlSetRelation)){
+            pstmt.setString(1, autoID);
+            pstmt.setString(2, new String(cardID));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
 
-        byte[] autoCert = rs.getString("certificate").getBytes(); //does this convert work? We dont know yet
+
         byte[] message = prepareMessage(autoCert);
         send(reception, message);
+        //Potentially get confirmation from terminal that they received it? or do we already ack stuff
     }
 
     public void carUnassign(ReceptionTerminal reception){
@@ -126,15 +169,14 @@ public class Database extends CryptoImplementation implements Communicator {
             return;
         }
         Object[] responseData = processMessage(response);
-        byte[] cardID = responseData[0].getBytes();
+        byte[] cardID = (byte[]) responseData[0];
 
         String sql = "DELETE FROM rentRelations WHERE cardID = ?";
 
-        try (Connection conn = this.connect();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             // set the corresponding param
-            pstmt.setString(1, cardID.toString());
+            pstmt.setString(1, new String(cardID));
             // execute the delete statement
             pstmt.executeUpdate();
 
@@ -142,30 +184,44 @@ public class Database extends CryptoImplementation implements Communicator {
             System.out.println(e.getMessage());
         }
 
+        String confirmation = cardID.toString() + " has been removed from Rent Relations.";
+        byte[] message = prepareMessage(confirmation);
+        send(reception, message);
+        //Terminal might need to receive this message. We'll fix later. :)
     }
 
- /*   void generateStuff() { //TODO: Put those variables in global object array/mini-database
-        Object [] dbKeyPair = generateKeyPair();
-        PublicKey dbPubSK = (PublicKey) dbKeyPair[0];
-        PrivateKey dbPrivSK = (PrivateKey) dbKeyPair[1];
-        Object [] scKeyPair = generateKeyPair();
-        PublicKey scPubSK = (PublicKey) scKeyPair[0];
-        PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
-        Object [] autoKeyPair = generateKeyPair();
-        PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
-        PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
-        Object [] rtKeyPair = generateKeyPair();
-        PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
-        PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
-        byte[] scID = UUID.randomUUID().toString().getBytes();
-        byte[] autoID = UUID.randomUUID().toString().getBytes();
-        byte[] rtID = UUID.randomUUID().toString().getBytes();
-        byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
-        byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
-        byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
-    }*/
+    public void deleteCard(ReceptionTerminal reception){
+        byte[] response = new byte[0];
+        try {
+            response = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            errorState("Waiting for response carUnassign");
+            return;
+        }
+        Object[] responseData = processMessage(response);
+        byte[] cardID = (byte[]) responseData[0];
 
-    void generateCard(){
+        String sql = "DELETE FROM cards WHERE cardID = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            // set the corresponding param
+            pstmt.setString(1, new String(cardID));
+            // execute the delete statement
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        String confirmation = cardID.toString() + " has been removed from cards.";
+        byte[] message = prepareMessage(confirmation);
+        send(reception, message);
+    }
+
+    void generateCard(ReceptionTerminal terminal){
+        convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
         PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
@@ -174,20 +230,23 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql ="INSERT INTO cards(id,publickey,certificate) VALUES(?,?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-                Preparedstatement pstmt = conn.prepareStatement(sql)){
-            //Potential error: Byte[] to String
-            pstmt.setString(1, scID.toString());
-            pstmt.setString(2, scPubSK.toString());
-            pstmt.setString(3, scCERT.toString());
+        try ( PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, new String(scID));
+            pstmt.setString(2, conv.publicToString(scPubSK));
+            pstmt.setString(3, new String(scCERT));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
-
         // and send the info back
+        // Private key and certificate must be send to terminal which sends it to the card
+        byte[] message = prepareMessage(scPrivSK, scCERT);
+        send(terminal, message);
+
+
     }
-    void generateAuto(){
+    void generateAuto(Auto auto){
+        convertKey conv = new convertKey();
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
@@ -196,21 +255,22 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql ="INSERT INTO autos(id,publickey,certificate) VALUES(?,?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-             Preparedstatement pstmt = conn.prepareStatement(sql)){
-            //Potential error: Byte[] to String
-            pstmt.setString(1, autoID.toString());
-            pstmt.setString(2, autoPubSK.toString());
-            pstmt.setString(3, autoCERT.toString());
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, new String(autoID));
+            pstmt.setString(2, conv.publicToString(autoPubSK));
+            pstmt.setString(3, new String(autoCERT));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
 
-        // and send the info back
+        // Private key and certificate must be send to auto
+        byte[] message = prepareMessage(autoPrivSK, autoCERT);
+        send(auto, message);
     }
 
-    void generateTerminal(){
+    void generateTerminal(ReceptionTerminal terminal){
+        convertKey conv = new convertKey();
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
@@ -219,18 +279,53 @@ public class Database extends CryptoImplementation implements Communicator {
 
         String sql ="INSERT INTO terminals(id,publickey,certificate) VALUES(?,?,?)";
 
-        try (Connection conn = this.connect(); //Store in DB
-             Preparedstatement pstmt = conn.prepareStatement(sql)){
-            //Potential error: Byte[] to String
-            pstmt.setString(1, rtID.toString();
-            pstmt.setString(2, rtPubSK.toString());
-            pstmt.setString(3, rtCERT.toString());
+        try ( PreparedStatement pstmt = conn.prepareStatement(sql)){
+            pstmt.setString(1, new String(rtID));
+            pstmt.setString(2, conv.publicToString(rtPubSK));
+            pstmt.setString(3, new String(rtCERT));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
 
         // and send the info back
+        //private key and certificate must be send to terminal
+        byte[] message = prepareMessage(rtPrivSK, rtCERT);
+        send(terminal, message);
 
+    }
+
+    private class DatabaseCrypto extends CryptoImplementation {
+
+        public DatabaseCrypto(byte[] databaseID, byte[] databaseCertificate) {
+            super.ID = databaseID;
+            super.certificate = databaseCertificate;
+            DatabaseWallet dbWallet = new DatabaseWallet();
+            dbWallet.storePrivateKey();
+            super.rc = dbWallet;
+        }
+
+        private void setCertificate(byte[] cert){
+            super.certificate = cert;
+        }
+
+        private class DatabaseWallet extends RSACrypto implements KeyWallet {
+        //no idea what exactly should be happening in these functions
+
+            @Override
+            public void storePublicKey() {
+
+            }
+
+            @Override
+            public void storePrivateKey() {
+                super.privk = dbPrivSK;
+            }
+
+            @Override
+            public PublicKey getPublicKey() {
+                return null;
+            }
+        }
     }
 }

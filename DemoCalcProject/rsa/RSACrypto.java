@@ -13,12 +13,13 @@ import java.security.PublicKey;
 
 public abstract class RSACrypto {
 
-    private PrivateKey privk;
+    protected PrivateKey privk;
 
-    public byte[] decrypt(byte[] msg){
+    public byte[] sign(byte[] msg){
         Cipher decrypt_cipher;
         try {
-            decrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            // PKCS1Padding
+            decrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
             decrypt_cipher.init(Cipher.DECRYPT_MODE, privk);
 
             return decrypt_cipher.doFinal(msg);
@@ -30,11 +31,12 @@ public abstract class RSACrypto {
         return null;
     }
 
-    public byte[] encrypt(byte[] msg, PublicKey publicKey) {
+    public byte[] unsign(byte[] msg, PublicKey publicKey) {
 
         Cipher encrypt_cipher;
         try {
-            encrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            // PKCS1Padding
+            encrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
             encrypt_cipher.init(Cipher.ENCRYPT_MODE, publicKey);
 
             return encrypt_cipher.doFinal(msg);

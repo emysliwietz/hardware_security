@@ -61,11 +61,11 @@ public abstract class CryptoImplementation {
     }
 
     public byte[] sign(byte[] message){
-        return rc.decrypt(message);
+        return rc.sign(message);
     }
 
     public byte[] unsign(byte[] signature, PublicKey pubSK){
-        return rc.encrypt(signature, pubSK);
+        return rc.unsign(signature, pubSK);
     }
 
 }

@@ -42,7 +42,7 @@ public class RSADecrypt
          PrivateKey privatekey = readPrivateKey("privatekey");
 
          /* Create cipher for decryption. */
-         Cipher decrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         Cipher decrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
          decrypt_cipher.init(Cipher.DECRYPT_MODE, privatekey);
 
          /* Reconstruct the plaintext message. */
@@ -60,7 +60,7 @@ public class RSADecrypt
    private byte[] decrypt(byte[] msg, PrivateKey privatekey){
       Cipher decrypt_cipher = null;
       try {
-         decrypt_cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+         decrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
          decrypt_cipher.init(Cipher.DECRYPT_MODE, privatekey);
 
          byte[] ciphertext = decrypt_cipher.doFinal(msg);
