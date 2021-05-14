@@ -53,10 +53,13 @@ public class SmartcardGUIController {
     private ReceptionTerminal rt = new ReceptionTerminal(new byte[4], new byte[8]);
 
 
+    @FXML
     private void blockCard(){
+        display.setWrapText(true);
         display.setText("Do you wish to report the theft of your card?");
         right2.setText("Confirm");
         left2.setText("Abort");
+        l2.setCursor(Cursor.HAND);
         r2.setOnMouseClicked(event -> block());
         l2.setOnMouseClicked(event -> ok());
     }
@@ -70,6 +73,7 @@ public class SmartcardGUIController {
         r2.setOnMouseClicked(event -> ok());
     }
 
+    @FXML
     private void insert(){
         right2.setText("");
         r2.setCursor(Cursor.DEFAULT);

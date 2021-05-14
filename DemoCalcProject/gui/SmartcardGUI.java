@@ -21,7 +21,7 @@ import java.io.IOException;
 
 public class SmartcardGUI extends Application {
 
-    FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
+
     /*Label ins = (Label)loader.getNamespace().get("insLab");
     Label l0 = (Label)loader.getNamespace().get("left0");
     Label l1 = (Label)loader.getNamespace().get("left1");
@@ -38,7 +38,7 @@ public class SmartcardGUI extends Application {
 
     @Override
     public void start(Stage primaryStage) throws IOException {
-
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
         Parent root = loader.load();
         /*MediaView media = (MediaView)loader.getNamespace().get("media");
         /*HBox hb = new HBox();

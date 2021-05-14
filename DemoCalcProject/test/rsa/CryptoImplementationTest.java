@@ -1,10 +1,11 @@
-package rsa;
+package test.rsa;
 
 import db.Database;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import rsa.CryptoImplementation;
 
 import java.util.HashSet;
 import java.util.UUID;
@@ -17,7 +18,13 @@ class CryptoImplementationTest {
 
     @BeforeEach
     void setUp() {
-        ci = new Database();
+        //ci = new Database();
+        ci = new CryptoImplementation() {
+            @Override
+            public short generateNonce() {
+                return super.generateNonce();
+            }
+        };
     }
 
     @AfterEach
