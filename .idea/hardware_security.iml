@@ -35,7 +35,23 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="javaFX" level="project" />
-    <orderEntry type="library" name="lib" level="project" />
-    <orderEntry type="library" name="jdbc-api-1.4" level="project" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../postgresql-42.2.20.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/sqlite-jdbc-3.34.0/lib/jdbc-api-1.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
   </component>
 </module>

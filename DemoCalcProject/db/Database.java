@@ -305,7 +305,8 @@ public class Database implements Communicator {
         ReceptionTerminal rt = db.generateTerminal();
         Auto auto = db.generateAuto();
         Smartcard sc = db.generateCard();
-        SmartcardGUI gui = new SmartcardGUI(sc, auto, rt);
+        SmartcardGUI gui = new SmartcardGUI();
+        gui.init(sc, auto, rt);
         gui.launch();
     }
 
