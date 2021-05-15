@@ -1,5 +1,5 @@
 .bodybg{
-    -fx-background-image: url('file:/C:/Users/Megaport/Downloads/hardware_security/DemoCalcProject/gui/atm.jpg');
+    -fx-background-image: url('file:DemoCalcProject/gui/atm.jpg');
     -fx-background-size: 100% 100%;
 }
 .text-area,.text-area.viewport,.text-area.content{
