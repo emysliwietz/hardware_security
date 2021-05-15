@@ -4,6 +4,7 @@ import Auto.Auto;
 import Smartcard.Smartcard;
 import db.Database;
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -13,6 +14,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.effect.Effect;
 import javafx.scene.effect.Glow;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -63,6 +65,14 @@ public class SmartcardGUI extends Application {
         Parent root = loader.load();
         SmartcardGUIController controller = loader.getController();
         controller.setVars(sc, a, rt);
+
+        FXMLLoader cardLoader = new FXMLLoader(getClass().getResource("Smartcard.fxml"));
+        Parent pcard = cardLoader.load();
+        Stage card = new Stage();
+        Scene card_scene = new Scene(pcard);
+        card.setScene(card_scene);
+
+        card.show();
         /*MediaView media = (MediaView)loader.getNamespace().get("media");
         /*HBox hb = new HBox();
         Button b = new Button("Hallo");*/
@@ -74,6 +84,8 @@ public class SmartcardGUI extends Application {
         primaryStage.setScene(s);
         primaryStage.setTitle("test");
         primaryStage.setResizable(false);
+        s.setOnMouseReleased(event ->
+                System.out.println(event.getSceneX()));
         primaryStage.show();
     }
 
