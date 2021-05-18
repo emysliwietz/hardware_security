@@ -48,11 +48,12 @@ public class Database implements Communicator {
         return keyPair;
     }
 
+    //Returns byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash
+    //TODO: Where is the end?
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
-        byte[] toHash = prepareMessage(pubk, id);
+        byte[] toHash = concatBytes(pubk.getEncoded(), id);
         byte[] signedHash = dc.hashAndSign(toHash);
-        byte[] certificate = prepareMessage(pubk, id, signedHash);
-        return certificate;
+        return concatBytes(toHash, intToByteArray(signedHash.length),signedHash);
     }
 
     //Get and set the database keys and id
@@ -228,7 +229,7 @@ public class Database implements Communicator {
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
         PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
-        byte[] scID = UUID.randomUUID().toString().getBytes();
+        byte[] scID = dc.generateID();
         byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
 
         String sql ="INSERT INTO cards(id,publickey,certificate) VALUES(?,?,?)";
@@ -254,7 +255,7 @@ public class Database implements Communicator {
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
-        byte[] autoID = UUID.randomUUID().toString().getBytes();
+        byte[] autoID = dc.generateID();
         byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
 
         String sql ="INSERT INTO autos(id,publickey,certificate) VALUES(?,?,?)";
@@ -279,7 +280,7 @@ public class Database implements Communicator {
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
-        byte[] rtID = UUID.randomUUID().toString().getBytes();
+        byte[] rtID = dc.generateID();
         byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
 
         String sql ="INSERT INTO terminals(id,publickey,certificate) VALUES(?,?,?)";

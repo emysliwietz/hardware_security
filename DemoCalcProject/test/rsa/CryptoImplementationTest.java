@@ -21,7 +21,7 @@ class CryptoImplementationTest {
         //ci = new Database();
         ci = new CryptoImplementation() {
             @Override
-            public short generateNonce() {
+            public byte[] generateNonce() {
                 return super.generateNonce();
             }
         };
@@ -33,12 +33,12 @@ class CryptoImplementationTest {
 
     @Test
     void generateNonce() {
-        HashSet<Short> hs = new HashSet<>();
+        /*HashSet<Short> hs = new HashSet<>();
         for(int i = 0; i < 1000; i++){
-            short n = ci.generateNonce();
+            byte[] n = ci.generateNonce();
             Assertions.assertFalse(hs.contains(n));
             hs.add(n);
-        }
+        }*/
     }
 
     @Test

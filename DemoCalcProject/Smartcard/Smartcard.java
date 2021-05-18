@@ -10,8 +10,13 @@ import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
 public class Smartcard implements Communicator {
@@ -42,12 +47,12 @@ public class Smartcard implements Communicator {
         send(auto, sc.getCertificate(), nonceCard);
         byte[] msg2b = new byte[0];
         try {
-            msg2b = waitForInput();
+             msg2 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             return (PublicKey) errorState("Timeout in insert");
         }
-        Object[] msg2o = processMessage(msg2b);
+        /*Object[] msg2o = processMessage(msg2b);
         PublicKey autoPubSK = (PublicKey) msg2o[0];
         byte[] autoID = (byte[]) msg2o[1];
         byte[] autoCertHashSign = (byte[]) msg2o[2];
@@ -74,18 +79,96 @@ public class Smartcard implements Communicator {
             manipulation = true;
             return null; //Placeholder probably
         }
-        short nonceAuto = (short) msg2o[5];
-        byte[] msg3tmp = prepareMessage(nonceAuto);
-        byte[] nonceAutoHashSign = sc.hashAndSign(msg3tmp);
-        send(auto, nonceAuto, nonceAutoHashSign);
-        byte[] succMb;
+        short nonceAuto = (short) msg2o[5];*/
+        //autoPubSK
+        byte[] autoPubSKEncoded = new byte[128];
+        msg2.get(autoPubSKEncoded,0,128);
+        autoPubSK = bytesToPubkey(autoPubSKEncoded);
+
+        //autoID
+        byte[] autoID = new byte[5];
+        msg2.get(autoID,128,5);
+
+        //signature of hash of certificate
+        byte[] certSignLenByte = new byte[4];
+        msg2.get(certSignLenByte,133,4);
+        int certSignLen = intFromByteArray(certSignLenByte);
+        byte[] autoCertHashSign = new byte[certSignLen];
+        msg2.get(autoCertHashSign,133,certSignLen);
+        byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
+        byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSK.getEncoded(), autoID));
+        if (autoCertHash != autoIDPubSKHash){
+            //TODO: throw error or something (tamper bit). Also stop further actions.
+            errorState("Invalid certificate send in message 2 of P1");
+            manipulation = true;
+            return null;
+        }
+
+        //Response of nonceCard
+        short nonceCardResponse = msg2.getShort(133+certSignLen);
+        int curBufIndex = 133 + certSignLen;
+        if (nonceCard != nonceCardResponse){
+            errorState("Wrong nonce returned in message 2 of P1");
+            manipulation = true;
+            return null; //Placeholder
+        }
+
+        //signed hash of nonceCard
+        byte[] msg2NonceSignLenByte = new byte[4];
+        msg2.get(msg2NonceSignLenByte,curBufIndex,4);
+        curBufIndex += 4;
+        int msg2NonceSignLen = intFromByteArray(msg2NonceSignLenByte);
+        byte[] nonceCardResponseHashSign = new byte[msg2NonceSignLen];
+        msg2.get(nonceCardResponseHashSign,curBufIndex,msg2NonceSignLen);
+        curBufIndex += msg2NonceSignLen;
+        byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
+        byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
+        if (nonceValidHash != nonceCardResponseHash){
+            //TODO: throw error or something (tamper bit). Also stop further actions.
+            errorState("Invalid hash of nonce returned in message 2 of P1");
+            manipulation = true;
+            return null; //Placeholder probably
+        }
+
+        //nonceAuto
+        short nonceAuto = msg2.getShort(curBufIndex);
+
+        //Message 3
+        msgBuf.clear();
+        msgBuf.putShort(nonceAuto);
+        msgBuf.put(sc.hashAndSign(shortToByteArray(nonceAuto)));
+        send(auto, msgBuf);
+
+        //Success message
+        ByteBuffer succMb = msg2; //Recycling buffer to save storage
         try {
             succMb = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             return (PublicKey) errorState("Timeout in insert");
         }
-        Object[] succM = processMessage(succMb);
+        byte success = succMb.get(0);
+        if(success != SUCCESS_BYTE){
+            errorState("Wrong code, expected 0xFF");
+            return null;
+        }
+        short nonceSucc = succMb.getShort(1);
+        if (!sc.areSubsequentNonces(nonceCard, nonceSucc)){
+            errorState("Wrong nonce in success message of P1");
+            return null;
+        }
+        byte[] nonceSuccSignLenByte = new byte[4];
+        succMb.get(nonceSuccSignLenByte,3,4);
+        int nonceSuccSignLen = intFromByteArray(nonceSuccSignLenByte);
+        byte[] succMHashSign = new byte[nonceSuccSignLen];
+        succMb.get(succMHashSign,7,nonceSuccSignLen);
+        byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
+        byte[] succByte = {success};
+        if((sc.createHash(succByte)) != succMHash){
+            errorState("Invalid hash in sucess message (P1)");
+            return null;
+        }
+        /*Object[] succM = processMessage(succMb);
         byte success = (byte) succM[0];
         if(success != SUCCESS_BYTE){
             errorState("Wrong code, expected 0xFF");
@@ -100,7 +183,7 @@ public class Smartcard implements Communicator {
         if((sc.createHash(prepareMessage(success))) != succMHash){
             errorState("Invalid hash in sucess message (P1)");
             return null;
-        }
+        }*/
         return autoPubSK;
     }
 

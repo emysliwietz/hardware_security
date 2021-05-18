@@ -45,7 +45,7 @@ public abstract class CryptoImplementation {
     public byte[] createHash(byte[] toHash){
         MessageDigest digest = null;
         try {
-            digest = MessageDigest.getInstance("SHA-512");
+            digest = MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
