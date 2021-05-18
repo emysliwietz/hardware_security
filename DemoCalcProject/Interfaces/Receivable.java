@@ -5,7 +5,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public interface Receivable {
-    Queue<byte[]> inputQueue = new LinkedList<>();
+    Queue<ByteBuffer> inputQueue = new LinkedList<>();
 
     /*default void receiveLegacy(byte[] message) {
         inputQueue.add(ByteBuffer.wrap(message));

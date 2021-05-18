@@ -20,7 +20,20 @@ public abstract class CryptoImplementation {
         byte[] bytes = new byte[2];
         sr.nextBytes(bytes);
         return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
+
     }
+
+    public byte[] generateID(){
+        byte[] bytes = new byte[5];
+        sr.nextBytes(bytes);
+        return bytes;
+
+    }
+
+    /*public short generateNonceAsShort() {
+        byte[] bytes = generateNonce();
+        return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
+    }*/
 
     public boolean areSubsequentNonces(short a, short aPlus1){
         return (aPlus1 == (short) (a+1));
