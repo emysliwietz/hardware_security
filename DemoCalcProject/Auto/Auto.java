@@ -11,6 +11,7 @@ import utility.Logger;
 
 import java.io.File;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
@@ -25,6 +26,7 @@ public class Auto implements Receivable, Communicator {
     public PublicKey scPubSK;
     private Logger autoLogger;
     private byte[] cardID  = null;
+    private ByteBuffer msgBuf = ByteBuffer.allocate(256);
 
     @Override
     public Object errorState(String msg) {
@@ -41,44 +43,76 @@ public class Auto implements Receivable, Communicator {
         autoLogger = new Logger(logFile);
     }
 
+    //Protocol 1
     public PublicKey authenticateSmartCard(Smartcard sc){
-        byte[] msg1b;
+        //Message 1
+        ByteBuffer msg1;
         try {
-            msg1b = waitForInput();
+            msg1 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             autoLogger.warning("Aborting: timeout", "authenticateSmartCard message 1", cardID);
             return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
         }
-        Object[] msg1o = processMessage(msg1b);
-        scPubSK = (PublicKey) msg1o[0];
-        cardID = (byte[]) msg1o[1];
-        byte[] scCertHashSign = (byte[]) msg1o[2];
+        int curBufIndex = 0;
+        int scCertHashSignLen = msg1.getInt(curBufIndex);
+        curBufIndex += 4;
+
+        //scPubSK + cardID
+        byte[] scPubSKEncoded = new byte[128];
+        msg1.get(scPubSKEncoded,curBufIndex,128);
+        curBufIndex += 128;
+        scPubSK = bytesToPubkey(scPubSKEncoded);
+        cardID = new byte[5];
+        msg1.get(cardID,curBufIndex,5);
+        curBufIndex += 5;
+
+        //scCertHash signature
+        byte[] scCertHashSign = new byte[scCertHashSignLen];
+        msg1.get(scCertHashSign,curBufIndex,scCertHashSignLen);
+        curBufIndex += scCertHashSignLen;
         byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
-        byte[] cardIDPubSKHash = ac.createHash(prepareMessage(scPubSK, cardID));
+        byte[] cardIDPubSKHash = ac.createHash(concatBytes(scPubSK.getEncoded(), cardID));
         if (scCertHash != cardIDPubSKHash){
             errorState("Invalid cerificate: hash does not match");
             autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
             return null;
         }
-        short cardNonce = (short) msg1o[3];
+
+        //Nonces
+        short cardNonce = msg1.getShort(curBufIndex);
+
+        //Message 2
+        curBufIndex = 0;
         short autoNonce = ac.generateNonce();
-        byte[] cardNonceBytes = prepareMessage(cardNonce);
-        byte[] cardNonceHashSign = ac.hashAndSign(cardNonceBytes);
-        send(sc, ac.getCertificate(), cardNonce, cardNonceHashSign, autoNonce);
-        byte[] msg3b = new byte[0];
+        byte[] cardNonceHashSign = ac.hashAndSign(shortToByteArray(cardNonce));
+        msgBuf.putInt(ac.getCertificate().length - 133);
+        msgBuf.put(ac.getCertificate());
+        msgBuf.putShort(cardNonce);
+        msgBuf.putInt(cardNonceHashSign.length);
+        msgBuf.put(cardNonceHashSign);
+        msgBuf.putShort(autoNonce);
+        send(sc, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
+
+        //Message 3
+        ByteBuffer msg3 = msg1;
         try {
-            msg3b = waitForInput();
+            msg3 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             autoLogger.warning("Aborting: Timeout", "authenticateSmartCard message 3", cardID);
             return (PublicKey) errorState("Timeout in msg3 authenticate smartcard");
         }
-        Object[] msg3o = processMessage(msg3b);
-        short autoNonceResp = (short) msg3o[0];
-        byte[] autoNonceRespHashSign = (byte[]) msg3o[1];
+        //
+        short autoNonceResp = msg3.getShort(0);
+        byte[] autoNonceRespHashSignLenByte = new byte[4];
+        msg3.get(autoNonceRespHashSignLenByte,2,4);
+        int autoNonceRespHashSignLen = intFromByteArray(autoNonceRespHashSignLenByte);
+        byte[] autoNonceRespHashSign = new byte[autoNonceRespHashSignLen];
         byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
-        byte[] autoNonceHash = ac.createHash(prepareMessage(autoNonce));
+        byte[] autoNonceHash = ac.createHash(shortToByteArray(autoNonce));
         if (autoNonceRespHash != autoNonceHash){
             //TODO: throw error or something (logs). Also stop further actions.
             errorState("Wrong nonce in P1 msg3 returned");
@@ -86,8 +120,15 @@ public class Auto implements Receivable, Communicator {
             return null;
         }
         else{
+            //Success message
             cardAuthenticated = true;
-            send(sc, SUCCESS_BYTE, (short) (cardNonce + 1), ac.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (cardNonce + 1))));
+            msgBuf.put(SUCCESS_BYTE);
+            msgBuf.putShort((short) (cardNonce + 1));
+            byte[] succByte = {SUCCESS_BYTE};
+            msgBuf.putInt(ac.hashAndSign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))).length).put(ac.hashAndSign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))));
+            send(sc, msgBuf);
+            msgBuf.clear();
+            msgBuf.rewind();
             autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
             return scPubSK;
         }
@@ -100,10 +141,14 @@ public class Auto implements Receivable, Communicator {
             autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
             return;
         }
-        byte[] curKmm = prepareMessage(kilometerage);
-        byte[] kmmSigned = ac.hashAndSign(curKmm);
-        send(sc, (Object) kmmSigned);
-        byte[] confirmation = new byte[0];
+        //Message 1
+        msgBuf.putInt(kilometerage).putInt(ac.hashAndSign(intToByteArray(kilometerage)).length).put(ac.hashAndSign(intToByteArray(kilometerage)));
+        send(sc, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
+
+        //Message 2
+        ByteBuffer confirmation;
         try {
             confirmation = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -112,14 +157,15 @@ public class Auto implements Receivable, Communicator {
             autoLogger.warning("Aborting: Timeout", "kilometerageUpdate wait for update", cardID);
             return;
         }
-        Object[] confirmO = processMessage(confirmation);
-        byte confBYTE = (byte) confirmO[0];
-        int curKmmCard = (int) confirmO[1];
+        byte confBYTE = confirmation.get();
+        int curKmmCard = confirmation.getInt();
         if (kilometerage != curKmmCard){
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
         }
-        byte[] confHashSigned = (byte[]) confirmO[2];
+        int confHashSignLen = confirmation.getInt();
+        byte[] confHashSigned = new byte[confHashSignLen];
+        confirmation.get(confHashSigned,9,confHashSignLen);
         byte[] confHash = ac.unsign(confHashSigned, scPubSK);
         byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
         if (confHash != hashValidation){

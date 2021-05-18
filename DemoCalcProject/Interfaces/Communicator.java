@@ -96,6 +96,18 @@ public interface Communicator extends Receivable {
                 ((bytes[3] & 0xFF)));
     }
 
+    default byte[] booleanToByteArray(boolean b) {
+        if (b) {
+            return new byte[] { Byte.MAX_VALUE };
+        } else {
+            return new byte[] { 0x0 };
+        }
+    }
+
+    default boolean booleanFromByteArray(byte[] bytes) {
+        return (bytes[0] != 0);
+    }
+
     default void send(Receivable receiver, ByteBuffer msgBuf){
         receiver.receive(msgBuf.array());
     }

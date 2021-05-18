@@ -12,6 +12,7 @@ import utility.Logger;
 
 import java.io.File;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.UUID;
@@ -29,6 +30,7 @@ public class ReceptionTerminal implements Communicator {
     public PublicKey scPubSK;
     public int kilometerage;
     private Logger rtLogger;
+    private ByteBuffer msgBuf = ByteBuffer.allocate(256);
 
     @Override
     public Object errorState(String msg) {
@@ -137,7 +139,8 @@ public class ReceptionTerminal implements Communicator {
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void cardAuthentication(Smartcard sc){
-        byte[] response = new byte[0]; //Step 2
+        //Message 1
+        ByteBuffer response; //Step 2
         try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -146,12 +149,21 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Timeout while waiting for message", "cardAuthentication message 1", cardID);
             return;
         }
-        Object[] responseData = processMessage(response);
+        int cardCertHashSignLen = response.getInt();
 
-        cardPubSK = (PublicKey) responseData[0];
-        cardID = (byte[]) responseData[1];
-        byte[] cardCertHashSign = (byte[]) responseData[2];
-        scNonce = (short) responseData[3];
+        //cardPubSK + cardID
+        byte[] cardPubSKEncoded = new byte[128];
+        response.get(cardPubSKEncoded,4,128);
+        int curBufIndex = 132;
+        cardPubSK = bytesToPubkey(cardPubSKEncoded);
+        cardID = new byte[5];
+        response.get(cardID,curBufIndex,5);
+        curBufIndex += 5;
+
+        //Signed hash of certificate
+        byte[] cardCertHashSign = new byte[cardCertHashSignLen];
+        response.get(cardCertHashSign,curBufIndex,cardCertHashSignLen);
+        scNonce = response.getShort();
         byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
 
         byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
@@ -161,10 +173,16 @@ public class ReceptionTerminal implements Communicator {
             return;
         }
 
+        //Message 2
         termNonce = rtc.generateNonce();
-        send(sc, rtc.getCertificate(), termNonce); //Step 4
+        msgBuf.putInt(rtc.getCertificate().length - 133).put(rtc.getCertificate()).putShort(termNonce);
+        send(sc, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
+        //Step 4
 
-        byte[] response2 = new byte[0];
+        //Message 3
+        ByteBuffer response2;
         try {
             response2 = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -173,24 +191,31 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Aborting: Timeout", "cardAuthentication response 2", cardID);
             return;
         }
-        Object[] responseData2 = processMessage(response2);
-        short termNonceResp = (short) responseData2[0];
+
+        short termNonceResp = response2.getShort();
         if(termNonceResp != termNonce){
             errorState("Wrong nonce in message 3 of cardAuthentication");
             rtLogger.fatal("Wrong nonce", "cardAuthentication message 3", cardID);
             return;
         }
 
-        byte[] receptionNonceHash = rtc.unsign((byte[]) responseData2[1], cardPubSK);
-        byte[] nonceReceptionHashValid = rtc.createHash(prepareMessage(termNonce));
+        int receptionNonceHashSignLen = response2.getInt();
+        byte[] receptionNonceHashSign = new byte[receptionNonceHashSignLen];
+        response2.get(receptionNonceHashSign,6,receptionNonceHashSignLen);
+        byte[] receptionNonceHash = rtc.unsign(receptionNonceHashSign, cardPubSK);
+        byte[] nonceReceptionHashValid = rtc.createHash(shortToByteArray(termNonce));
         if (nonceReceptionHashValid != receptionNonceHash){ //Step 7
             errorState("Invalid hash in message 3 of P2");
             rtLogger.fatal("Invalid Hash", "cardAuthentication message 3", cardID);
             return;
         }
 
-        byte[] nonceCardHashSign = rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, scNonce));
-        send(sc, SUCCESS_BYTE, scNonce, nonceCardHashSign); //Step 8
+        //Success message
+        msgBuf.put(SUCCESS_BYTE);
+        byte[] succByte = {SUCCESS_BYTE};
+        byte[] nonceCardHashSign = rtc.hashAndSign(concatBytes(succByte, shortToByteArray(scNonce)));
+        msgBuf.putShort(scNonce).putInt(nonceCardHashSign.length).put(nonceCardHashSign);
+        send(sc, msgBuf); //Step 8
         rtLogger.info("Smartcard authenticated successfully", "cardAuthentification", cardID);
         cardAuthenticated = true; //When to make it false again
 

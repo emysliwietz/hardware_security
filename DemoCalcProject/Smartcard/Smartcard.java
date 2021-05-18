@@ -34,6 +34,7 @@ public class Smartcard implements Communicator {
     public PublicKey autoPubSK;
     public enum States{EMPTY, ASSIGNED_NONE, ASSIGNED, END_OF_LIFE}
     public States state = States.EMPTY;
+    private ByteBuffer msgBuf = ByteBuffer.allocate(256);
 
 
     public Smartcard(byte[] cardID, byte[] cardCertificate, PrivateKey privateKey) {
@@ -52,34 +53,7 @@ public class Smartcard implements Communicator {
             e.printStackTrace();
             return (PublicKey) errorState("Timeout in insert");
         }
-        /*Object[] msg2o = processMessage(msg2b);
-        PublicKey autoPubSK = (PublicKey) msg2o[0];
-        byte[] autoID = (byte[]) msg2o[1];
-        byte[] autoCertHashSign = (byte[]) msg2o[2];
-        byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
 
-        byte[] autoIDPubSKHash = sc.createHash(prepareMessage(autoPubSK, autoID));
-        if (autoCertHash != autoIDPubSKHash){
-            //TODO: throw error or something (tamper bit). Also stop further actions.
-            manipulation = true;
-            return null;
-        }
-
-        short nonceCardResponse = (short) msg2o[3];
-        if (nonceCard != nonceCardResponse){
-            manipulation = true;
-            return null; //Placeholder
-        }
-        byte[] nonceCardResponseHashSign = (byte[]) msg2o[4];
-        byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
-
-        byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
-        if (nonceValidHash != nonceCardResponseHash){
-            //TODO: throw error or something (tamper bit). Also stop further actions.
-            manipulation = true;
-            return null; //Placeholder probably
-        }
-        short nonceAuto = (short) msg2o[5];*/
         //autoPubSK
         byte[] autoPubSKEncoded = new byte[128];
         msg2.get(autoPubSKEncoded,0,128);
@@ -90,11 +64,9 @@ public class Smartcard implements Communicator {
         msg2.get(autoID,128,5);
 
         //signature of hash of certificate
-        byte[] certSignLenByte = new byte[4];
-        msg2.get(certSignLenByte,133,4);
-        int certSignLen = intFromByteArray(certSignLenByte);
+        int certSignLen = msg2.getInt(133);
         byte[] autoCertHashSign = new byte[certSignLen];
-        msg2.get(autoCertHashSign,133,certSignLen);
+        msg2.get(autoCertHashSign,137,certSignLen);
         byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
         byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSK.getEncoded(), autoID));
         if (autoCertHash != autoIDPubSKHash){
@@ -105,8 +77,8 @@ public class Smartcard implements Communicator {
         }
 
         //Response of nonceCard
-        short nonceCardResponse = msg2.getShort(133+certSignLen);
-        int curBufIndex = 133 + certSignLen;
+        short nonceCardResponse = msg2.getShort(137+certSignLen);
+        int curBufIndex = 139 + certSignLen;
         if (nonceCard != nonceCardResponse){
             errorState("Wrong nonce returned in message 2 of P1");
             manipulation = true;
@@ -114,10 +86,8 @@ public class Smartcard implements Communicator {
         }
 
         //signed hash of nonceCard
-        byte[] msg2NonceSignLenByte = new byte[4];
-        msg2.get(msg2NonceSignLenByte,curBufIndex,4);
+        int msg2NonceSignLen = msg2.getInt(curBufIndex);
         curBufIndex += 4;
-        int msg2NonceSignLen = intFromByteArray(msg2NonceSignLenByte);
         byte[] nonceCardResponseHashSign = new byte[msg2NonceSignLen];
         msg2.get(nonceCardResponseHashSign,curBufIndex,msg2NonceSignLen);
         curBufIndex += msg2NonceSignLen;
@@ -134,10 +104,11 @@ public class Smartcard implements Communicator {
         short nonceAuto = msg2.getShort(curBufIndex);
 
         //Message 3
-        msgBuf.clear();
         msgBuf.putShort(nonceAuto);
         msgBuf.put(sc.hashAndSign(shortToByteArray(nonceAuto)));
         send(auto, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
 
         //Success message
         ByteBuffer succMb = msg2; //Recycling buffer to save storage
@@ -157,9 +128,7 @@ public class Smartcard implements Communicator {
             errorState("Wrong nonce in success message of P1");
             return null;
         }
-        byte[] nonceSuccSignLenByte = new byte[4];
-        succMb.get(nonceSuccSignLenByte,3,4);
-        int nonceSuccSignLen = intFromByteArray(nonceSuccSignLenByte);
+        int nonceSuccSignLen = succMb.getInt(3);
         byte[] succMHashSign = new byte[nonceSuccSignLen];
         succMb.get(succMHashSign,7,nonceSuccSignLen);
         byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
@@ -168,22 +137,6 @@ public class Smartcard implements Communicator {
             errorState("Invalid hash in sucess message (P1)");
             return null;
         }
-        /*Object[] succM = processMessage(succMb);
-        byte success = (byte) succM[0];
-        if(success != SUCCESS_BYTE){
-            errorState("Wrong code, expected 0xFF");
-            return null;
-        }
-        short nonceSucc = (short) succM[1];
-        if (!sc.areSubsequentNonces(nonceCard, nonceSucc)){
-            errorState("Wrong nonce in success message of P1");
-            return null;
-        }
-        byte[] succMHash = sc.unsign((byte[]) succM[2], autoPubSK);
-        if((sc.createHash(prepareMessage(success))) != succMHash){
-            errorState("Invalid hash in sucess message (P1)");
-            return null;
-        }*/
         return autoPubSK;
     }
 
