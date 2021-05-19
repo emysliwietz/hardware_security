@@ -100,6 +100,7 @@ public class Database implements Communicator {
         try{
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
+            //Below does not work for every PC. E.g. Alessandra needs to remove /DemoCalcProject/ for it to work. Find fix
             String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "/DemoCalcProject/db/CarCompany.db";
             conn = DriverManager.getConnection(url);
         } catch(Exception e){

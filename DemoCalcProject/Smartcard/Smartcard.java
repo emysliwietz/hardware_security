@@ -21,21 +21,28 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
 public class Smartcard implements Communicator {
+    //Everything here is in EEPROM (persistent)
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
     private boolean manipulation = false;
-    private int kilometerage; //TODO: Change to less storage intensive type (e.g. short or int)
-    boolean terminalAuthenticated = false; //in temporary storage
-    private short nonceReception; //TEMP because this should be yeeted when card is pulled out
-    private short nonceCard; //TEMP same as above
+    private int kilometerage; //TODO: Change to less storage intensive type (short)
     public PublicKey rtPubSK;
 
-    //This should actually be stored somehow?
     private byte[] autoIDStored;
     public PublicKey autoPubSK;
     public enum States{EMPTY, ASSIGNED_NONE, ASSIGNED, END_OF_LIFE}
     public States state = States.EMPTY;
     private ByteBuffer msgBuf = ByteBuffer.allocate(256);
+
+    //Move to some temporary storage:
+    boolean terminalAuthenticated = false; //in temporary storage
+    private short nonceReception; //TEMP because this should be yeeted when card is pulled out
+    private short nonceCard; //TEMP same as above
+    //byte[] t;
+    // t = JCSystem.makeTransientByteArray((short)128,JCSystem.CLEAR_ON_RESET);
+                                            //length
+    //See slide 32 of february 8 Javacard. We can have 1 or 2. So we gotta be careful.
+    //To do: figure out length we can have. Currently pubkey is around 216 bytes.
 
 
     public Smartcard(byte[] cardID, byte[] cardCertificate, PrivateKey privateKey) {
@@ -63,17 +70,17 @@ public class Smartcard implements Communicator {
         }
 
         //autoPubSK
-        byte[] autoPubSKEncoded = new byte[128];
+        byte[] autoPubSKEncoded = new byte[128]; //NEW BYTE: DONT DO. We should use transient byte array here
         msg2.get(autoPubSKEncoded,0,128);
         autoPubSK = bytesToPubkey(autoPubSKEncoded);
 
         //autoID
-        byte[] autoID = new byte[5];
+        byte[] autoID = new byte[5]; //To do: new byte -> Transient byte array
         msg2.get(autoID,128,5);
 
         //signature of hash of certificate
         int certSignLen = msg2.getInt(133);
-        byte[] autoCertHashSign = new byte[certSignLen];
+        byte[] autoCertHashSign = new byte[certSignLen]; //To do: new byte -> Transient byte array
         msg2.get(autoCertHashSign,137,certSignLen);
         byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
         byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSK.getEncoded(), autoID));
@@ -96,7 +103,7 @@ public class Smartcard implements Communicator {
         //signed hash of nonceCard
         int msg2NonceSignLen = msg2.getInt(curBufIndex);
         curBufIndex += 4;
-        byte[] nonceCardResponseHashSign = new byte[msg2NonceSignLen];
+        byte[] nonceCardResponseHashSign = new byte[msg2NonceSignLen]; //To do: new byte -> Transient byte array
         msg2.get(nonceCardResponseHashSign,curBufIndex,msg2NonceSignLen);
         curBufIndex += msg2NonceSignLen;
         byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
@@ -137,7 +144,7 @@ public class Smartcard implements Communicator {
             return null;
         }
         int nonceSuccSignLen = succMb.getInt(3);
-        byte[] succMHashSign = new byte[nonceSuccSignLen];
+        byte[] succMHashSign = new byte[nonceSuccSignLen]; //TODO: use JCSystem.makeTransientByteArray instead?
         succMb.get(succMHashSign,7,nonceSuccSignLen);
         byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
         byte[] succByte = {success};
@@ -168,15 +175,15 @@ public class Smartcard implements Communicator {
         }
         //Object[] responseData = processMessage(response);
         int receptionCertHSLength = response.get(0);
-        byte[] rtPubSkb = new byte[128];
+        byte[] rtPubSkb = new byte[128]; //TODO: use JCSystem.makeTransientByteArray instead?
         response.get(rtPubSkb, 4, 128);
         rtPubSK = bytesToPubkey(rtPubSkb);
 
-        byte[] receptionID = new byte[5];
+        byte[] receptionID = new byte[5]; //To do: new byte -> Transient byte array
         response.get(receptionID, 132, 5);
 
 
-        byte[] receptionCertHashSign = new byte[receptionCertHSLength];
+        byte[] receptionCertHashSign = new byte[receptionCertHSLength]; //To do: new byte -> Transient byte array
         response.get(receptionCertHashSign, 137, receptionCertHSLength);
 
         nonceReception = response.getShort(137 + receptionCertHSLength);
@@ -211,7 +218,7 @@ public class Smartcard implements Communicator {
             return;
         }
         int responseData2Length = response2.getInt();
-        byte[] responseData2 = new byte[responseData2Length];
+        byte[] responseData2 = new byte[responseData2Length]; //To do: new byte -> Transient byte array
         response2.get(responseData2, 4, responseData2Length);
 
 
@@ -255,15 +262,15 @@ public class Smartcard implements Communicator {
             return;
         }
 
-        byte[] autoPubSkb = new byte[128];
+        byte[] autoPubSkb = new byte[128]; //TODO: use JCSystem.makeTransientByteArray instead?
         response.get(autoPubSkb, 0, 128);
         autoPubSK = bytesToPubkey(autoPubSkb);
 
-        byte[] autoID = new byte[5];
+        byte[] autoID = new byte[5]; //To do: new byte -> Transient byte array
         response.get(autoID, 135, 5);
 
         int autoCertHSLength = response.getInt();
-        byte[] autoCertHashSign = new byte[autoCertHSLength];
+        byte[] autoCertHashSign = new byte[autoCertHSLength]; //To do: new byte -> Transient byte array
         response.get(autoCertHashSign, 144, autoCertHSLength);
 
         short nonceCard2 = response.getShort();
@@ -284,7 +291,7 @@ public class Smartcard implements Communicator {
         //State transition????
         state = States.ASSIGNED;
         //Success message!
-        byte[] successByteArray = {SUCCESS_BYTE};
+        byte[] successByteArray = {SUCCESS_BYTE}; //TODO: use JCSystem.makeTransientByteArray instead?
         byte[] successHash = sc.createHash(concatBytes(successByteArray, shortToByteArray((short) (nonceReception + 2))));
         msgBuf.put(SUCCESS_BYTE).putShort((short) (nonceReception+2)).putInt(successHash.length).put(sc.sign(successHash));
         send(reception, msgBuf);
@@ -309,7 +316,7 @@ public class Smartcard implements Communicator {
         byte[] validRecKmmHash = sc.createHash(prepareMessage(kilometerage));*/
         kilometerage = receivedKmm.getInt();
         int recKmmHashSignLength = receivedKmm.getInt();
-        byte[] recKmmHashSign = new byte[recKmmHashSignLength];
+        byte[] recKmmHashSign = new byte[recKmmHashSignLength]; //To do: new byte -> Transient byte array
         receivedKmm.get(recKmmHashSign, 8, recKmmHashSignLength);
         byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
         byte[] validRecKmmHash = sc.createHash(intToByteArray(kilometerage));
@@ -351,7 +358,7 @@ public class Smartcard implements Communicator {
         short kmmNonce = msg2.getShort();
         short seqNum2 = msg2.getShort();
         int lengthHash = msg2.getInt();
-        byte[] hash = new byte[lengthHash];
+        byte[] hash = new byte[lengthHash]; //To do: new byte -> Transient byte array
         msg2.get(hash, 8, lengthHash);
         if(!sc.areSubsequentNonces(nonceCard, seqNum2)){
             errorState("Wrong sequence number in carReturn message 2");
@@ -398,7 +405,7 @@ public class Smartcard implements Communicator {
             return;
         }
         int hashLength = succMsg.getInt();
-        byte[] signedSuccHash = new byte[hashLength];
+        byte[] signedSuccHash = new byte[hashLength]; //To do: new byte -> Transient byte array
         succMsg.get(signedSuccHash, 7, hashLength);
 
         byte[] succHash = sc.unsign((byte[]) signedSuccHash, rtPubSK);
