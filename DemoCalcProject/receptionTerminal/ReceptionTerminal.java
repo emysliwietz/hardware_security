@@ -71,10 +71,6 @@ public class ReceptionTerminal implements Communicator {
         byte[] carReturnBytes = new byte[10];
         msg1.get(carReturnBytes,0,10);
         String carReturn = new String(carReturnBytes, StandardCharsets.UTF_8);
-        if (carReturn != "Car return"){
-            errorState("Wrong return message send in message 1 P4");
-            rtLogger.fatal("Wrong return message sent", "carReturn message 1", cardID);
-        }
         short seqNum = msg1.getShort();
         if(!rtc.areSubsequentNonces(termNonce,seqNum)){
             errorState("Wrong sequence number in carReturn message 1");
