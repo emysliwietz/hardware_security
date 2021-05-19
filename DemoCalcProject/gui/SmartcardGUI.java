@@ -68,11 +68,11 @@ public class SmartcardGUI extends Application {
 
         FXMLLoader cardLoader = new FXMLLoader(getClass().getResource("Smartcard.fxml"));
         Parent pcard = cardLoader.load();
-        Stage card = new Stage();
+        /*Stage card = new Stage();
         Scene card_scene = new Scene(pcard);
         card.setScene(card_scene);
 
-        card.show();
+        card.show();*/
         /*MediaView media = (MediaView)loader.getNamespace().get("media");
         /*HBox hb = new HBox();
         Button b = new Button("Hallo");*/

@@ -1,4 +1,4 @@
-package Smartcard;
+package test.Smartcard;
 
 import db.Database;
 import org.junit.jupiter.api.AfterEach;

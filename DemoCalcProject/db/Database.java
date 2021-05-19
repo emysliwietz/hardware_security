@@ -11,6 +11,7 @@ import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.security.*;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -27,6 +28,7 @@ public class Database implements Communicator {
     protected PrivateKey dbPrivSK;
     protected byte[] databaseID;
     protected DatabaseCrypto dc;
+    protected ByteBuffer msgBuf = ByteBuffer.allocate(256);
 
 
     public Object[] generateKeyPair(){
@@ -48,11 +50,12 @@ public class Database implements Communicator {
         return keyPair;
     }
 
+    //Returns byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash
+    //TODO: Where is the end?
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
-        byte[] toHash = prepareMessage(pubk, id);
+        byte[] toHash = concatBytes(pubk.getEncoded(), id);
         byte[] signedHash = dc.hashAndSign(toHash);
-        byte[] certificate = prepareMessage(pubk, id, signedHash);
-        return certificate;
+        return concatBytes(toHash, intToByteArray(signedHash.length),signedHash);
     }
 
     //Get and set the database keys and id
@@ -97,7 +100,7 @@ public class Database implements Communicator {
         try{
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
-            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "\\DemoCalcProject\\db\\CarCompany.db";
+            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "/DemoCalcProject/db/CarCompany.db";
             conn = DriverManager.getConnection(url);
         } catch(Exception e){
             System.err.println(e.getClass().getName() + ": " + e.getMessage() );
@@ -112,7 +115,7 @@ public class Database implements Communicator {
     }
 
     public void carAssign(ReceptionTerminal reception){
-        byte[] response = new byte[0];
+        ByteBuffer response;
         try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -120,8 +123,9 @@ public class Database implements Communicator {
             errorState("Waiting for response carAssign");
             return;
         }
-        Object[] responseData = processMessage(response);
-        byte[] cardID = (byte[]) responseData[0]; //Get card ID so DB knows which car is assigned to which card
+
+        byte[] cardID = new byte[5];
+        response.get(cardID,0,5);//Get card ID so DB knows which car is assigned to which card
 
         String autoID = null;
 
@@ -158,12 +162,15 @@ public class Database implements Communicator {
 
 
         byte[] message = prepareMessage(autoCert);
-        send(reception, message);
+        msgBuf.put(autoCert);
+        send(reception, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
         //Potentially get confirmation from terminal that they received it? or do we already ack stuff
     }
 
     public void carUnassign(ReceptionTerminal reception){
-        byte[] response = new byte[0];
+        ByteBuffer response;
         try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -171,8 +178,8 @@ public class Database implements Communicator {
             errorState("Waiting for response carUnassign");
             return;
         }
-        Object[] responseData = processMessage(response);
-        byte[] cardID = (byte[]) responseData[0];
+        byte[] cardID = new byte[5];
+        response.get(cardID,0,5);
 
         String sql = "DELETE FROM rentRelations WHERE cardID = ?";
 
@@ -189,12 +196,15 @@ public class Database implements Communicator {
 
         String confirmation = cardID.toString() + " has been removed from Rent Relations.";
         byte[] message = prepareMessage(confirmation);
-        send(reception, message);
+        msgBuf.put(message);
+        send(reception, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
         //Terminal might need to receive this message. We'll fix later. :)
     }
 
     public void deleteCard(ReceptionTerminal reception){
-        byte[] response = new byte[0];
+        ByteBuffer response;
         try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -202,8 +212,8 @@ public class Database implements Communicator {
             errorState("Waiting for response carUnassign");
             return;
         }
-        Object[] responseData = processMessage(response);
-        byte[] cardID = (byte[]) responseData[0];
+        byte[] cardID = new byte[5];
+        response.get(cardID,0,5);
 
         String sql = "DELETE FROM cards WHERE cardID = ?";
 
@@ -220,7 +230,9 @@ public class Database implements Communicator {
 
         String confirmation = cardID.toString() + " has been removed from cards.";
         byte[] message = prepareMessage(confirmation);
-        send(reception, message);
+        send(reception, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
     }
 
     public Smartcard generateCard(){
@@ -228,7 +240,7 @@ public class Database implements Communicator {
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
         PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
-        byte[] scID = UUID.randomUUID().toString().getBytes();
+        byte[] scID = dc.generateID();
         byte[] scCERT = issueCertificate(scPubSK, scID, dbPrivSK);
 
         String sql ="INSERT INTO cards(id,publickey,certificate) VALUES(?,?,?)";
@@ -254,7 +266,7 @@ public class Database implements Communicator {
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
-        byte[] autoID = UUID.randomUUID().toString().getBytes();
+        byte[] autoID = dc.generateID();
         byte[] autoCERT = issueCertificate(autoPubSK, autoID, dbPrivSK);
 
         String sql ="INSERT INTO autos(id,publickey,certificate) VALUES(?,?,?)";
@@ -279,7 +291,7 @@ public class Database implements Communicator {
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
-        byte[] rtID = UUID.randomUUID().toString().getBytes();
+        byte[] rtID = dc.generateID();
         byte[] rtCERT = issueCertificate(rtPubSK, rtID, dbPrivSK);
 
         String sql ="INSERT INTO terminals(id,publickey,certificate) VALUES(?,?,?)";
