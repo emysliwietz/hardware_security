@@ -20,10 +20,10 @@ class CryptoImplementationTest {
     void setUp() {
         //ci = new Database();
         ci = new CryptoImplementation() {
-            @Override
+          /*  @Override
             public byte[] generateNonce() {
                 return super.generateNonce();
-            }
+            }*/
         };
     }
 
