@@ -55,25 +55,33 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
             return -1;
         }
-        byte[] msg1b = new byte[0];
+
+        //Message 1
+        ByteBuffer msg1;
         try {
-            msg1b = waitForInput();
+            msg1 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout message1 carReturn");
             rtLogger.warning("Timeout while waiting for message", "CarReturn message 1", cardID);
             return -1;
         }
-        Object[] msg1o = processMessage(msg1b);
-        short seqNum = (short) msg1o[1];
+        byte[] carReturnBytes = new byte[10];
+        msg1.get(carReturnBytes,0,10);
+        String carReturn = new String(carReturnBytes, StandardCharsets.UTF_8);
+        short seqNum = msg1.getShort();
         if(!rtc.areSubsequentNonces(termNonce,seqNum)){
             errorState("Wrong sequence number in carReturn message 1");
             rtLogger.fatal("Wrong sequence number", "carReturn message 1", cardID);
             return -1;
         }
-        boolean manipulation = (boolean) msg1o[2];
-        byte[] msg1Hash = rtc.unsign(((byte[]) msg1o[3]), scPubSK);
-        byte[] msg1ConfHash = rtc.createHash(prepareMessage(((byte) msg1o[0]), seqNum, manipulation));
+        byte[] manipulationByte = {msg1.get()};
+        boolean manipulation = booleanFromByteArray(manipulationByte);
+        int msg1HashSignLen = msg1.getInt();
+        byte[] msg1HashSign = new byte[msg1HashSignLen];
+        msg1.get(msg1HashSign,17,msg1HashSignLen);
+        byte[] msg1Hash = rtc.unsign(msg1HashSign, scPubSK);
+        byte[] msg1ConfHash = rtc.createHash(concatBytes(carReturn.getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum), booleanToByteArray(manipulation)));
         if(msg1Hash != msg1ConfHash){
             errorState("Hashes don't match in carReturn message 1");
             rtLogger.fatal("Hashes don't match", "carReturn message 1", cardID);
@@ -84,48 +92,67 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify", "carReturn message 1", cardID);
             return -1;
         }
+
+        //Message 2
         short kmmNonce = rtc.generateNonce();
+        msgBuf.putShort(kmmNonce);
         short seqNum2 = (short) (scNonce+1);
-        byte[] msg2Sign = rtc.hashAndSign(prepareMessage(kmmNonce, seqNum2));
-        send(sc, kmmNonce, seqNum2, msg2Sign);
-        byte[] msg3b;
+        msgBuf.putShort(seqNum2);
+        byte[] msg2Sign = rtc.hashAndSign(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
+        msgBuf.putInt(msg2Sign.length).put(msg2Sign);
+        send(sc, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
+
+        //Message 3
+        ByteBuffer msg3;
         try {
-            msg3b = waitForInput();
+            msg3 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in message3 carReturn response");
             rtLogger.warning("Timeout while waiting for response", "message3 carReturn", cardID);
             return -1;
         }
-        Object[] msg3 = processMessage(msg3b);
-        kilometerage = (int) msg3[0];
-        short kmmNonceResp = (short) msg3[1];
+        kilometerage = msg3.getInt();
+        short kmmNonceResp = msg3.getShort();
         if(kmmNonce != kmmNonceResp){
             //TODO: Error
             errorState("Wrong kilometerage nonce returned");
             rtLogger.fatal("Wrong kilometerage nonce returned", "message 3 carReturn", cardID);
             return -1;
         }
-        short seqNum3 = (short) msg3[2];
+        short seqNum3 = msg3.getShort();
         if(!rtc.areSubsequentNonces(termNonce,seqNum3,2)){
             errorState("Wrong sequence number in carReturn message 3");
             rtLogger.fatal("Wrong sequence number", "carReturn message 3", cardID);
             return -1;
         }
-        byte[] msg3Hash = rtc.unsign(((byte[]) msg3[3]),scPubSK);
-        byte[] validMsg3Hash = rtc.createHash(prepareMessage(kilometerage, kmmNonceResp, seqNum3));
+        int msg3HashSignLen = msg3.getInt();
+        byte[] msg3HashSign = new byte[msg3HashSignLen];
+        msg3.get(msg3HashSign,12,msg3HashSignLen);
+        byte[] msg3Hash = rtc.unsign(msg3HashSign,scPubSK);
+        byte[] validMsg3Hash = rtc.createHash(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonceResp), shortToByteArray(seqNum3)));
         if(msg3Hash != validMsg3Hash){
             //TODO: Error
             errorState("Hash in carReturn message 3 invalid");
             rtLogger.fatal("Invalid hash", "carReturn message 3", cardID);
             return -1;
         }
-        send(sc, SUCCESS_BYTE, (short) (scNonce + 2), rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2))));
+
+        //Success Message
+        msgBuf.put(SUCCESS_BYTE).putShort((short) (scNonce + 2));
+        byte[] succHash = rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2)));
+        msgBuf.putInt(succHash.length).put(succHash);
+        send(sc, msgBuf);
+        msgBuf.clear();
+        msgBuf.rewind();
         rtLogger.info("Car returned successfully", "carReturn", cardID);
         cardAuthenticated = false;
         cardID = null;
-        byte[] message = prepareMessage(cardID);
-        Thread t1 = new Thread(() -> send(database, message));
+        //Notify database
+        msgBuf.put(cardID);
+        Thread t1 = new Thread(() -> send(database, msgBuf));
         Thread t2 = new Thread(() -> database.carUnassign(this));
         t1.start();
         t2.start();
@@ -135,6 +162,8 @@ public class ReceptionTerminal implements Communicator {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        msgBuf.clear();
+        msgBuf.rewind();
         return kilometerage;
     }
 
