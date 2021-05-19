@@ -77,7 +77,7 @@ public class Smartcard implements Communicator {
         msg2.get(autoCertHashSign,137,certSignLen);
         byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
         byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSK.getEncoded(), autoID));
-        if (autoCertHash != autoIDPubSKHash){
+        if (!Arrays.equals(autoCertHash,autoIDPubSKHash)){
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid certificate send in message 2 of P1");
             manipulation = true;
@@ -101,7 +101,7 @@ public class Smartcard implements Communicator {
         curBufIndex += msg2NonceSignLen;
         byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
         byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
-        if (nonceValidHash != nonceCardResponseHash){
+        if (!Arrays.equals(nonceValidHash,nonceCardResponseHash)){
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid hash of nonce returned in message 2 of P1");
             manipulation = true;
@@ -141,7 +141,7 @@ public class Smartcard implements Communicator {
         succMb.get(succMHashSign,7,nonceSuccSignLen);
         byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
         byte[] succByte = {success};
-        if((sc.createHash(succByte)) != succMHash){
+        if(!Arrays.equals(sc.createHash(succByte),succMHash)){
             errorState("Invalid hash in sucess message (P1)");
             return null;
         }
@@ -184,7 +184,7 @@ public class Smartcard implements Communicator {
         byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
 
         byte[] receptionIDPubSKHash = sc.createHash(concatBytes(rtPubSkb, receptionID));
-        if (receptionCertHash != receptionIDPubSKHash){ //Step 5
+        if (!Arrays.equals(receptionCertHash,receptionIDPubSKHash)){ //Step 5
             manipulation = true;
             errorState("ReceptionCertHash does not match expected value, check for manipulation.");
             //TODO: Send message to terminal that process is stopped
@@ -223,7 +223,7 @@ public class Smartcard implements Communicator {
         byte[] cardNonceHash = sc.unsign(responseData2, rtPubSK);
         byte[] successByteArray = {success};
         byte[] nonceCardHashValid = sc.createHash(concatBytes(successByteArray, shortToByteArray(nonceCard)));
-        if (nonceCardHashValid != cardNonceHash){ //Step 9
+        if (!Arrays.equals(nonceCardHashValid,cardNonceHash)){ //Step 9
             errorState("Invalid hash in message 4 of P2");
             return;
         }
@@ -274,7 +274,7 @@ public class Smartcard implements Communicator {
         byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
 
         byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSkb, autoID));
-        if (autoCertHash != autoIDPubSKHash){ //Step 7 - certificate
+        if (!Arrays.equals(autoCertHash,autoIDPubSKHash)){ //Step 7 - certificate
             //manipulation = true;
             errorState("Invalid car signature received");
             //TODO: Send message to terminal that process is stopped
@@ -314,7 +314,7 @@ public class Smartcard implements Communicator {
         byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
         byte[] validRecKmmHash = sc.createHash(intToByteArray(kilometerage));
 
-        if(recKmmHash != validRecKmmHash){
+        if(!Arrays.equals(recKmmHash,validRecKmmHash)){
             errorState("Hashes do not match in kilometerage update! Potential manipulation!");
             //TODO: throw error or something (tamper bit). Also stop further actions.
         }
@@ -361,7 +361,7 @@ public class Smartcard implements Communicator {
 
 
         byte[] validMsg2Hash = sc.createHash(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
-        if(msg2Hash != validMsg2Hash){
+        if(!Arrays.equals(msg2Hash,validMsg2Hash)){
             //TODO: Error; also check sequence number (not in this if clause (obviously))
             errorState("Message hashes do not match in msg2 carReturn");
             return;
@@ -402,7 +402,7 @@ public class Smartcard implements Communicator {
         succMsg.get(signedSuccHash, 7, hashLength);
 
         byte[] succHash = sc.unsign((byte[]) signedSuccHash, rtPubSK);
-        if(succHash != sc.createHash(prepareMessage(success,succNonce))){
+        if(!Arrays.equals(succHash,sc.createHash(prepareMessage(success,succNonce)))){
             errorState("Invalid hash in success message of Protocol 4");
             return;
         }
