@@ -18,13 +18,13 @@ class CryptoImplementationTest {
 
     @BeforeEach
     void setUp() {
-        /*//ci = new Database();
+        //ci = new Database();
         ci = new CryptoImplementation() {
-            @Override
+          /*  @Override
             public byte[] generateNonce() {
                 return super.generateNonce();
-            }
-        };*/
+            }*/
+        };
     }
 
     @AfterEach

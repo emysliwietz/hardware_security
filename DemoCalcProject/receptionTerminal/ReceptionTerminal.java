@@ -71,14 +71,18 @@ public class ReceptionTerminal implements Communicator {
         byte[] carReturnBytes = new byte[10];
         msg1.get(carReturnBytes,0,10);
         String carReturn = new String(carReturnBytes, StandardCharsets.UTF_8);
+        if (!carReturn.equals("Car Return")) {
+            errorState("Wrong command, expected Car Return, got " + carReturn);
+            rtLogger.warning("Wrong command, expected Car Return, got " + carReturn, "CarReturn message 1", cardID);
+            return -1;
+        }
         short seqNum = msg1.getShort();
         if(!rtc.areSubsequentNonces(termNonce,seqNum)){
             errorState("Wrong sequence number in carReturn message 1");
             rtLogger.fatal("Wrong sequence number", "carReturn message 1", cardID);
             return -1;
         }
-        byte[] manipulationByte = {msg1.get()};
-        boolean manipulation = booleanFromByteArray(manipulationByte);
+        boolean manipulation = booleanFromByte(msg1.get());
         int msg1HashSignLen = msg1.getInt();
         byte[] msg1HashSign = new byte[msg1HashSignLen];
         msg1.get(msg1HashSign,17,msg1HashSignLen);

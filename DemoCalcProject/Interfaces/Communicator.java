@@ -105,8 +105,8 @@ public interface Communicator extends Receivable {
         }
     }
 
-    default boolean booleanFromByteArray(byte[] bytes) {
-        return (bytes[0] != 0);
+    default boolean booleanFromByte(byte b) {
+        return (b != 0);
     }
 
     default void send(Receivable receiver, ByteBuffer msgBuf){
