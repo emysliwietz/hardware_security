@@ -78,7 +78,32 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
 
     @Override
     public void process(APDU apdu) throws ISOException {
-
+        ByteBuffer buffer = ByteBuffer.wrap(apdu.getBuffer());
+        // check SELECT APDU command
+        if ((buffer.get(ISO7816.OFFSET_CLA) == CARD_SELECT) &&
+                (buffer.get(ISO7816.OFFSET_INS) == (byte)
+                        (0xA4)) )
+            return;
+        switch (buffer.get(ISO7816.OFFSET_CLA)) {
+            case CARD_AUTH:
+                switch (buffer.get(ISO7816.OFFSET_INS)) {
+                    case INSERT_START:
+                        insertStart(auto, buffer.slice(ISO7816.OFFSET_CDATA, ISO7816.OFFSET_CDATA + buffer.get(ISO7816.OFFSET_LC)));
+                        break;
+                    case AUTH_RECEPTION_START:
+                        authReceptionStart();
+                }
+                break;
+            case CARD_PROC:
+                break;
+            case CARD_CONT:
+                //TODO: This is bullshit, use
+                // byte byteRead = (byte)(apdu.setIncomingAndReceive());
+                // instead of CARD_CONT
+                break;
+            default:
+                ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+        }
     }
 
 
