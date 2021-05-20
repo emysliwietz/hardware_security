@@ -61,6 +61,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     final static short PROC_FAILED = 0x5200;
     final static short WRONG_CONTINUATION = 0x5300;
 
+    //TODO: Use this
+    public enum ProtocolAwaited{
+        AUTH,   //card waits for an authentication protocol (insert, authReception)
+        PROC,   //card waits for a processing protocol (assignment, kmmUpdate, carReturn)
+        INS2,   //card has started Insert Protocol and is waiting for message 2
+        INSS,   //card has started Insert Protocol and is waiting for success message
+        AUTHR2, //card has started authReception Protocol and is waiting for message 2
+        AUTHR3, //TODO: finish these comments...
+        CASS2,
+        CRET2,
+        CRET3,
+    }
+
 
 
     @Override
@@ -68,9 +81,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
 
     }
 
+
     public enum States{EMPTY, ASSIGNED_NONE, ASSIGNED, END_OF_LIFE}
     public States state = States.EMPTY;
 
+    //TODO Move Initialization to constructor and check for out-of-memory
     private byte[] msgBufRaw = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
     // ByteBuffer operations translate directly to simple JVM operations, very little overhead,
     // both computationally and spacially (points to underlying msgBufRaw) but much more versatile
@@ -87,10 +102,36 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     //See slide 32 of february 8 Javacard. We can have 1 or 2. So we gotta be careful.
     //To do: figure out length we can have. Currently pubkey is around 216 bytes.
 
+    public static void install(byte[] bArray, short bOffset, byte bLength){
+        // create a SmartCard applet instance
+        new Smartcard(bArray, bOffset, bLength);
+    }
 
-    public Smartcard(byte[] cardID, byte[] cardCertificate, PrivateKey privateKey) {
+    //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
+    private Smartcard(byte[] bArray, short bOffset, byte bLength) {
+        ByteBuffer tmp = ByteBuffer.wrap(bArray, bOffset, bLength);
+        byte[] cardID = new byte[5];
+        tmp.get(cardID, 0, 5);
+        int certLength = tmp.getInt();
+        byte[] cardCertificate = new byte[certLength];
+        tmp.get(cardCertificate, 9, certLength);
+        byte[] privateKeyEncoded = new byte[bLength - (certLength + 9)];
+        tmp.get(privateKeyEncoded, 9 + certLength, bLength - (certLength + 9));
+        PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         state = States.ASSIGNED_NONE;
+        register();
+    }
+
+    // Wakes up smartcard from suspended state and returns whether it's ready to process requests.
+    public boolean select() {
+        //reject activation if card is no longer alive
+        return state != States.END_OF_LIFE;
+    }
+
+    //card is removed from reader and enters suspend state
+    public void deselect() {
+
     }
 
 
