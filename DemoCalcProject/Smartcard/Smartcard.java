@@ -5,6 +5,7 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import db.Database;
+import javacard.framework.*;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
@@ -20,7 +21,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
-public class Smartcard implements Communicator {
+public class Smartcard extends Applet implements Communicator, ISO7816 {
     //Everything here is in EEPROM (persistent)
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
@@ -30,9 +31,20 @@ public class Smartcard implements Communicator {
 
     private byte[] autoIDStored;
     public PublicKey autoPubSK;
+
+    @Override
+    public void process(APDU apdu) throws ISOException {
+
+    }
+
     public enum States{EMPTY, ASSIGNED_NONE, ASSIGNED, END_OF_LIFE}
     public States state = States.EMPTY;
-    private ByteBuffer msgBuf = ByteBuffer.allocate(256);
+
+    private byte[] msgBufRaw = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
+    // ByteBuffer operations translate directly to simple JVM operations, very little overhead,
+    // both computationally and spacially (points to underlying msgBufRaw) but much more versatile
+    // than byte[].
+    private ByteBuffer msgBuf = ByteBuffer.wrap(msgBufRaw); //ByteBuffer.allocate(256);
 
     //Move to some temporary storage:
     boolean terminalAuthenticated = false; //in temporary storage
