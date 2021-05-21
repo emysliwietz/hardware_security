@@ -256,6 +256,7 @@ public class Database implements Communicator {
         }
         // and send the info back
         // Private key and certificate must be send to terminal which sends it to the card
+        //TODO: Adjust to new constructor
         return new Smartcard(scID, scCERT, scPrivSK);
         //byte[] message = prepareMessage(scPrivSK, scCERT);
         //send(terminal, message);

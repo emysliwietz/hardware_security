@@ -152,7 +152,7 @@ public interface Communicator extends Receivable {
         return inputQueue.remove();
     }*/
 
-    default ByteBuffer waitForInput() throws MessageTimeoutException {
+    /*default ByteBuffer waitForInput() throws MessageTimeoutException {
         int totalwait = 0;
         while (inputQueue.isEmpty()){
             try {
@@ -165,7 +165,9 @@ public interface Communicator extends Receivable {
             }
         }
         return inputQueue.remove();
-    }
+    }*/
+
+
 
     class MessageTimeoutException extends Exception {
     }
