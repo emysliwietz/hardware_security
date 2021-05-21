@@ -179,7 +179,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     }
 
 
-    public void insertStart(Auto auto) { //Return public key because we are to lazy to replace teh returns
+    public PublicKey insert(APDU apdu) { //Return public key because we are to lazy to replace the returns
         //Message 1
         nonceCard = sc.generateNonce();
         apdu.setOutgoing();
@@ -223,7 +223,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid certificate send in message 2 of P1");
             manipulation = true;
-            return;
+            return null;
         }
 
         //Response of nonceCard
@@ -232,7 +232,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         if (nonceCard != nonceCardResponse) {
             errorState("Wrong nonce returned in message 2 of P1");
             manipulation = true;
-            return; //Placeholder
+            return null; //Placeholder
         }
 
         //signed hash of nonceCard
@@ -247,7 +247,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid hash of nonce returned in message 2 of P1");
             manipulation = true;
-            return; //Placeholder probably
+            return null; //Placeholder probably
         }
 
         //nonceAuto
@@ -299,7 +299,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     }
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
-    public void authReceptionStart(ReceptionTerminal reception) {
+    public void authReception(APDU apdu) {
         // How does the card know if it is in a terminal or a car?
         // Potential solution: terminal or auto sends a basic message like "terminal!" or  "auto!"
         //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
@@ -395,7 +395,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
 
     }
     /*Protocol 3 - Assignment of car to smartcard */
-    public void carAssignmentStart(ReceptionTerminal reception) {
+    public void carAssignment(APDU apdu) {
         if (!terminalAuthenticated) { //Step 1
             return; //TODO: Placeholder
         }
@@ -413,11 +413,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         //msgBuf.clear();
         //msgBuf.rewind();
         //Step2
-    }
 
-    public void carAssignmentM2(ReceptionTerminal reception, ByteBuffer response) {
-       /* ByteBuffer response;
-        try {
+        byte dataLen = (byte) apdu.setIncomingAndReceive();
+        ByteBuffer response = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,dataLen);;
+        /*try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
@@ -466,9 +465,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         //msgBuf.clear().rewind();
     }
 
-    public void kilometerageUpdate(Auto auto, ByteBuffer receivedKmm){
-       /* ByteBuffer receivedKmm;
-        try {
+    public void kilometerageUpdate(APDU apdu){
+        ByteBuffer receivedKmm = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        /*try {
             receivedKmm = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
@@ -510,7 +509,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         //msgBuf.clear().reset();
     }
 
-    public void carReturnStart(ReceptionTerminal rt) {
+    public void carReturn(APDU apdu) {
         short seqNum1 = (short) (nonceReception + 1);
         byte[] car_return = "Car Return".getBytes(StandardCharsets.UTF_8);
         byte[] msg1Hash = sc.hashAndSign(concatBytes(car_return, shortToByteArray(seqNum1), booleanToByteArray(manipulation)));
@@ -524,17 +523,16 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         //send(rt, msgBuf);
         //msgBuf.clear().reset();
 
-    public void carReturnM2(ReceptionTerminal rt, ByteBuffer msg2) {
-
-        /*ByteBuffer msg2;
-        try {
+        byte dataLen = (byte) apdu.setIncomingAndReceive();
+        ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,dataLen);;
+        /*try {
             msg2 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in waiting for message 2 carReturn");
             return;
         }*/
-        short seqNum1 = (short) (nonceReception + 1);
+        //short seqNum1 = (short) (nonceReception + 1);
         short kmmNonce = msg2.getShort();
         short seqNum2 = msg2.getShort();
         int lengthHash = msg2.getInt();
@@ -569,11 +567,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         state = States.ASSIGNED_NONE;
         autoIDStored = null; //Placeholder
         autoPubSK = null; //Placeholder
-    }
 
-    public void carReturnMS(ByteBuffer succMsg) {
-       /* ByteBuffer succMsg;
-        try {
+        dataLen = (byte) apdu.setIncomingAndReceive();
+        ByteBuffer succMsg = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,dataLen);;
+        /*try {
             succMsg = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
