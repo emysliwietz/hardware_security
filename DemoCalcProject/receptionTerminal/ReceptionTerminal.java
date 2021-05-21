@@ -5,11 +5,15 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
+import com.licel.jcardsim.smartcardio.CardSimulator;
+import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import db.Database;
+import javacard.framework.AID;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 import utility.Logger;
 
+import javax.smartcardio.*;
 import java.io.File;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -21,6 +25,18 @@ import java.util.Arrays;
 import java.util.UUID;
 
 public class ReceptionTerminal implements Communicator {
+
+    static final byte[] SC_APPLET_AID = {
+            (byte) 0x3B,
+            (byte) 0x29,
+            (byte) 0x63,
+            (byte) 0x61,
+            (byte) 0x6C,
+            (byte) 0x63,
+            (byte) 0x02
+    };
+    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
+    CardChannel applet;
 
     private ReceptionTerminal.RTCrypto rtc;
     public PublicKey dbPubSK;
@@ -49,6 +65,7 @@ public class ReceptionTerminal implements Communicator {
         File logFile = new File(rtID.toString()+"_reception_terminal_log.txt");
         rtLogger = new Logger(logFile);
         database = db;
+        (new SimulatedCardThread()).start();
     }
 
     public int carReturn(Smartcard sc){
@@ -403,6 +420,27 @@ public class ReceptionTerminal implements Communicator {
 
             @Override
             public PublicKey getPublicKey() {return null;}
+        }
+    }
+
+    class SimulatedCardThread extends Thread {
+        public void run(){
+            CardTerminals cardTerminals = CardTerminalSimulator.terminals("Rental smartcard terminals");
+            CardTerminal rtTerminal = cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
+            CardSimulator smartcard = new CardSimulator();
+            AID scAppletAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+            smartcard.installApplet(scAppletAID,Smartcard.class);
+            smartcard.assignToTerminal(rtTerminal);
+            try{
+                Card card = rtTerminal.connect("*");
+                applet = card.getBasicChannel();
+                ResponseAPDU resp = applet.transmit(SELECT_APDU);
+                if(resp.getSW() != 0x9000){
+                    throw new Exception("Select failed");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

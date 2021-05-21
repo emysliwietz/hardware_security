@@ -61,8 +61,8 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="lib1" level="project" />
-    <orderEntry type="library" name="jcardsim-2.2.2-all" level="project" />
     <orderEntry type="library" name="jcrmiclientframework" level="project" />
     <orderEntry type="library" name="apduio" level="project" />
+    <orderEntry type="library" name="jcardsim-3.0.4-SNAPSHOT" level="project" />
   </component>
 </module>

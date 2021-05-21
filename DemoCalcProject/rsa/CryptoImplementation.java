@@ -27,7 +27,10 @@ public abstract class CryptoImplementation {
         byte[] bytes = new byte[5];
         sr.nextBytes(bytes);
         return bytes;
+    }
 
+    public byte[] getID() {
+        return ID;
     }
 
     /*public short generateNonceAsShort() {

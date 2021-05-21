@@ -5,6 +5,7 @@ import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
 import db.Database;
+import javacard.framework.AID;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 import utility.Logger;
@@ -16,8 +17,23 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.UUID;
+import javax.smartcardio.*;
+import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
+import com.licel.jcardsim.smartcardio.CardSimulator;
 
 public class Auto implements Receivable, Communicator {
+
+    static final byte[] SC_APPLET_AID = {
+            (byte) 0x3B,
+            (byte) 0x29,
+            (byte) 0x63,
+            (byte) 0x61,
+            (byte) 0x6C,
+            (byte) 0x63,
+            (byte) 0x02
+    };
+    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
+    CardChannel applet;
 
     private AutoCrypto ac;
     public PublicKey dbPubSK;
@@ -41,6 +57,7 @@ public class Auto implements Receivable, Communicator {
         ac = new AutoCrypto(autoID, autoCertificate, privateKey);
         File logFile = new File(Arrays.toString(autoID) +"_auto_log.txt");
         autoLogger = new Logger(logFile);
+        (new SimulatedCardThread()).start();
     }
 
     //Protocol 1
@@ -201,6 +218,27 @@ public class Auto implements Receivable, Communicator {
             @Override
             public PublicKey getPublicKey() {
                 return null;
+            }
+        }
+    }
+
+    class SimulatedCardThread extends Thread {
+        public void run(){
+            CardTerminals cardTerminals = CardTerminalSimulator.terminals("Rental smartcard terminals");
+            CardTerminal autoTerminal = cardTerminals.getTerminal(Arrays.toString(ac.getID()));
+            CardSimulator smartcard = new CardSimulator();
+            AID scAppletAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+            smartcard.installApplet(scAppletAID,Smartcard.class);
+            smartcard.assignToTerminal(autoTerminal);
+            try{
+                Card card = autoTerminal.connect("*");
+                applet = card.getBasicChannel();
+                ResponseAPDU resp = applet.transmit(SELECT_APDU);
+                if(resp.getSW() != 0x9000){
+                    throw new Exception("Select failed");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
