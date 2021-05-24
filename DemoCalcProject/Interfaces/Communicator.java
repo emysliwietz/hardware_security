@@ -24,6 +24,7 @@ public interface Communicator extends Receivable {
     final static byte CARD_AUTH  = (byte) 0xB0; //authentication protocols
     final static byte CARD_PROC  = (byte) 0xC0; //processing protocols
     final static byte CARD_CONT  = (byte) 0xD0; //protocol continuation messages
+    final static byte CARD_EOL   = (byte) 0xE0;
 
     // INS codes for APDU header
     final static byte INSERT_START = (byte) 0x20;
@@ -38,6 +39,7 @@ public interface Communicator extends Receivable {
     final static byte CAR_RETURN_START = (byte) 0x60;
     final static byte CAR_RETURN_M2 = (byte) 0x62;
     final static byte CAR_RETURN_MS = (byte) 0x63;
+    final static byte BLOCK = (byte) 0x70;
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;

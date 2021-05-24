@@ -149,6 +149,13 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
                         ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
                         return;
                 }
+            case CARD_EOL:
+                if(buffer.get(ISO7816.OFFSET_CLA) == BLOCK){
+                    state = States.END_OF_LIFE;
+                } else {
+                    ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+                }
+                return;
 
             default:
                 ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);

@@ -64,7 +64,7 @@ public class SmartcardGUI extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
         Parent root = loader.load();
         SmartcardGUIController controller = loader.getController();
-        controller.setVars(a, rt);
+        controller.setVars(a, rt, db);
 
         FXMLLoader cardLoader = new FXMLLoader(getClass().getResource("Smartcard.fxml"));
         Parent pcard = cardLoader.load();

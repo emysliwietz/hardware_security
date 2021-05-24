@@ -53,11 +53,13 @@ public class SmartcardGUIController {
     //private Smartcard sc;
     private Auto a;
     private ReceptionTerminal rt;
+    private Database db;
 
-    public void setVars(Auto a, ReceptionTerminal rt){
+    public void setVars(Auto a, ReceptionTerminal rt, Database db){
         //this.sc = sc;
         this.a = a;
         this.rt = rt;
+        this.db = db;
     }
 
 
@@ -73,9 +75,18 @@ public class SmartcardGUIController {
     }
 
     private void block(){
-        display.setText("Card successfully blocked by employee");
         //TODO: Create codes and APDU for this stuff
-        sc.state = Smartcard.States.END_OF_LIFE;
+        Thread t1 = new Thread(() -> rt.blockCard());
+        Thread t2 = new Thread(() -> db.deleteCard(rt));
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        display.setText("Card successfully blocked by employee");
         left2.setText("");
         l2.setOnMouseClicked(null);
         right2.setText("OK");

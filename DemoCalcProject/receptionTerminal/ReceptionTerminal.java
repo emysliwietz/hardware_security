@@ -447,6 +447,37 @@ public class ReceptionTerminal implements Communicator {
         cardAuthenticated = false;
     }
 
+    public void blockCard(){
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_EOL,BLOCK,0,0,0);
+        ResponseAPDU apdu;
+        try {
+            apdu = applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return;
+        }
+        ByteBuffer blockBuf = ByteBuffer.allocate(5);
+        blockBuf.put(cardID);
+        send(database,blockBuf);
+        ByteBuffer resp;
+        try {
+            resp = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return;
+        }
+        int msgLen =cardID.toString().length() + 29;
+        byte[] msg = new byte[msgLen];
+        resp.get(msg,0,msgLen);
+        String request = new String(msg, StandardCharsets.UTF_8);
+        if(!request.equals(cardID.toString() + " has been removed from cards.")){
+            errorState("Database returned wrong message after blocking card");
+            rtLogger.fatal("Database returned wrong message", "blockCard", cardID);
+            return;
+        }
+        rtLogger.info("Card blocked successfully", "blockCard",cardID);
+    }
+
     private static class RTCrypto extends CryptoImplementation {
 
         public RTCrypto(byte[] rtID, byte[] rtCertificate, PrivateKey privateKey) {
