@@ -410,15 +410,15 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.rewind();
 
         // Success message?
-        ByteBuffer succMsg;
-        try {
+        ByteBuffer succMsg = ByteBuffer.wrap(apdu.getData());
+        /*try {
             succMsg = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response2 carAssignment");
             rtLogger.warning("Aborting: timeout", "carAssignment message 3", cardID);
             return;
-        }
+        }*/
 
         byte success = succMsg.get();
         if(success != SUCCESS_BYTE){
