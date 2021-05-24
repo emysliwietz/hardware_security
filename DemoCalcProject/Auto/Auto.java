@@ -53,6 +53,16 @@ public class Auto implements Receivable, Communicator {
         return null;
     }
 
+    private ResponseAPDU sendAPDU(int cla, int ins, ByteBuffer data) {
+        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length);
+        try {
+            return applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey) {
         ac = new AutoCrypto(autoID, autoCertificate, privateKey);
         File logFile = new File(Arrays.toString(autoID) +"_auto_log.txt");
@@ -60,17 +70,29 @@ public class Auto implements Receivable, Communicator {
         (new SimulatedCardThread()).start();
     }
 
-    //Protocol 1
-    public PublicKey authenticateSmartCard(Smartcard sc){
-        //Message 1
-        ByteBuffer msg1;
+    public void authenticateSCInitiate(){
+        CommandAPDU start = new CommandAPDU(CARD_AUTH,INSERT_START,0,0,256);
+        ResponseAPDU apdu;
         try {
+            apdu = applet.transmit(start);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return;
+        }
+        authenticateSmartCard(apdu);
+    }
+
+    //Protocol 1
+    public void authenticateSmartCard(ResponseAPDU apdu){
+        //Message 1
+        ByteBuffer msg1 = ByteBuffer.wrap(apdu.getData());
+        /*try {
             msg1 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             autoLogger.warning("Aborting: timeout", "authenticateSmartCard message 1", cardID);
             return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
-        }
+        }*/
         int curBufIndex = 0;
         int scCertHashSignLen = msg1.getInt(curBufIndex);
         curBufIndex += 4;
@@ -93,7 +115,7 @@ public class Auto implements Receivable, Communicator {
         if (!Arrays.equals(scCertHash,cardIDPubSKHash)){
             errorState("Invalid cerificate: hash does not match");
             autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
-            return null;
+            return;
         }
 
         //Nonces
@@ -109,19 +131,21 @@ public class Auto implements Receivable, Communicator {
         msgBuf.putInt(cardNonceHashSign.length);
         msgBuf.put(cardNonceHashSign);
         msgBuf.putShort(autoNonce);
-        send(sc, msgBuf);
+        apdu = sendAPDU(CARD_CONT,INSERT_M2,msgBuf);
+        //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
 
         //Message 3
-        ByteBuffer msg3 = msg1;
-        try {
+        ByteBuffer msg3 = ByteBuffer.wrap(apdu.getData());
+        /*try {
             msg3 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             autoLogger.warning("Aborting: Timeout", "authenticateSmartCard message 3", cardID);
-            return (PublicKey) errorState("Timeout in msg3 authenticate smartcard");
-        }
+            errorState("Timeout in msg3 authenticate smartcard");
+            return;
+        }*/
         //
         short autoNonceResp = msg3.getShort(0);
         byte[] autoNonceRespHashSignLenByte = new byte[4];
@@ -134,7 +158,6 @@ public class Auto implements Receivable, Communicator {
             //TODO: throw error or something (logs). Also stop further actions.
             errorState("Wrong nonce in P1 msg3 returned");
             autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
-            return null;
         }
         else{
             //Success message
@@ -143,16 +166,16 @@ public class Auto implements Receivable, Communicator {
             msgBuf.putShort((short) (cardNonce + 1));
             byte[] succByte = {SUCCESS_BYTE};
             msgBuf.putInt(ac.hashAndSign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))).length).put(ac.hashAndSign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))));
-            send(sc, msgBuf);
+            sendAPDU(CARD_CONT,INSERT_MS,msgBuf);
+            //send(sc, msgBuf);
             msgBuf.clear();
             msgBuf.rewind();
             autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
-            return scPubSK;
         }
 
     }
 
-    public void kilometerageUpdate(Smartcard sc){
+    public void kilometerageUpdate(){
         if(!cardAuthenticated){
             errorState("Card not authenticated in kilometerageUpdate");
             autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
@@ -160,20 +183,21 @@ public class Auto implements Receivable, Communicator {
         }
         //Message 1
         msgBuf.putInt(kilometerage).putInt(ac.hashAndSign(intToByteArray(kilometerage)).length).put(ac.hashAndSign(intToByteArray(kilometerage)));
-        send(sc, msgBuf);
+        ResponseAPDU apdu = sendAPDU(CARD_PROC,KMM_UPDATE,msgBuf);
+        //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
 
         //Message 2
-        ByteBuffer confirmation;
-        try {
+        ByteBuffer confirmation = ByteBuffer.wrap(apdu.getData());
+        /*try {
             confirmation = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in waiting for update confirmation kilomerage Update");
             autoLogger.warning("Aborting: Timeout", "kilometerageUpdate wait for update", cardID);
             return;
-        }
+        }*/
         byte confBYTE = confirmation.get();
         int curKmmCard = confirmation.getInt();
         if (kilometerage != curKmmCard){
