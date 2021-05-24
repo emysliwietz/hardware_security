@@ -50,12 +50,12 @@ public class SmartcardGUIController {
     //TODO: When sensible input available: replace states with states of sc
     private enum states{INIT,ASSIGNED}
     private states state = states.INIT;
-    private Smartcard sc;
+    //private Smartcard sc;
     private Auto a;
     private ReceptionTerminal rt;
 
-    public void setVars(Smartcard sc, Auto a, ReceptionTerminal rt){
-        this.sc = sc;
+    public void setVars(Auto a, ReceptionTerminal rt){
+        //this.sc = sc;
         this.a = a;
         this.rt = rt;
     }
@@ -74,6 +74,7 @@ public class SmartcardGUIController {
 
     private void block(){
         display.setText("Card successfully blocked by employee");
+        //TODO: Create codes and APDU for this stuff
         sc.state = Smartcard.States.END_OF_LIFE;
         left2.setText("");
         l2.setOnMouseClicked(null);
@@ -110,28 +111,10 @@ public class SmartcardGUIController {
         display.setText("");
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
-        Thread t1 = new Thread(() -> sc.authReception(rt));
-        Thread t2 = new Thread(() -> rt.cardAuthentication(sc));
-        t1.start();
-        t2.start();
-        try {
-            t1.join();
-            t2.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        rt.cardAuthenticationInitiate();
         if (state == states.INIT){
             System.out.println("Car assignment");
-            t1 = new Thread(() -> sc.carAssignment(rt));
-            t2 = new Thread(() -> rt.carAssignment(sc));
-            t1.start();
-            t2.start();
-            try {
-                t1.join();
-                t2.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            rt.carAssignmentInitiate();
             display.setText("Your car is: Fiat Multipla with plate HN J 5099");
             state = states.ASSIGNED;
             right2.setText("OK");
@@ -139,16 +122,7 @@ public class SmartcardGUIController {
             r2.setOnMouseClicked(event -> ok());
         } else {
             System.out.println("Car return");
-            t1 = new Thread(() -> sc.carReturn(rt));
-            t2 = new Thread(() -> rt.carReturn(sc));
-            t1.start();
-            t2.start();
-            try {
-                t1.join();
-                t2.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            rt.carReturnInitiate();
             display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: "+ 0.15*rt.kilometerage +"€");
             state = states.INIT;
             right2.setText("OK");
@@ -178,16 +152,7 @@ public class SmartcardGUIController {
         right0.setText("");
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
-        Thread t1 = new Thread(() -> sc.insert(a));
-        Thread t2 = new Thread(() -> a.authenticateSmartCard(sc));
-        t1.start();
-        t2.start();
-        try {
-            t1.join();
-            t2.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        a.authenticateSCInitiate();
         if(state != states.ASSIGNED){
             display.setText("You need to have a car assigned first!");
             right2.setText("OK");
@@ -196,16 +161,8 @@ public class SmartcardGUIController {
             return;
         }
         System.out.println("Car start");
-        t1 = new Thread(() -> sc.kilometerageUpdate(a));
-        t2 = new Thread(() -> a.kilometerageUpdate(sc));
-        t1.start();
-        t2.start();
-        try {
-            t1.join();
-            t2.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        //TODO: Looping
+        a.kilometerageUpdate();
         display.setText("Current mileage: 69");
         inscard.setText("Stop the car");
         insLab.setCursor(Cursor.HAND);

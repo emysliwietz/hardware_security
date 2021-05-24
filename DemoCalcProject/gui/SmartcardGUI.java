@@ -60,11 +60,10 @@ public class SmartcardGUI extends Application {
         Database db = new Database();
         rt = db.generateTerminal();
         a = db.generateAuto();
-        sc = db.generateCard();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
         Parent root = loader.load();
         SmartcardGUIController controller = loader.getController();
-        controller.setVars(sc, a, rt);
+        controller.setVars(a, rt);
 
         FXMLLoader cardLoader = new FXMLLoader(getClass().getResource("Smartcard.fxml"));
         Parent pcard = cardLoader.load();
