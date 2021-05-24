@@ -1,9 +1,15 @@
 package Interfaces;
 
+import javacard.framework.ISO7816;
+
+import javax.smartcardio.CardException;
+import javax.smartcardio.CommandAPDU;
+import javax.smartcardio.ResponseAPDU;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -13,8 +19,31 @@ import java.util.Queue;
 
 public interface Communicator extends Receivable {
 
+    // CLA codes for APDU header
+    final static byte CARD_SELECT = ISO7816.CLA_ISO7816;
+    final static byte CARD_AUTH  = (byte) 0xB0; //authentication protocols
+    final static byte CARD_PROC  = (byte) 0xC0; //processing protocols
+    final static byte CARD_CONT  = (byte) 0xD0; //protocol continuation messages
+    final static byte CARD_EOL   = (byte) 0xE0;
+
+    // INS codes for APDU header
+    final static byte INSERT_START = (byte) 0x20;
+    final static byte INSERT_M2 = (byte) 0x21;
+    final static byte INSERT_MS = (byte) 0x22;
+    final static byte AUTH_RECEPTION_START = (byte) 0x30;
+    final static byte AUTH_RECEPTION_M2 = (byte) 0x31;
+    final static byte AUTH_RECEPTION_MS = (byte) 0x32;
+    final static byte CAR_ASSIGNMENT_START = (byte) 0x40;
+    final static byte CAR_ASSIGNMENT_M2 = (byte) 0x41;
+    final static byte KMM_UPDATE = (byte) 0x50;
+    final static byte CAR_RETURN_START = (byte) 0x60;
+    final static byte CAR_RETURN_M2 = (byte) 0x62;
+    final static byte CAR_RETURN_MS = (byte) 0x63;
+    final static byte BLOCK = (byte) 0x70;
+
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
+
 
     default byte[] prepareMessage(Object ... objects){
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -33,6 +62,15 @@ public interface Communicator extends Receivable {
     default PublicKey bytesToPubkey(byte[] bytes) {
         try {
             return KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(bytes));
+        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    default PrivateKey bytesToPrivkey(byte[] bytes) {
+        try {
+            return KeyFactory.getInstance("RSA").generatePrivate(new X509EncodedKeySpec(bytes));
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
@@ -156,6 +194,8 @@ public interface Communicator extends Receivable {
         }
         return inputQueue.remove();
     }
+
+
 
     class MessageTimeoutException extends Exception {
     }

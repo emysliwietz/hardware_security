@@ -58,13 +58,13 @@ public class SmartcardGUI extends Application {
     @Override
     public void start(Stage primaryStage) throws IOException {
         Database db = new Database();
+        db.generateCard();
         rt = db.generateTerminal();
         a = db.generateAuto();
-        sc = db.generateCard();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("SmartcardGUI.fxml"));
         Parent root = loader.load();
         SmartcardGUIController controller = loader.getController();
-        controller.setVars(sc, a, rt);
+        controller.setVars(a, rt, db);
 
         FXMLLoader cardLoader = new FXMLLoader(getClass().getResource("Smartcard.fxml"));
         Parent pcard = cardLoader.load();

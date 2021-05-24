@@ -5,11 +5,15 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
+import com.licel.jcardsim.smartcardio.CardSimulator;
+import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import db.Database;
+import javacard.framework.AID;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 import utility.Logger;
 
+import javax.smartcardio.*;
 import java.io.File;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -21,6 +25,17 @@ import java.util.Arrays;
 import java.util.UUID;
 
 public class ReceptionTerminal implements Communicator {
+
+    static final byte[] SC_APPLET_AID = {
+            (byte) 0x3B,
+            (byte) 0x29,
+            (byte) 0x63,
+            (byte) 0x61,
+            (byte) 0x6C,
+            (byte) 0x63,
+            (byte) 0x02
+    };
+    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
 
     private ReceptionTerminal.RTCrypto rtc;
     public PublicKey dbPubSK;
@@ -34,6 +49,7 @@ public class ReceptionTerminal implements Communicator {
     public int kilometerage;
     private Logger rtLogger;
     private ByteBuffer msgBuf = ByteBuffer.allocate(256);
+    CardChannel applet;
 
     @Override
     public Object errorState(String msg) {
@@ -44,14 +60,37 @@ public class ReceptionTerminal implements Communicator {
         return null;
     }
 
+    private ResponseAPDU sendAPDU(int cla, int ins, ByteBuffer data) {
+        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length);
+        try {
+            return applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate, privateKey);
         File logFile = new File(rtID.toString()+"_reception_terminal_log.txt");
         rtLogger = new Logger(logFile);
         database = db;
+        (new SimulatedCardThread()).start();
     }
 
-    public int carReturn(Smartcard sc){
+    public int carReturnInitiate(){
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC,CAR_RETURN_START,0,0,256);
+        ResponseAPDU apdu;
+        try {
+            apdu = applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return -1;
+        }
+        return carReturn(apdu);
+    }
+
+    public int carReturn(ResponseAPDU apdu){
         if (!cardAuthenticated){
             errorState("Card is not authenticated");
             rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
@@ -59,15 +98,15 @@ public class ReceptionTerminal implements Communicator {
         }
 
         //Message 1
-        ByteBuffer msg1;
-        try {
+        ByteBuffer msg1 = ByteBuffer.wrap(apdu.getData());
+        /*try {
             msg1 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout message1 carReturn");
             rtLogger.warning("Timeout while waiting for message", "CarReturn message 1", cardID);
             return -1;
-        }
+        }*/
         byte[] carReturnBytes = new byte[10];
         msg1.get(carReturnBytes,0,10);
         String carReturn = new String(carReturnBytes, StandardCharsets.UTF_8);
@@ -106,20 +145,20 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.putShort(seqNum2);
         byte[] msg2Sign = rtc.hashAndSign(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
         msgBuf.putInt(msg2Sign.length).put(msg2Sign);
-        send(sc, msgBuf);
+        apdu = sendAPDU(CARD_CONT,CAR_RETURN_M2,msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
 
         //Message 3
-        ByteBuffer msg3;
-        try {
+        ByteBuffer msg3 = ByteBuffer.wrap(apdu.getData());
+        /*try {
             msg3 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout in message3 carReturn response");
             rtLogger.warning("Timeout while waiting for response", "message3 carReturn", cardID);
             return -1;
-        }
+        }*/
         kilometerage = msg3.getInt();
         short kmmNonceResp = msg3.getShort();
         if(kmmNonce != kmmNonceResp){
@@ -150,7 +189,8 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.put(SUCCESS_BYTE).putShort((short) (scNonce + 2));
         byte[] succHash = rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2)));
         msgBuf.putInt(succHash.length).put(succHash);
-        send(sc, msgBuf);
+        sendAPDU(CARD_CONT,CAR_RETURN_MS,msgBuf);
+        //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
         rtLogger.info("Car returned successfully", "carReturn", cardID);
@@ -174,17 +214,29 @@ public class ReceptionTerminal implements Communicator {
     }
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
-    public void cardAuthentication(Smartcard sc){
-        //Message 1
-        ByteBuffer response; //Step 2
+    public void cardAuthenticationInitiate(){
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,256);
+        ResponseAPDU apdu;
         try {
+            apdu = applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return;
+        }
+        cardAuthentication(apdu);
+    }
+
+    public void cardAuthentication(ResponseAPDU apdu){
+        //Message 1
+        ByteBuffer response = ByteBuffer.wrap(apdu.getData()); //Step 2
+        /*try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response cardAuthentication");
             rtLogger.warning("Timeout while waiting for message", "cardAuthentication message 1", cardID);
             return;
-        }
+        }*/
         int cardCertHashSignLen = response.getInt();
 
         //cardPubSK + cardID
@@ -212,21 +264,22 @@ public class ReceptionTerminal implements Communicator {
         //Message 2
         termNonce = rtc.generateNonce();
         msgBuf.putInt(rtc.getCertificate().length - 133).put(rtc.getCertificate()).putShort(termNonce);
-        send(sc, msgBuf);
+        apdu = sendAPDU(CARD_CONT,AUTH_RECEPTION_M2,msgBuf);
+        //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
         //Step 4
 
         //Message 3
-        ByteBuffer response2;
-        try {
+        ByteBuffer response2 = ByteBuffer.wrap(apdu.getData());
+        /*try {
             response2 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response 2 cardAuthentication");
             rtLogger.warning("Aborting: Timeout", "cardAuthentication response 2", cardID);
             return;
-        }
+        }*/
 
         short termNonceResp = response2.getShort();
         if(termNonceResp != termNonce){
@@ -251,28 +304,41 @@ public class ReceptionTerminal implements Communicator {
         byte[] succByte = {SUCCESS_BYTE};
         byte[] nonceCardHashSign = rtc.hashAndSign(concatBytes(succByte, shortToByteArray(scNonce)));
         msgBuf.putShort(scNonce).putInt(nonceCardHashSign.length).put(nonceCardHashSign);
-        send(sc, msgBuf); //Step 8
+        sendAPDU(CARD_CONT,AUTH_RECEPTION_MS,msgBuf);
+        //send(sc, msgBuf); //Step 8
         rtLogger.info("Smartcard authenticated successfully", "cardAuthentification", cardID);
         cardAuthenticated = true; //When to make it false again
 
     }
 
     /*Protocol 3 - Assignment of car to smartcard */
-    public void carAssignment(Smartcard sc){
+    public void carAssignmentInitiate(){
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC,CAR_ASSIGNMENT_START,0,0,256);
+        ResponseAPDU apdu;
+        try {
+            apdu = applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return;
+        }
+        carAssignment(apdu);
+    }
+
+    public void carAssignment(ResponseAPDU apdu){
         if (!cardAuthenticated){ //Step 1
             rtLogger.warning("Aborting: Card not authenticated", "carAssignment", cardID);
             return; //TODO: Placeholder
         }
 
-        ByteBuffer response;
-        try {
+        ByteBuffer response = ByteBuffer.wrap(apdu.getData());
+        /*try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Waiting for response carAssignment");
             rtLogger.warning("Aborting: Timeout", "carAssignment message 1", cardID);
             return;
-        }
+        }*/
         byte[] requestBytes = new byte[4];
         response.get(requestBytes,0,4);
         String request = new String(requestBytes, StandardCharsets.UTF_8);
@@ -321,8 +387,8 @@ public class ReceptionTerminal implements Communicator {
             response2 = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
-            errorState("Timeout response2 carAssignment");
-            rtLogger.warning("Aborting: Timeout", "carAssignment response 2",cardID);
+            errorState("Timeout database carAssignment");
+            rtLogger.warning("Aborting: Timeout", "carAssignment database communication",cardID);
             return;
         }
         byte[] autoPubSKBytes = new byte[128];
@@ -338,20 +404,21 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.put(autoPubSK.getEncoded());
         msgBuf.put(autoID).put(autoCertHashSign).putShort((short) (scNonce+1));
         msgBuf.put(rtc.hashAndSign(concatBytes(autoPubSK.getEncoded(), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1)))));
-        send(sc, msgBuf);//Step 6
+        apdu = sendAPDU(CARD_CONT,CAR_ASSIGNMENT_M2,msgBuf);
+        //send(sc, msgBuf);//Step 6
         msgBuf.clear();
         msgBuf.rewind();
 
         // Success message?
-        ByteBuffer succMsg;
-        try {
+        ByteBuffer succMsg = ByteBuffer.wrap(apdu.getData());
+        /*try {
             succMsg = waitForInput();
         } catch (MessageTimeoutException e) {
             e.printStackTrace();
             errorState("Timeout response2 carAssignment");
             rtLogger.warning("Aborting: timeout", "carAssignment message 3", cardID);
             return;
-        }
+        }*/
 
         byte success = succMsg.get();
         if(success != SUCCESS_BYTE){
@@ -380,6 +447,37 @@ public class ReceptionTerminal implements Communicator {
         cardAuthenticated = false;
     }
 
+    public void blockCard(){
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_EOL,BLOCK,0,0,0);
+        ResponseAPDU apdu;
+        try {
+            apdu = applet.transmit(commandAPDU);
+        } catch (CardException e) {
+            e.printStackTrace();
+            return;
+        }
+        ByteBuffer blockBuf = ByteBuffer.allocate(5);
+        blockBuf.put(cardID);
+        send(database,blockBuf);
+        ByteBuffer resp;
+        try {
+            resp = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return;
+        }
+        int msgLen =cardID.toString().length() + 29;
+        byte[] msg = new byte[msgLen];
+        resp.get(msg,0,msgLen);
+        String request = new String(msg, StandardCharsets.UTF_8);
+        if(!request.equals(cardID.toString() + " has been removed from cards.")){
+            errorState("Database returned wrong message after blocking card");
+            rtLogger.fatal("Database returned wrong message", "blockCard", cardID);
+            return;
+        }
+        rtLogger.info("Card blocked successfully", "blockCard",cardID);
+    }
+
     private static class RTCrypto extends CryptoImplementation {
 
         public RTCrypto(byte[] rtID, byte[] rtCertificate, PrivateKey privateKey) {
@@ -403,6 +501,27 @@ public class ReceptionTerminal implements Communicator {
 
             @Override
             public PublicKey getPublicKey() {return null;}
+        }
+    }
+
+    class SimulatedCardThread extends Thread {
+        public void run(){
+            CardTerminals cardTerminals = CardTerminalSimulator.terminals("Rental smartcard terminals");
+            CardTerminal rtTerminal = cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
+            CardSimulator smartcard = new CardSimulator();
+            AID scAppletAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+            smartcard.installApplet(scAppletAID,Smartcard.class);
+            smartcard.assignToTerminal(rtTerminal);
+            try{
+                Card card = rtTerminal.connect("*");
+                applet = card.getBasicChannel();
+                ResponseAPDU resp = applet.transmit(SELECT_APDU);
+                if(resp.getSW() != 0x9000){
+                    throw new Exception("Select failed");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

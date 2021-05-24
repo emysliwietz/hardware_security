@@ -4,7 +4,9 @@ import Auto.Auto;
 import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Smartcard.Smartcard;
+import com.licel.jcardsim.io.JavaxSmartCardInterface;
 import gui.SmartcardGUI;
+import javacard.framework.AID;
 import javafx.application.Application;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
@@ -21,8 +23,23 @@ import java.util.UUID;
 
 import db.convertKey;
 
+import javax.smartcardio.CommandAPDU;
+
 
 public class Database implements Communicator {
+
+    static final byte[] SC_APPLET_AID = {
+            (byte) 0x3B,
+            (byte) 0x29,
+            (byte) 0x63,
+            (byte) 0x61,
+            (byte) 0x6C,
+            (byte) 0x63,
+            (byte) 0x02
+    };
+
+    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
+
     private Connection conn;
     protected PublicKey dbPubSK;
     protected PrivateKey dbPrivSK;
@@ -236,7 +253,7 @@ public class Database implements Communicator {
         msgBuf.rewind();
     }
 
-    public Smartcard generateCard(){
+    public void generateCard(){
         convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
@@ -254,9 +271,25 @@ public class Database implements Communicator {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+
+        // Create simulator
+        JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
+
+        // Install applet
+        AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+        //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
+        int ibLen = 5+4+scCERT.length+scPrivSK.getEncoded().length;
+        ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
+        installBuf.put(scID);
+        installBuf.putInt(scCERT.length);
+        installBuf.put(scCERT);
+        installBuf.put(scPrivSK.getEncoded());
+        simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
+        simulator.transmitCommand(SELECT_APDU);
+
         // and send the info back
         // Private key and certificate must be send to terminal which sends it to the card
-        return new Smartcard(scID, scCERT, scPrivSK);
+        //return new Smartcard(scID, scCERT, scPrivSK);
         //byte[] message = prepareMessage(scPrivSK, scCERT);
         //send(terminal, message);
 
@@ -318,7 +351,7 @@ public class Database implements Communicator {
         Database db = new Database();
         ReceptionTerminal rt = db.generateTerminal();
         Auto auto = db.generateAuto();
-        Smartcard sc = db.generateCard();
+        //Smartcard sc = db.generateCard();
         SmartcardGUI gui = new SmartcardGUI();
         //gui.init(sc, auto, rt);
         //gui.launch();
