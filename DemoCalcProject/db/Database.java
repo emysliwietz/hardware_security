@@ -5,6 +5,7 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Smartcard.Smartcard;
 import com.licel.jcardsim.io.JavaxSmartCardInterface;
+import com.licel.jcardsim.utils.AIDUtil;
 import gui.SmartcardGUI;
 import javacard.framework.AID;
 import javafx.application.Application;
@@ -276,7 +277,8 @@ public class Database implements Communicator {
         JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
 
         // Install applet
-        AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+        //AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+        AID scAID = AIDUtil.create(SC_APPLET_AID);
         //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
         int ibLen = 5+4+scCERT.length+scPrivSK.getEncoded().length;
         ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
@@ -284,6 +286,7 @@ public class Database implements Communicator {
         installBuf.putInt(scCERT.length);
         installBuf.put(scCERT);
         installBuf.put(scPrivSK.getEncoded());
+        simulator.createApplet(scAID, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
         simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
         simulator.transmitCommand(SELECT_APDU);
 

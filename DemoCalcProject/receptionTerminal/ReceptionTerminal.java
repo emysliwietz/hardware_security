@@ -7,6 +7,7 @@ import Interfaces.Receivable;
 import Smartcard.Smartcard;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
+import com.licel.jcardsim.utils.AIDUtil;
 import db.Database;
 import javacard.framework.AID;
 import rsa.CryptoImplementation;
@@ -509,7 +510,7 @@ public class ReceptionTerminal implements Communicator {
             CardTerminals cardTerminals = CardTerminalSimulator.terminals("Rental smartcard terminals");
             CardTerminal rtTerminal = cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
             CardSimulator smartcard = new CardSimulator();
-            AID scAppletAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+            AID scAppletAID = AIDUtil.create(SC_APPLET_AID);
             smartcard.installApplet(scAppletAID,Smartcard.class);
             smartcard.assignToTerminal(rtTerminal);
             try{

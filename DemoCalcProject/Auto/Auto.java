@@ -4,6 +4,7 @@ import Interfaces.Communicator;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
+import com.licel.jcardsim.utils.AIDUtil;
 import db.Database;
 import javacard.framework.AID;
 import rsa.CryptoImplementation;
@@ -251,7 +252,7 @@ public class Auto implements Receivable, Communicator {
             CardTerminals cardTerminals = CardTerminalSimulator.terminals("Rental smartcard terminals");
             CardTerminal autoTerminal = cardTerminals.getTerminal(Arrays.toString(ac.getID()));
             CardSimulator smartcard = new CardSimulator();
-            AID scAppletAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+            AID scAppletAID = AIDUtil.create(SC_APPLET_AID);
             smartcard.installApplet(scAppletAID,Smartcard.class);
             smartcard.assignToTerminal(autoTerminal);
             try{

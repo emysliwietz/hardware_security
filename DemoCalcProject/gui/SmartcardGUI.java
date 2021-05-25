@@ -84,8 +84,6 @@ public class SmartcardGUI extends Application {
         primaryStage.setScene(s);
         primaryStage.setTitle("test");
         primaryStage.setResizable(false);
-        s.setOnMouseReleased(event ->
-                System.out.println(event.getSceneX()));
         primaryStage.show();
     }
 
