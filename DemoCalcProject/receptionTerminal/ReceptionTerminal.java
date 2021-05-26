@@ -51,6 +51,7 @@ public class ReceptionTerminal implements Communicator {
     private Logger rtLogger;
     private ByteBuffer msgBuf = ByteBuffer.allocate(256);
     CardChannel applet;
+    ByteBuffer initBuffer;
 
     @Override
     public Object errorState(String msg) {
@@ -220,6 +221,23 @@ public class ReceptionTerminal implements Communicator {
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void cardAuthenticationInitiate(){
+        if (initBuffer != null){
+            sendAPDU(CARD_INIT,INIT,initBuffer);
+            initBuffer.clear();
+            initBuffer.rewind();
+            initBuffer = null;
+        }
+        if(database.isBlocked(cardID)){
+            CommandAPDU commandAPDU = new CommandAPDU(CARD_EOL,BLOCK,0,0,0);
+            ResponseAPDU apdu;
+            try {
+                apdu = applet.transmit(commandAPDU);
+            } catch (CardException e) {
+                e.printStackTrace();
+                return;
+            }
+            return;
+        }
         CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,256);
         ResponseAPDU apdu;
         try {
@@ -461,14 +479,6 @@ public class ReceptionTerminal implements Communicator {
     }
 
     public void blockCard(){
-        CommandAPDU commandAPDU = new CommandAPDU(CARD_EOL,BLOCK,0,0,0);
-        ResponseAPDU apdu;
-        try {
-            apdu = applet.transmit(commandAPDU);
-        } catch (CardException e) {
-            e.printStackTrace();
-            return;
-        }
         ByteBuffer blockBuf = ByteBuffer.allocate(5);
         blockBuf.put(cardID);
         send(database,blockBuf);
@@ -514,6 +524,15 @@ public class ReceptionTerminal implements Communicator {
 
             @Override
             public PublicKey getPublicKey() {return null;}
+        }
+    }
+
+    public void initialDataForSC(){
+        try {
+            initBuffer = waitForInput();
+        } catch (MessageTimeoutException e) {
+            e.printStackTrace();
+            return;
         }
     }
 

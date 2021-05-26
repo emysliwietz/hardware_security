@@ -258,7 +258,7 @@ public class Database implements Communicator {
         msgBuf.rewind();
     }
 
-    public void generateCard(){
+    public void generateCard(ReceptionTerminal reception){
         convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
@@ -283,6 +283,10 @@ public class Database implements Communicator {
         // Install applet
         //AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
         AID scAID = AIDUtil.create(SC_APPLET_AID);
+        simulator.installApplet(scAID, Smartcard.class);
+        //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
+        simulator.transmitCommand(SELECT_APDU);
+
         //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
         int certLen = scCERT.length;
         int ibLen = 5+4+scCERT.length+privkToBytes(scPrivSK).length;
@@ -291,9 +295,9 @@ public class Database implements Communicator {
         installBuf.putInt(scCERT.length);
         installBuf.put(scCERT);
         installBuf.put(privkToBytes(scPrivSK));
-        simulator.createApplet(scAID, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
-        //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
-        simulator.transmitCommand(SELECT_APDU);
+        send(reception,installBuf);
+
+
 
         // and send the info back
         // Private key and certificate must be send to terminal which sends it to the card
@@ -353,6 +357,11 @@ public class Database implements Communicator {
         //byte[] message = prepareMessage(rtPrivSK, rtCERT);
         //send(terminal, message);
 
+    }
+
+    public boolean isBlocked(byte[] cardID){
+        //TODO: Check if cardID is listed or not (return true, if it is not)
+        return false;
     }
 
     public static void main(String[] args) {

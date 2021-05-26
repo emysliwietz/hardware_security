@@ -6,6 +6,7 @@ import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import db.Database;
 import javacard.framework.*;
+import javacardx.apdu.ExtendedLength;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
@@ -22,7 +23,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
-public class Smartcard extends Applet implements Communicator, ISO7816 {
+public class Smartcard extends Applet implements Communicator, ISO7816, ExtendedLength {
     //Everything here is in EEPROM (persistent)
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
@@ -156,6 +157,13 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
                     ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
                 }
                 return;
+            case CARD_INIT:
+                if(buffer.get(ISO7816.OFFSET_CLA) == INIT){
+                    init(apdu);
+                } else {
+                    ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+                }
+                return;
 
             default:
                 ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
@@ -190,21 +198,36 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
 
     //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
     private Smartcard(byte[] bArray, short bOffset, byte bLength) {
-        ByteBuffer tmp = ByteBuffer.wrap(bArray, bOffset, bLength);
+        //ByteBuffer tmp = ByteBuffer.wrap(bArray, bOffset, bLength);
+        //byte[] cardID = newB(5);
+        //tmp.get(cardID, 0, 5);
+        //int certLength = tmp.getInt();
+        //byte[] cardCertificate = newB(certLength);
+        //tmp.get(cardCertificate, 9, certLength);
+        //byte[] privateKeyEncoded = newB(bLength - (certLength + 9));
+        //tmp.get(privateKeyEncoded, 9 + certLength, bLength - (certLength + 9));
+        //PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
+        //sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
+        ////msgBufRaw = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
+        ////msgBuf = ByteBuffer.wrap(msgBufRaw);
+        register();
+
+    }
+
+    private void init(APDU apdu){
+        ByteBuffer tmp = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
         byte[] cardID = newB(5);
         tmp.get(cardID, 0, 5);
         int certLength = tmp.getInt();
         byte[] cardCertificate = newB(certLength);
         tmp.get(cardCertificate, 9, certLength);
-        byte[] privateKeyEncoded = newB(bLength - (certLength + 9));
-        tmp.get(privateKeyEncoded, 9 + certLength, bLength - (certLength + 9));
+        byte[] privateKeyEncoded = newB(apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
+        tmp.get(privateKeyEncoded, 9 + certLength, apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
         PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         state = States.ASSIGNED_NONE;
         //msgBufRaw = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
         //msgBuf = ByteBuffer.wrap(msgBufRaw);
-        register();
-
     }
 
     // Wakes up smartcard from suspended state and returns whether it's ready to process requests.

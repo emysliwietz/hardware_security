@@ -27,6 +27,7 @@ public interface Communicator extends Receivable {
     final static byte CARD_PROC  = (byte) 0xC0; //processing protocols
     final static byte CARD_CONT  = (byte) 0xD0; //protocol continuation messages
     final static byte CARD_EOL   = (byte) 0xE0;
+    final static byte CARD_INIT  = (byte) 0xF0;
 
     // INS codes for APDU header
     final static byte INSERT_START = (byte) 0x20;
@@ -42,6 +43,7 @@ public interface Communicator extends Receivable {
     final static byte CAR_RETURN_M2 = (byte) 0x62;
     final static byte CAR_RETURN_MS = (byte) 0x63;
     final static byte BLOCK = (byte) 0x70;
+    final static byte INIT = (byte) 0x80;
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
@@ -62,14 +64,14 @@ public interface Communicator extends Receivable {
     }
 
     default PublicKey bytesToPubkey(byte[] bytes) {
-        RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.ALG_TYPE_RSA_PUBLIC, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, KeyBuilder.LENGTH_RSA_512, false);
+        RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
         ByteBuffer b = ByteBuffer.wrap(bytes);
         short expLength = b.getShort();
         byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
-        b.get(exp, 2, expLength);
+        b.get(exp, 0, expLength);
         short modLength = b.getShort();
         byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
-        b.get(mod, 2 + 2 + expLength, modLength);
+        b.get(mod,0, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -82,14 +84,14 @@ public interface Communicator extends Receivable {
     }
 
     default PrivateKey bytesToPrivkey(byte[] bytes) {
-        RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.ALG_TYPE_RSA_PRIVATE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, KeyBuilder.LENGTH_RSA_512, false);
+        RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
         ByteBuffer b = ByteBuffer.wrap(bytes);
         short expLength = b.getShort();
         byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
-        b.get(exp, 2, expLength);
+        b.get(exp, 0, expLength);
         short modLength = b.getShort();
         byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
-        b.get(mod, 2 + 2 + expLength, modLength);
+        b.get(mod, 0, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
