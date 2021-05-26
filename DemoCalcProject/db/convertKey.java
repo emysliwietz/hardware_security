@@ -72,7 +72,7 @@ public class convertKey implements Communicator {
         String[] str0 = str.split(" ");
         byte[] b = new byte[str0.length];
         for(int i=0;i<str0.length;i++){
-            b[i] = Byte.valueOf(str0[i],16);
+            b[i] = (byte) ((short) Short.valueOf(str0[i],16));
         }
         return b;
     }
