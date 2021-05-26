@@ -9,8 +9,10 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+
+import javacard.framework.JCSystem;
+import javacard.security.*;
+
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
@@ -75,6 +77,26 @@ public interface Communicator extends Receivable {
             e.printStackTrace();
             return null;
         }
+    }
+
+    default byte[] pubkToBytes(PublicKey pubk){
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((512/8)+4),JCSystem.CLEAR_ON_RESET));
+        RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
+        short expLength = rsaPublicKey.getExponent(b.array(),(short) 2);
+        b.putShort(0,expLength);
+        short modLength = rsaPublicKey.getModulus(b.array(),(short) (4+expLength));
+        b.putShort(2+expLength, modLength);
+        return b.array();
+    }
+
+    default byte[] privkToBytes(PrivateKey privk){
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((512/8)+4),JCSystem.CLEAR_ON_RESET));
+        RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
+        short expLength = rsaPrivateKey.getExponent(b.array(),(short) 2);
+        b.putShort(0,expLength);
+        short modLength = rsaPrivateKey.getModulus(b.array(),(short) (4+expLength));
+        b.putShort(2+expLength, modLength);
+        return b.array();
     }
 
 

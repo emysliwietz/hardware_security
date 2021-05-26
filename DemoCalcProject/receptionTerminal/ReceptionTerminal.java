@@ -20,8 +20,8 @@ import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -34,7 +34,7 @@ public class ReceptionTerminal implements Communicator {
             (byte) 0x61,
             (byte) 0x6C,
             (byte) 0x63,
-            (byte) 0x02
+            (byte) 0x01
     };
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
 

@@ -14,8 +14,8 @@ import utility.Logger;
 import java.io.File;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
 import java.util.Arrays;
 import java.util.UUID;
 import javax.smartcardio.*;
@@ -31,7 +31,7 @@ public class Auto implements Receivable, Communicator {
             (byte) 0x61,
             (byte) 0x6C,
             (byte) 0x63,
-            (byte) 0x02
+            (byte) 0x01
     };
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
     CardChannel applet;

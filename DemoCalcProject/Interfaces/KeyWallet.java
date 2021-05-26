@@ -1,7 +1,7 @@
 package Interfaces;
 
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
 
 public interface KeyWallet {
 

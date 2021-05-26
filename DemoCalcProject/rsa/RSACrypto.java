@@ -31,9 +31,10 @@ public abstract class RSACrypto {
         return null;
     }
 
-    public byte[] unsign(byte[] msg, PublicKey publicKey) {
-
-        Cipher encrypt_cipher;
+    public boolean verify(byte[] rawMsg, byte[] signedMsg, PublicKey pubk) {
+        sig.init(pubk, Signature.MODE_VERIFY);
+        return sig.verify(rawMsg, (short) 0, (short) rawMsg.length, signedMsg, (short) 0, (short) signedMsg.length);
+        /*Cipher encrypt_cipher;
         try {
             // PKCS1Padding
             encrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
@@ -45,6 +46,6 @@ public abstract class RSACrypto {
                 | IllegalBlockSizeException | InvalidKeyException e) {
             e.printStackTrace();
         }
-        return null;
+        return null;*/
     }
 }

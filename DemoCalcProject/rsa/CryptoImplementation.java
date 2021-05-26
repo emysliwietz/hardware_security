@@ -80,8 +80,8 @@ public abstract class CryptoImplementation {
         return rc.sign(message);
     }
 
-    public byte[] unsign(byte[] signature, PublicKey pubSK){
-        return rc.unsign(signature, pubSK);
+    public boolean verify(ByteBuffer msgComponents, byte[] signature, PublicKey pubSK){
+        return rc.verify(msgComponents.array(), signature, pubSK);
     }
 
 }
