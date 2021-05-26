@@ -99,9 +99,9 @@ public class Auto implements Receivable, Communicator {
         curBufIndex += 4;
 
         //scPubSK + cardID
-        byte[] scPubSKEncoded = new byte[128];
-        msg1.get(scPubSKEncoded,curBufIndex,128);
-        curBufIndex += 128;
+        byte[] scPubSKEncoded = new byte[64];
+        msg1.get(scPubSKEncoded,curBufIndex,64);
+        curBufIndex += 64;
         scPubSK = bytesToPubkey(scPubSKEncoded);
         cardID = new byte[5];
         msg1.get(cardID,curBufIndex,5);
@@ -111,9 +111,11 @@ public class Auto implements Receivable, Communicator {
         byte[] scCertHashSign = new byte[scCertHashSignLen];
         msg1.get(scCertHashSign,curBufIndex,scCertHashSignLen);
         curBufIndex += scCertHashSignLen;
-        byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
-        byte[] cardIDPubSKHash = ac.createHash(concatBytes(scPubSK.getEncoded(), cardID));
-        if (!Arrays.equals(scCertHash,cardIDPubSKHash)){
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[69]);
+        msg1Cmps.put(scPubSKEncoded).put(cardID);
+        //byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
+        //byte[] cardIDPubSKHash = ac.createHash(concatBytes(scPubSK.getEncoded(), cardID));
+        if (!ac.verify(msg1Cmps,scCertHashSign,dbPubSK)){
             errorState("Invalid cerificate: hash does not match");
             autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
             return;
@@ -125,7 +127,7 @@ public class Auto implements Receivable, Communicator {
         //Message 2
         curBufIndex = 0;
         short autoNonce = ac.generateNonce();
-        byte[] cardNonceHashSign = ac.hashAndSign(shortToByteArray(cardNonce));
+        byte[] cardNonceHashSign = ac.sign(shortToByteArray(cardNonce));
         msgBuf.putInt(ac.getCertificate().length - 133);
         msgBuf.put(ac.getCertificate());
         msgBuf.putShort(cardNonce);
@@ -153,9 +155,11 @@ public class Auto implements Receivable, Communicator {
         msg3.get(autoNonceRespHashSignLenByte,2,4);
         int autoNonceRespHashSignLen = intFromByteArray(autoNonceRespHashSignLenByte);
         byte[] autoNonceRespHashSign = new byte[autoNonceRespHashSignLen];
-        byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
-        byte[] autoNonceHash = ac.createHash(shortToByteArray(autoNonce));
-        if (!Arrays.equals(autoNonceRespHash,autoNonceHash)){
+        //byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
+        //byte[] autoNonceHash = ac.createHash(shortToByteArray(autoNonce));
+        ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
+        msg3Cmps.putShort(autoNonceResp);
+        if (!ac.verify(msg3Cmps,autoNonceRespHashSign,scPubSK)){
             //TODO: throw error or something (logs). Also stop further actions.
             errorState("Wrong nonce in P1 msg3 returned");
             autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
@@ -166,7 +170,7 @@ public class Auto implements Receivable, Communicator {
             msgBuf.put(SUCCESS_BYTE);
             msgBuf.putShort((short) (cardNonce + 1));
             byte[] succByte = {SUCCESS_BYTE};
-            msgBuf.putInt(ac.hashAndSign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))).length).put(ac.hashAndSign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))));
+            msgBuf.putInt(ac.sign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))).length).put(ac.sign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))));
             sendAPDU(CARD_CONT,INSERT_MS,msgBuf);
             //send(sc, msgBuf);
             msgBuf.clear();
@@ -183,7 +187,7 @@ public class Auto implements Receivable, Communicator {
             return;
         }
         //Message 1
-        msgBuf.putInt(kilometerage).putInt(ac.hashAndSign(intToByteArray(kilometerage)).length).put(ac.hashAndSign(intToByteArray(kilometerage)));
+        msgBuf.putInt(kilometerage).putInt(ac.sign(intToByteArray(kilometerage)).length).put(ac.sign(intToByteArray(kilometerage)));
         ResponseAPDU apdu = sendAPDU(CARD_PROC,KMM_UPDATE,msgBuf);
         //send(sc, msgBuf);
         msgBuf.clear();
@@ -208,9 +212,11 @@ public class Auto implements Receivable, Communicator {
         int confHashSignLen = confirmation.getInt();
         byte[] confHashSigned = new byte[confHashSignLen];
         confirmation.get(confHashSigned,9,confHashSignLen);
-        byte[] confHash = ac.unsign(confHashSigned, scPubSK);
-        byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
-        if (!Arrays.equals(confHash,hashValidation)){
+        //byte[] confHash = ac.unsign(confHashSigned, scPubSK);
+        //byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
+        ByteBuffer msgCmps = ByteBuffer.wrap(new byte[5]);
+        msgCmps.put(confBYTE).putInt(curKmmCard);
+        if (!ac.verify(msgCmps,confHashSigned,scPubSK)){
             errorState("Invalid Hash in kilometerageUpdate");
             autoLogger.fatal("Invalid Hash", "kilometerageUpdate", cardID);
         } else {
