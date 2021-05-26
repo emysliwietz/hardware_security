@@ -62,21 +62,43 @@ public interface Communicator extends Receivable {
     }
 
     default PublicKey bytesToPubkey(byte[] bytes) {
-        try {
+        RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.ALG_TYPE_RSA_PUBLIC, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, KeyBuilder.LENGTH_RSA_512, false);
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        short expLength = b.getShort();
+        byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
+        b.get(exp, 2, expLength);
+        short modLength = b.getShort();
+        byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
+        b.get(mod, 2 + 2 + expLength, modLength);
+        pk.setExponent(exp, (short) 0, expLength);
+        pk.setModulus(mod, (short) 0, modLength);
+        return pk;
+        /*try {
             return KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(bytes));
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
-        }
+        }*/
     }
 
     default PrivateKey bytesToPrivkey(byte[] bytes) {
-        try {
+        RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.ALG_TYPE_RSA_PRIVATE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, KeyBuilder.LENGTH_RSA_512, false);
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        short expLength = b.getShort();
+        byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
+        b.get(exp, 2, expLength);
+        short modLength = b.getShort();
+        byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
+        b.get(mod, 2 + 2 + expLength, modLength);
+        pk.setExponent(exp, (short) 0, expLength);
+        pk.setModulus(mod, (short) 0, modLength);
+        return pk;
+        /*try {
             return KeyFactory.getInstance("RSA").generatePrivate(new X509EncodedKeySpec(bytes));
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
-        }
+        }*/
     }
 
     default byte[] pubkToBytes(PublicKey pubk){

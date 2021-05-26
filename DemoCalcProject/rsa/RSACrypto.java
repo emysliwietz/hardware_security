@@ -2,21 +2,31 @@ package rsa;
 
 import Interfaces.KeyWallet;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
+//import javacard.crypto.BadPaddingException;
+//import javacard.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+
+import javacard.framework.JCSystem;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
+import javacard.security.Signature;
 
 public abstract class RSACrypto {
 
     protected PrivateKey privk;
+    private Signature sig = Signature.getInstance(Signature.ALG_RSA_SHA_256_PKCS1, false);
+
 
     public byte[] sign(byte[] msg){
-        Cipher decrypt_cipher;
+        sig.init(privk, Signature.MODE_SIGN);
+        byte[] sigBuf = JCSystem.makeTransientByteArray((short) 32, JCSystem.CLEAR_ON_RESET);
+        short tmps = sig.sign(msg, (short) 0, (short) msg.length, sigBuf, (short) 0);
+        System.out.println(tmps);
+        return sigBuf;
+        /*Cipher decrypt_cipher;
         try {
             // PKCS1Padding
             decrypt_cipher = Cipher.getInstance("RSA/ECB/NoPadding");
@@ -28,7 +38,7 @@ public abstract class RSACrypto {
                 | IllegalBlockSizeException | InvalidKeyException e) {
             e.printStackTrace();
         }
-        return null;
+        return null;*/
     }
 
     public boolean verify(byte[] rawMsg, byte[] signedMsg, PublicKey pubk) {
