@@ -16,8 +16,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
@@ -191,12 +191,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
     private Smartcard(byte[] bArray, short bOffset, byte bLength) {
         ByteBuffer tmp = ByteBuffer.wrap(bArray, bOffset, bLength);
-        byte[] cardID = new byte[5];
+        byte[] cardID = newB(5);
         tmp.get(cardID, 0, 5);
         int certLength = tmp.getInt();
-        byte[] cardCertificate = new byte[certLength];
+        byte[] cardCertificate = newB(certLength);
         tmp.get(cardCertificate, 9, certLength);
-        byte[] privateKeyEncoded = new byte[bLength - (certLength + 9)];
+        byte[] privateKeyEncoded = newB(bLength - (certLength + 9));
         tmp.get(privateKeyEncoded, 9 + certLength, bLength - (certLength + 9));
         PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
@@ -216,6 +216,14 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     //card is removed from reader and enters suspend state
     public void deselect() {
 
+    }
+
+    public byte[] newB(int len) {
+        return JCSystem.makeTransientByteArray((short) len, JCSystem.CLEAR_ON_RESET);
+    }
+
+    public ByteBuffer newBB(int len) {
+        return ByteBuffer.wrap(newB(len));
     }
 
 
@@ -247,21 +255,24 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         }*/
 
         //autoPubSK
-        byte[] autoPubSKEncoded = new byte[128]; //NEW BYTE: DONT DO. We should use transient byte array here
-        msg2.get(autoPubSKEncoded, 0, 128);
+        byte[] autoPubSKEncoded = newB(64); //NEW BYTE: DONT DO. We should use transient byte array here
+        msg2.get(autoPubSKEncoded, 0, 64);
         autoPubSK = bytesToPubkey(autoPubSKEncoded);
 
         //autoID
-        byte[] autoID = new byte[5]; //To do: new byte -> Transient byte array
-        msg2.get(autoID, 128, 5);
+        byte[] autoID = newB(5);
+        msg2.get(autoID, 64, 5);
 
         //signature of hash of certificate
-        int certSignLen = msg2.getInt(133);
-        byte[] autoCertHashSign = new byte[certSignLen]; //To do: new byte -> Transient byte array
-        msg2.get(autoCertHashSign, 137, certSignLen);
-        byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
-        byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSK.getEncoded(), autoID));
-        if (!Arrays.equals(autoCertHash, autoIDPubSKHash)) {
+        int certSignLen = msg2.getInt(69);
+        byte[] autoCertHashSign = newB(certSignLen); //To do: new byte -> Transient byte array
+        msg2.get(autoCertHashSign, 73, certSignLen);
+        ByteBuffer msg2HashComponents = newBB(69);
+        msg2HashComponents.put(autoPubSKEncoded);
+        msg2HashComponents.put(autoID);
+        //byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
+        //byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSK.getEncoded(), autoID));
+        if (!sc.verify(msg2HashComponents,autoCertHashSign,dbPubSK)) {
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid certificate send in message 2 of P1");
             manipulation = true;
@@ -270,8 +281,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         }
 
         //Response of nonceCard
-        short nonceCardResponse = msg2.getShort(137 + certSignLen);
-        int curBufIndex = 139 + certSignLen;
+        short nonceCardResponse = msg2.getShort(73 + certSignLen);
+        int curBufIndex = 75 + certSignLen;
         if (nonceCard != nonceCardResponse) {
             errorState("Wrong nonce returned in message 2 of P1");
             manipulation = true;
@@ -282,12 +293,15 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         //signed hash of nonceCard
         int msg2NonceSignLen = msg2.getInt(curBufIndex);
         curBufIndex += 4;
-        byte[] nonceCardResponseHashSign = new byte[msg2NonceSignLen]; //To do: new byte -> Transient byte array
+        byte[] nonceCardResponseHashSign = newB(msg2NonceSignLen);
         msg2.get(nonceCardResponseHashSign, curBufIndex, msg2NonceSignLen);
         curBufIndex += msg2NonceSignLen;
-        byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
-        byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
-        if (!Arrays.equals(nonceValidHash, nonceCardResponseHash)) {
+        msg2HashComponents.clear();
+        msg2HashComponents.rewind();
+        msg2HashComponents.putShort(nonceCardResponse);
+        //byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
+        //byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
+        if (!sc.verify(msg2HashComponents,nonceCardResponseHashSign,autoPubSK)) {
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid hash of nonce returned in message 2 of P1");
             manipulation = true;
@@ -301,7 +315,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         //Message 3
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
-        byte[] msg3HashSign = sc.hashAndSign(shortToByteArray(nonceAuto));
+        byte[] msg3HashSign = sc.sign(shortToByteArray(nonceAuto));
         msgBuf.putShort(nonceAuto).putInt(msg3HashSign.length);
         msgBuf.put(msg3HashSign);
         short msgLen = (short) (2 + 4 + msg3HashSign.length);
@@ -337,11 +351,14 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             return;
         }
         int nonceSuccSignLen = succMb.getInt(3);
-        byte[] succMHashSign = new byte[nonceSuccSignLen]; //TODO: use JCSystem.makeTransientByteArray instead?
+        byte[] succMHashSign = newB(nonceSuccSignLen);
         succMb.get(succMHashSign,7,nonceSuccSignLen);
-        byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
-        byte[] succByte = {success};
-        if(!Arrays.equals(sc.createHash(succByte),succMHash)){
+        //byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
+        //byte[] succByte = {success};
+        ByteBuffer succMsgCmps = newBB(3);
+        succMsgCmps.put(success);
+        succMsgCmps.putShort(nonceSucc);
+        if(!sc.verify(succMsgCmps,succMHashSign,autoPubSK)){
             errorState("Invalid hash in success message (P1)");
             currentAwaited = ProtocolAwaited.AUTH;
             return;
@@ -378,23 +395,25 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
 
         //Object[] responseData = processMessage(response);
         int receptionCertHSLength = response.get(0);
-        byte[] rtPubSkb = new byte[128];
-        response.get(rtPubSkb, 4, 128);
+        byte[] rtPubSkb = newB(64);
+        response.get(rtPubSkb, 4, 64);
         rtPubSK = bytesToPubkey(rtPubSkb);
 
-        byte[] receptionID = new byte[5];
-        response.get(receptionID, 132, 5);
+        byte[] receptionID = newB(5);
+        response.get(receptionID, 68, 5);
 
 
-        byte[] receptionCertHashSign = new byte[receptionCertHSLength];
-        response.get(receptionCertHashSign, 137, receptionCertHSLength);
+        byte[] receptionCertHashSign = newB(receptionCertHSLength);
+        response.get(receptionCertHashSign, 73, receptionCertHSLength);
 
-        nonceReception = response.getShort(137 + receptionCertHSLength);
+        nonceReception = response.getShort(73 + receptionCertHSLength);
+        ByteBuffer msg2Cmps = newBB(69);
+        msg2Cmps.put(rtPubSkb).put(receptionID);
 
-        byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
+        //byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
 
-        byte[] receptionIDPubSKHash = sc.createHash(concatBytes(rtPubSkb, receptionID));
-        if (!Arrays.equals(receptionCertHash, receptionIDPubSKHash)) { //Step 5
+        //byte[] receptionIDPubSKHash = sc.createHash(concatBytes(rtPubSkb, receptionID));
+        if (!sc.verify(msg2Cmps,receptionCertHashSign,dbPubSK)) { //Step 5
             manipulation = true;
             errorState("ReceptionCertHash does not match expected value, check for manipulation.");
             //TODO: Send message to terminal that process is stopped
@@ -402,7 +421,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             return;
         }
         byte[] noncePrepped = shortToByteArray(nonceReception);
-        byte[] nonceReceptionHashSign = sc.hashAndSign(noncePrepped);
+        byte[] nonceReceptionHashSign = sc.sign(noncePrepped);
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
         msgBuf.putShort(nonceReception).putInt(nonceReceptionHashSign.length).put(nonceReceptionHashSign);
@@ -431,10 +450,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             currentAwaited = ProtocolAwaited.AUTH;
             return;
         }
-        int responseData2Length = response2.getInt();
-        byte[] responseData2 = new byte[responseData2Length]; //To do: new byte -> Transient byte array
-        response2.get(responseData2, 4, responseData2Length);
-
 
         short nonceCardResp = response2.getShort();
         if(nonceCardResp != nonceCard){
@@ -442,10 +457,16 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             currentAwaited = ProtocolAwaited.AUTH;
             return;
         }
-        byte[] cardNonceHash = sc.unsign(responseData2, rtPubSK);
-        byte[] successByteArray = {success};
-        byte[] nonceCardHashValid = sc.createHash(concatBytes(successByteArray, shortToByteArray(nonceCard)));
-        if (!Arrays.equals(nonceCardHashValid,cardNonceHash)){ //Step 9
+
+        int responseData2Length = response2.getInt();
+        byte[] responseData2 = newB(responseData2Length); //To do: new byte -> Transient byte array
+        response2.get(responseData2, 7, responseData2Length);
+        //byte[] cardNonceHash = sc.unsign(responseData2, rtPubSK);
+        //byte[] successByteArray = {success};
+        //byte[] nonceCardHashValid = sc.createHash(concatBytes(successByteArray, shortToByteArray(nonceCard)));
+        ByteBuffer succMsgCmps = newBB(3);
+        succMsgCmps.put(success).putShort(nonceCard);
+        if (!sc.verify(succMsgCmps,responseData2,rtPubSK)){ //Step 9
             errorState("Invalid hash in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
             return;
@@ -463,7 +484,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         }
         byte[] value = "Car?".getBytes(StandardCharsets.UTF_8);
         short nonceReceptionCount = ((short) (nonceReception + 1));
-        byte[] giveCarSigned = sc.hashAndSign(concatBytes(value, shortToByteArray(nonceReceptionCount)));
+        byte[] giveCarSigned = sc.sign(concatBytes(value, shortToByteArray(nonceReceptionCount)));
 
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
@@ -489,16 +510,28 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             return;
         }*/
 
-        byte[] autoPubSkb = new byte[128];
-        response.get(autoPubSkb, 0, 128);
+        byte[] autoPubSkb = newB(64);
+        response.get(autoPubSkb, 0, 64);
         autoPubSK = bytesToPubkey(autoPubSkb);
 
-        byte[] autoID = new byte[5]; //To do: new byte -> Transient byte array
-        response.get(autoID, 135, 5);
+        byte[] autoID = newB(5); //To do: new byte -> Transient byte array
+        response.get(autoID, 69, 5);
 
         int autoCertHSLength = response.getInt();
-        byte[] autoCertHashSign = new byte[autoCertHSLength]; //To do: new byte -> Transient byte array
-        response.get(autoCertHashSign, 144, autoCertHSLength);
+        byte[] autoCertHashSign = newB(autoCertHSLength); //To do: new byte -> Transient byte array
+        response.get(autoCertHashSign, 73, autoCertHSLength);
+
+        ByteBuffer msg2Cmps = newBB(69);
+        msg2Cmps.put(autoPubSkb).put(autoID);
+        //byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
+        //byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSkb, autoID));
+        if (!sc.verify(msg2Cmps,autoCertHashSign,dbPubSK)){ //Step 7 - certificate
+            //manipulation = true;
+            errorState("Invalid car certificate received");
+            currentAwaited = ProtocolAwaited.PROC;
+            //TODO: Send message to terminal that process is stopped
+            return;
+        }
 
         short nonceCard2 = response.getShort();
         if (nonceCard2 != ((short) (nonceCard+1))){ //Step 7 - Sequence
@@ -506,22 +539,17 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
+        int msg2SignLen = response.getInt();
+        byte[] msg2HashSign = newB(msg2SignLen);
+        response.get(msg2HashSign,79+autoCertHSLength,msg2SignLen);
+        msg2Cmps.put(autoCertHashSign).putShort(nonceCard2);
 
-        byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSkb, autoID));
-        if (!Arrays.equals(autoCertHash,autoIDPubSKHash)){ //Step 7 - certificate
-            //manipulation = true;
-            errorState("Invalid car signature received");
-            currentAwaited = ProtocolAwaited.PROC;
-            //TODO: Send message to terminal that process is stopped
-            return;
-        }
         autoIDStored = autoID;
         //State transition????
         state = States.ASSIGNED;
         //Success message!
         byte[] successByteArray = {SUCCESS_BYTE};
-        byte[] successHash = sc.hashAndSign(concatBytes(successByteArray, shortToByteArray((short) (nonceReception + 2))));
+        byte[] successHash = sc.sign(concatBytes(successByteArray, shortToByteArray((short) (nonceReception + 2))));
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
         msgBuf.put(SUCCESS_BYTE).putShort((short) (nonceReception+2)).putInt(successHash.length).put(successHash);
@@ -551,12 +579,13 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         byte[] validRecKmmHash = sc.createHash(prepareMessage(kilometerage));*/
         kilometerage = receivedKmm.getInt();
         int recKmmHashSignLength = receivedKmm.getInt();
-        byte[] recKmmHashSign = new byte[recKmmHashSignLength]; //To do: new byte -> Transient byte array
+        byte[] recKmmHashSign = newB(recKmmHashSignLength);
         receivedKmm.get(recKmmHashSign, 8, recKmmHashSignLength);
-        byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
-        byte[] validRecKmmHash = sc.createHash(intToByteArray(kilometerage));
-
-        if(!Arrays.equals(recKmmHash,validRecKmmHash)){
+        //byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
+        //byte[] validRecKmmHash = sc.createHash(intToByteArray(kilometerage));
+        ByteBuffer msgCmps = newBB(4);
+        msgCmps.putInt(kilometerage);
+        if(!sc.verify(msgCmps,recKmmHashSign,rtPubSK)){
             errorState("Hashes do not match in kilometerage update! Potential manipulation!");
             currentAwaited = ProtocolAwaited.PROC;
             return;
@@ -569,7 +598,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         }
         byte confirmation = (byte) 1;
         byte[] confirmationArray = {1};
-        byte[] confirmationHash = sc.hashAndSign(concatBytes(confirmationArray, intToByteArray(kilometerage)));
+        byte[] confirmationHash = sc.sign(concatBytes(confirmationArray, intToByteArray(kilometerage)));
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
         msgBuf.put(confirmation).putInt(kilometerage).putInt(confirmationHash.length).put(confirmationHash);
@@ -584,7 +613,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
     private void carReturnStart(APDU apdu) {
         short seqNum1 = (short) (nonceReception + 1);
         byte[] car_return = "Car Return".getBytes(StandardCharsets.UTF_8);
-        byte[] msg1Hash = sc.hashAndSign(concatBytes(car_return, shortToByteArray(seqNum1), booleanToByteArray(manipulation)));
+        byte[] msg1Hash = sc.sign(concatBytes(car_return, shortToByteArray(seqNum1), booleanToByteArray(manipulation)));
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
         msgBuf.put(car_return).putShort(seqNum1).put(booleanToByteArray(manipulation)).putInt(msg1Hash.length).put(msg1Hash);
@@ -611,24 +640,24 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
         short kmmNonce = msg2.getShort();
         short seqNum2 = msg2.getShort();
         int lengthHash = msg2.getInt();
-        byte[] hash = new byte[lengthHash]; //To do: new byte -> Transient byte array
+        byte[] hash = newB(lengthHash); //To do: new byte -> Transient byte array
         msg2.get(hash, 8, lengthHash);
         if (!sc.areSubsequentNonces(nonceCard, seqNum2)) {
             errorState("Wrong sequence number in carReturn message 2");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        byte[] msg2Hash = sc.unsign(hash, rtPubSK);
-
-
-        byte[] validMsg2Hash = sc.createHash(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
-        if (!Arrays.equals(msg2Hash, validMsg2Hash)) {
+        //byte[] msg2Hash = sc.unsign(hash, rtPubSK);
+        //byte[] validMsg2Hash = sc.createHash(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
+        ByteBuffer msgCmps = newBB(4);
+        msgCmps.putShort(kmmNonce).putShort(seqNum2);
+        if (!sc.verify(msgCmps,hash,rtPubSK)) {
             //TODO: Error; also check sequence number (not in this if clause (obviously))
             errorState("Message hashes do not match in msg2 carReturn");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        byte[] msg3Hash = sc.hashAndSign(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonce), shortToByteArray((short) (seqNum1 + 1))));
+        byte[] msg3Hash = sc.sign(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonce), shortToByteArray((short) (seqNum1 + 1))));
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
         msgBuf.putInt(kilometerage).putShort(kmmNonce).putShort(((short) (seqNum1 + 1))).putInt(msg3Hash.length).put(msg3Hash);
@@ -672,11 +701,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816 {
             return;
         }
         int hashLength = succMsg.getInt();
-        byte[] signedSuccHash = new byte[hashLength]; //To do: new byte -> Transient byte array
+        byte[] signedSuccHash = newB(hashLength); //To do: new byte -> Transient byte array
         succMsg.get(signedSuccHash, 7, hashLength);
-
-        byte[] succHash = sc.unsign((byte[]) signedSuccHash, rtPubSK);
-        if(!Arrays.equals(succHash,sc.createHash(prepareMessage(success,succNonce)))){
+        //byte[] succHash = sc.unsign((byte[]) signedSuccHash, rtPubSK);
+        ByteBuffer msgCmps = newBB(3);
+        msgCmps.put(success).putShort(succNonce);
+        if(!sc.verify(msgCmps,signedSuccHash,rtPubSK)){
             errorState("Invalid hash in success message of Protocol 4");
             currentAwaited = ProtocolAwaited.PROC;
             return;

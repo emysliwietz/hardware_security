@@ -9,8 +9,10 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+
+import javacard.framework.JCSystem;
+import javacard.security.*;
+
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
@@ -60,21 +62,63 @@ public interface Communicator extends Receivable {
     }
 
     default PublicKey bytesToPubkey(byte[] bytes) {
-        try {
+        RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.ALG_TYPE_RSA_PUBLIC, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, KeyBuilder.LENGTH_RSA_512, false);
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        short expLength = b.getShort();
+        byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
+        b.get(exp, 2, expLength);
+        short modLength = b.getShort();
+        byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
+        b.get(mod, 2 + 2 + expLength, modLength);
+        pk.setExponent(exp, (short) 0, expLength);
+        pk.setModulus(mod, (short) 0, modLength);
+        return pk;
+        /*try {
             return KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(bytes));
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
-        }
+        }*/
     }
 
     default PrivateKey bytesToPrivkey(byte[] bytes) {
-        try {
+        RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.ALG_TYPE_RSA_PRIVATE, JCSystem.MEMORY_TYPE_TRANSIENT_RESET, KeyBuilder.LENGTH_RSA_512, false);
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        short expLength = b.getShort();
+        byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
+        b.get(exp, 2, expLength);
+        short modLength = b.getShort();
+        byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
+        b.get(mod, 2 + 2 + expLength, modLength);
+        pk.setExponent(exp, (short) 0, expLength);
+        pk.setModulus(mod, (short) 0, modLength);
+        return pk;
+        /*try {
             return KeyFactory.getInstance("RSA").generatePrivate(new X509EncodedKeySpec(bytes));
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
-        }
+        }*/
+    }
+
+    default byte[] pubkToBytes(PublicKey pubk){
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((512/8)+4),JCSystem.CLEAR_ON_RESET));
+        RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
+        short expLength = rsaPublicKey.getExponent(b.array(),(short) 2);
+        b.putShort(0,expLength);
+        short modLength = rsaPublicKey.getModulus(b.array(),(short) (4+expLength));
+        b.putShort(2+expLength, modLength);
+        return b.array();
+    }
+
+    default byte[] privkToBytes(PrivateKey privk){
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((512/8)+4),JCSystem.CLEAR_ON_RESET));
+        RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
+        short expLength = rsaPrivateKey.getExponent(b.array(),(short) 2);
+        b.putShort(0,expLength);
+        short modLength = rsaPrivateKey.getModulus(b.array(),(short) (4+expLength));
+        b.putShort(2+expLength, modLength);
+        return b.array();
     }
 
 

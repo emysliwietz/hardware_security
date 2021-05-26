@@ -15,9 +15,12 @@ import rsa.RSACrypto;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.security.*;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
+//import java.security.*;
+import javacard.security.RSAPrivateKey;
+import javacard.security.RSAPublicKey;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
+import javacard.security.KeyPair;
 import java.sql.*;
 import java.util.Base64;
 import java.util.UUID;
@@ -36,7 +39,7 @@ public class Database implements Communicator {
             (byte) 0x61,
             (byte) 0x6C,
             (byte) 0x63,
-            (byte) 0x02
+            (byte) 0x01
     };
 
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
@@ -51,17 +54,18 @@ public class Database implements Communicator {
 
     public Object[] generateKeyPair(){
         /* Generate keypair. */
-        KeyPairGenerator generator = null;
+        /*KeyPairGenerator generator = null;
         try {
             generator = KeyPairGenerator.getInstance("RSA");
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
             return null;
         }
-        generator.initialize(1024);
-        KeyPair keypair = generator.generateKeyPair();
-        RSAPublicKey publickey = (RSAPublicKey)keypair.getPublic();
-        RSAPrivateKey privatekey = (RSAPrivateKey)keypair.getPrivate();
+        generator.initialize(1024);*/
+        KeyPair kp = new KeyPair(KeyPair.ALG_RSA, (short) 512);
+        kp.genKeyPair();
+        RSAPublicKey publickey = (RSAPublicKey)kp.getPublic();
+        RSAPrivateKey privatekey = (RSAPrivateKey)kp.getPrivate();
         Object[] keyPair = new Object[2];
         keyPair[0] = publickey;
         keyPair[1] = privatekey;
@@ -71,8 +75,8 @@ public class Database implements Communicator {
     //Returns byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash
     //TODO: Where is the end?
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
-        byte[] toHash = concatBytes(pubk.getEncoded(), id);
-        byte[] signedHash = dc.hashAndSign(toHash);
+        byte[] toHash = concatBytes(pubkToBytes(pubk), id);
+        byte[] signedHash = dc.sign(toHash);
         return concatBytes(toHash, intToByteArray(signedHash.length),signedHash);
     }
 
@@ -280,14 +284,15 @@ public class Database implements Communicator {
         //AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
         AID scAID = AIDUtil.create(SC_APPLET_AID);
         //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
-        int ibLen = 5+4+scCERT.length+scPrivSK.getEncoded().length;
+        int certLen = scCERT.length;
+        int ibLen = 5+4+scCERT.length+privkToBytes(scPrivSK).length;
         ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
         installBuf.put(scID);
         installBuf.putInt(scCERT.length);
         installBuf.put(scCERT);
-        installBuf.put(scPrivSK.getEncoded());
+        installBuf.put(privkToBytes(scPrivSK));
         simulator.createApplet(scAID, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
-        simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
+        //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
         simulator.transmitCommand(SELECT_APDU);
 
         // and send the info back

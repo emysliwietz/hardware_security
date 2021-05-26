@@ -20,8 +20,8 @@ import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import javacard.security.PrivateKey;
+import javacard.security.PublicKey;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -34,7 +34,7 @@ public class ReceptionTerminal implements Communicator {
             (byte) 0x61,
             (byte) 0x6C,
             (byte) 0x63,
-            (byte) 0x02
+            (byte) 0x01
     };
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
 
@@ -126,9 +126,11 @@ public class ReceptionTerminal implements Communicator {
         int msg1HashSignLen = msg1.getInt();
         byte[] msg1HashSign = new byte[msg1HashSignLen];
         msg1.get(msg1HashSign,17,msg1HashSignLen);
-        byte[] msg1Hash = rtc.unsign(msg1HashSign, scPubSK);
-        byte[] msg1ConfHash = rtc.createHash(concatBytes(carReturn.getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum), booleanToByteArray(manipulation)));
-        if(!Arrays.equals(msg1Hash,msg1ConfHash)){
+        //byte[] msg1Hash = rtc.unsign(msg1HashSign, scPubSK);
+        //byte[] msg1ConfHash = rtc.createHash(concatBytes(carReturn.getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum), booleanToByteArray(manipulation)));
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[13]);
+        msg1Cmps.put(carReturnBytes).putShort(seqNum).put(booleanToByteArray(manipulation));
+        if(!rtc.verify(msg1Cmps,msg1HashSign,scPubSK)){
             errorState("Hashes don't match in carReturn message 1");
             rtLogger.fatal("Hashes don't match", "carReturn message 1", cardID);
             return -1;
@@ -144,7 +146,7 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.putShort(kmmNonce);
         short seqNum2 = (short) (scNonce+1);
         msgBuf.putShort(seqNum2);
-        byte[] msg2Sign = rtc.hashAndSign(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
+        byte[] msg2Sign = rtc.sign(concatBytes(shortToByteArray(kmmNonce), shortToByteArray(seqNum2)));
         msgBuf.putInt(msg2Sign.length).put(msg2Sign);
         apdu = sendAPDU(CARD_CONT,CAR_RETURN_M2,msgBuf);
         msgBuf.clear();
@@ -177,9 +179,11 @@ public class ReceptionTerminal implements Communicator {
         int msg3HashSignLen = msg3.getInt();
         byte[] msg3HashSign = new byte[msg3HashSignLen];
         msg3.get(msg3HashSign,12,msg3HashSignLen);
-        byte[] msg3Hash = rtc.unsign(msg3HashSign,scPubSK);
-        byte[] validMsg3Hash = rtc.createHash(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonceResp), shortToByteArray(seqNum3)));
-        if(!Arrays.equals(msg3Hash,validMsg3Hash)){
+        //byte[] msg3Hash = rtc.unsign(msg3HashSign,scPubSK);
+        //byte[] validMsg3Hash = rtc.createHash(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonceResp), shortToByteArray(seqNum3)));
+        ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[8]);
+        msg3Cmps.putInt(kilometerage).putShort(kmmNonceResp).putShort(seqNum3);
+        if(!rtc.verify(msg3Cmps,msg3HashSign,scPubSK)){
             //TODO: Error
             errorState("Hash in carReturn message 3 invalid");
             rtLogger.fatal("Invalid hash", "carReturn message 3", cardID);
@@ -188,7 +192,7 @@ public class ReceptionTerminal implements Communicator {
 
         //Success Message
         msgBuf.put(SUCCESS_BYTE).putShort((short) (scNonce + 2));
-        byte[] succHash = rtc.hashAndSign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2)));
+        byte[] succHash = rtc.sign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2)));
         msgBuf.putInt(succHash.length).put(succHash);
         sendAPDU(CARD_CONT,CAR_RETURN_MS,msgBuf);
         //send(sc, msgBuf);
@@ -241,9 +245,9 @@ public class ReceptionTerminal implements Communicator {
         int cardCertHashSignLen = response.getInt();
 
         //cardPubSK + cardID
-        byte[] cardPubSKEncoded = new byte[128];
-        response.get(cardPubSKEncoded,4,128);
-        int curBufIndex = 132;
+        byte[] cardPubSKEncoded = new byte[64];
+        response.get(cardPubSKEncoded,4,64);
+        int curBufIndex = 68;
         cardPubSK = bytesToPubkey(cardPubSKEncoded);
         cardID = new byte[5];
         response.get(cardID,curBufIndex,5);
@@ -253,10 +257,11 @@ public class ReceptionTerminal implements Communicator {
         byte[] cardCertHashSign = new byte[cardCertHashSignLen];
         response.get(cardCertHashSign,curBufIndex,cardCertHashSignLen);
         scNonce = response.getShort();
-        byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
-
-        byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
-        if (!Arrays.equals(cardCertHash,cardIDPubSKHash)){ //Step 3
+        //byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
+        //byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[69]);
+        msg1Cmps.put(cardPubSKEncoded).put(cardID);
+        if (!rtc.verify(msg1Cmps,cardCertHashSign,dbPubSK)){ //Step 3
             errorState("Hash does not match known card");
             rtLogger.fatal("Invalid certificate: Hash does not match known card", "cardAuthentication message 1", cardID);
             return;
@@ -292,9 +297,11 @@ public class ReceptionTerminal implements Communicator {
         int receptionNonceHashSignLen = response2.getInt();
         byte[] receptionNonceHashSign = new byte[receptionNonceHashSignLen];
         response2.get(receptionNonceHashSign,6,receptionNonceHashSignLen);
-        byte[] receptionNonceHash = rtc.unsign(receptionNonceHashSign, cardPubSK);
-        byte[] nonceReceptionHashValid = rtc.createHash(shortToByteArray(termNonce));
-        if (!Arrays.equals(nonceReceptionHashValid,receptionNonceHash)){ //Step 7
+        //byte[] receptionNonceHash = rtc.unsign(receptionNonceHashSign, cardPubSK);
+        //byte[] nonceReceptionHashValid = rtc.createHash(shortToByteArray(termNonce));
+        ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
+        msg3Cmps.putShort(termNonceResp);
+        if (!rtc.verify(msg3Cmps,receptionNonceHashSign,scPubSK)){ //Step 7
             errorState("Invalid hash in message 3 of P2");
             rtLogger.fatal("Invalid Hash", "cardAuthentication message 3", cardID);
             return;
@@ -303,7 +310,7 @@ public class ReceptionTerminal implements Communicator {
         //Success message
         msgBuf.put(SUCCESS_BYTE);
         byte[] succByte = {SUCCESS_BYTE};
-        byte[] nonceCardHashSign = rtc.hashAndSign(concatBytes(succByte, shortToByteArray(scNonce)));
+        byte[] nonceCardHashSign = rtc.sign(concatBytes(succByte, shortToByteArray(scNonce)));
         msgBuf.putShort(scNonce).putInt(nonceCardHashSign.length).put(nonceCardHashSign);
         sendAPDU(CARD_CONT,AUTH_RECEPTION_MS,msgBuf);
         //send(sc, msgBuf); //Step 8
@@ -357,9 +364,11 @@ public class ReceptionTerminal implements Communicator {
         int giveCarHashSignLen = response.getInt();
         byte[] giveCarHashSign = new byte[giveCarHashSignLen];
         response.get(giveCarHashSign,10,giveCarHashSignLen);
-        byte[] giveCarHash= rtc.unsign(giveCarHashSign, cardPubSK);
-        byte[] giveCarHashValid = rtc.createHash(concatBytes("Car?".getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum1))); //We still dont know if this works
-        if (!Arrays.equals(giveCarHash,giveCarHashValid)){ //Step 3
+        //byte[] giveCarHash= rtc.unsign(giveCarHashSign, cardPubSK);
+        //byte[] giveCarHashValid = rtc.createHash(concatBytes("Car?".getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum1))); //We still dont know if this works
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[6]);
+        msg1Cmps.put(requestBytes).putShort(seqNum1);
+        if (!rtc.verify(msg1Cmps,giveCarHashSign,scPubSK)){ //Step 3
             //TODO: Error
             errorState("Invalid hash in message 1 of P3");
             rtLogger.fatal("Invalid Hash", "carAssingment message 1", cardID);
@@ -402,9 +411,10 @@ public class ReceptionTerminal implements Communicator {
         response2.get(autoCertHashSign,133,autoCertHashSignLen);
 
         System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
-        msgBuf.put(autoPubSK.getEncoded());
-        msgBuf.put(autoID).put(autoCertHashSign).putShort((short) (scNonce+1));
-        msgBuf.put(rtc.hashAndSign(concatBytes(autoPubSK.getEncoded(), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1)))));
+        msgBuf.put(pubkToBytes(autoPubSK));
+        msgBuf.put(autoID).putInt(autoCertHashSignLen).put(autoCertHashSign).putShort((short) (scNonce+1));
+        byte[] msg2Sign = rtc.sign(concatBytes(pubkToBytes(autoPubSK), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1))));
+        msgBuf.putInt(msg2Sign.length).put(msg2Sign);
         apdu = sendAPDU(CARD_CONT,CAR_ASSIGNMENT_M2,msgBuf);
         //send(sc, msgBuf);//Step 6
         msgBuf.clear();
@@ -436,9 +446,11 @@ public class ReceptionTerminal implements Communicator {
         int succHashSignLen = succMsg.getInt();
         byte[] succHashSign = new byte[succHashSignLen];
         succMsg.get(succHashSign,7,succHashSignLen);
-        byte[] succHash = rtc.unsign(succHashSign, cardPubSK);
-        byte[] succByte = {success};
-        if(!Arrays.equals(succHash,rtc.createHash(concatBytes(succByte, shortToByteArray(seqNum2))))){
+        //byte[] succHash = rtc.unsign(succHashSign, cardPubSK);
+        //byte[] succByte = {success};
+        ByteBuffer succMsgCmps = ByteBuffer.wrap(new byte[3]);
+        succMsgCmps.put(success).putShort(seqNum2);
+        if(!rtc.verify(succMsgCmps,succHashSign,scPubSK)){
             errorState("Invalid hash in success message of P3");
             rtLogger.fatal("Invalid hash", "carAssignment success message", cardID);
             return;
