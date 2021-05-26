@@ -102,7 +102,7 @@ public interface Communicator extends Receivable {
     }
 
     default byte[] pubkToBytes(PublicKey pubk){
-        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((512/8)+4),JCSystem.CLEAR_ON_RESET));
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((1024/8)),JCSystem.CLEAR_ON_RESET));
         RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
         short expLength = rsaPublicKey.getExponent(b.array(),(short) 2);
         b.putShort(0,expLength);
@@ -112,7 +112,7 @@ public interface Communicator extends Receivable {
     }
 
     default byte[] privkToBytes(PrivateKey privk){
-        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((512/8)+4),JCSystem.CLEAR_ON_RESET));
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((1024/8)+4),JCSystem.CLEAR_ON_RESET));
         RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
         short expLength = rsaPrivateKey.getExponent(b.array(),(short) 2);
         b.putShort(0,expLength);
