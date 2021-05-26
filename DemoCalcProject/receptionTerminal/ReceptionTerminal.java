@@ -403,8 +403,9 @@ public class ReceptionTerminal implements Communicator {
 
         System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
         msgBuf.put(autoPubSK.getEncoded());
-        msgBuf.put(autoID).put(autoCertHashSign).putShort((short) (scNonce+1));
-        msgBuf.put(rtc.hashAndSign(concatBytes(autoPubSK.getEncoded(), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1)))));
+        msgBuf.put(autoID).putInt(autoCertHashSignLen).put(autoCertHashSign).putShort((short) (scNonce+1));
+        byte[] msg2Sign = rtc.sign(concatBytes(autoPubSK.getEncoded(), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1))));
+        msgBuf.putInt(msg2Sign.length).put(msg2Sign);
         apdu = sendAPDU(CARD_CONT,CAR_ASSIGNMENT_M2,msgBuf);
         //send(sc, msgBuf);//Step 6
         msgBuf.clear();

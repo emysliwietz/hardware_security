@@ -63,6 +63,7 @@ public class Database implements Communicator {
         }
         generator.initialize(1024);*/
         KeyPair kp = new KeyPair(KeyPair.ALG_RSA, (short) 512);
+        kp.genKeyPair();
         RSAPublicKey publickey = (RSAPublicKey)kp.getPublic();
         RSAPrivateKey privatekey = (RSAPrivateKey)kp.getPrivate();
         Object[] keyPair = new Object[2];
