@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:sqlite:C:\Users\Megaport\Downloads\hardware_security\DemoCalcProject\db\CarCompany.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="CarCompany [2]" uuid="74e25960-fabe-4dbd-9e3a-624bc8953958">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/DemoCalcProject/db/CarCompany.db</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

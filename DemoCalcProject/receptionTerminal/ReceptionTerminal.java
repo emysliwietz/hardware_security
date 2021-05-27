@@ -538,7 +538,7 @@ public class ReceptionTerminal implements Communicator {
 
     class SimulatedCardThread extends Thread {
         public void run(){
-            CardTerminals cardTerminals = CardTerminalSimulator.terminals("Rental smartcard terminals");
+            CardTerminals cardTerminals = CardTerminalSimulator.terminals(Arrays.toString(rtc.getID()));
             CardTerminal rtTerminal = cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
             CardSimulator smartcard = new CardSimulator();
             AID scAppletAID = AIDUtil.create(SC_APPLET_AID);

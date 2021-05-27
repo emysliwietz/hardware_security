@@ -24,7 +24,6 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="lib" level="project" />
     <orderEntry type="module-library">
       <library>
         <CLASSES>
@@ -62,5 +61,6 @@
     </orderEntry>
     <orderEntry type="library" name="jcardsim-3.0.4-SNAPSHOT" level="project" />
     <orderEntry type="library" name="sqlite-jdbc-3.34.0" level="project" />
+    <orderEntry type="library" name="lib" level="project" />
   </component>
 </module>
