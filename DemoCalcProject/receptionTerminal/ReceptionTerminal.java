@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.UUID;
 
 public class ReceptionTerminal implements Communicator {
@@ -74,7 +75,7 @@ public class ReceptionTerminal implements Communicator {
 
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate, privateKey);
-        File logFile = new File(rtID.toString()+"_reception_terminal_log.txt");
+        File logFile = new File(Base64.getEncoder().encodeToString(rtID)+"_reception_terminal_log.txt");
         rtLogger = new Logger(logFile);
         database = db;
         (new SimulatedCardThread()).start();
