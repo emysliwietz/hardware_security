@@ -381,8 +381,9 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Aborting: Card not authenticated", "carAssignment", cardID);
             return; //TODO: Placeholder
         }
-        offset=0;
-        ByteBuffer response = ByteBuffer.wrap(apdu.getData());
+        offset=ERESPAPDU_CDATA_OFFSET;
+        //ByteBuffer response = ByteBuffer.wrap(apdu.getData());
+        byte[] response = apdu.getData();
         /*try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -392,7 +393,7 @@ public class ReceptionTerminal implements Communicator {
             return;
         }*/
         byte[] requestBytes = new byte[4];
-        response.get(requestBytes,offset,4);
+        memCpy(requestBytes,response, offset,4);
         offset+=4;
         String request = new String(requestBytes, StandardCharsets.UTF_8);
         if (!request.equals("Car?")){
@@ -400,17 +401,17 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.fatal("Expected car request, got " + request, "carAssignment", cardID);
             return;
         }
-        short seqNum1 = response.getShort();
+        short seqNum1 = getShort(response, offset);
         offset+=2;
         if(!rtc.areSubsequentNonces(termNonce, seqNum1)){
             errorState("Wrong sequence number in message 1 of P3");
             rtLogger.fatal("Wrong sequence number", "carAssignment message 1", cardID);
         }
 
-        int giveCarHashSignLen = response.getInt();
+        int giveCarHashSignLen = getInt(response, offset);
         offset+=4;
         byte[] giveCarHashSign = new byte[giveCarHashSignLen];
-        response.get(giveCarHashSign,offset,giveCarHashSignLen);
+        memCpy(giveCarHashSign,response, offset,giveCarHashSignLen);
         //byte[] giveCarHash= rtc.unsign(giveCarHashSign, cardPubSK);
         //byte[] giveCarHashValid = rtc.createHash(concatBytes("Car?".getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum1))); //We still dont know if this works
         ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[6]);
@@ -472,8 +473,9 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.rewind();
 
         // Success message?
-        offset=0;
-        ByteBuffer succMsg = ByteBuffer.wrap(apdu.getData());
+        offset=ERESPAPDU_CDATA_OFFSET;
+        //ByteBuffer succMsg = ByteBuffer.wrap(apdu.getData());
+        byte[] succMsg = apdu.getData();
         /*try {
             succMsg = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -483,24 +485,24 @@ public class ReceptionTerminal implements Communicator {
             return;
         }*/
 
-        byte success = succMsg.get();
+        byte success = succMsg[0];
         offset++;
         if(success != SUCCESS_BYTE){
             errorState("Wrong byte code, expected 0xFF");
             rtLogger.warning("Wrong byte, expected 0xFF, got " + success, "carAssignment", cardID);
             return;
         }
-        short seqNum2 = succMsg.getShort();
+        short seqNum2 = getShort(succMsg, offset);
         offset+=2;
         if(!rtc.areSubsequentNonces(termNonce, seqNum2, 2)){
             errorState("Wrong sequence number in success message of P3");
             rtLogger.fatal("Wrong sequence number ", "carAssignment success message", cardID);
             return;
         }
-        int succHashSignLen = succMsg.getInt();
+        int succHashSignLen = getInt(succMsg, offset);
         offset+=4;
         byte[] succHashSign = new byte[succHashSignLen];
-        succMsg.get(succHashSign,offset,succHashSignLen);
+        memCpy(succHashSign,succMsg, offset,succHashSignLen);
         //byte[] succHash = rtc.unsign(succHashSign, cardPubSK);
         //byte[] succByte = {success};
         ByteBuffer succMsgCmps = ByteBuffer.wrap(new byte[3]);
