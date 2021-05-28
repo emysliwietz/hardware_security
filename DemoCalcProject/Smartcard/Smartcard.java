@@ -312,7 +312,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(autoCertHashSign,msg2,offset,certSignLen);
         offset+=certSignLen;
         //msg2.get(autoCertHashSign, 73, certSignLen);
-        ByteBuffer msg2HashComponents = newBB(69);
+        ByteBuffer msg2HashComponents = newBB(KEY_LEN + 5);
         msg2HashComponents.put(autoPubSKEncoded);
         msg2HashComponents.put(autoID);
         //byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
@@ -428,8 +428,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         msgBuf.clear();
         msgBuf.rewind();
         byte[] scCert = sc.getCertificate();
-        putInt(apdu.getBuffer(), scCert.length - 69, 0);
-        msgBuf.putInt(sc.getCertificate().length - 69);
+        putInt(apdu.getBuffer(), scCert.length - (KEY_LEN + 5), 0);
+        msgBuf.putInt(sc.getCertificate().length - (KEY_LEN + 5));
         msgBuf.put(sc.getCertificate());
         msgBuf.putShort(sc.generateNonce());
         short msgLen = (short) (2 + 4 + sc.getCertificate().length);
@@ -597,7 +597,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset+=autoCertHSLength;
         //response.get(autoCertHashSign, 73, autoCertHSLength);
 
-        ByteBuffer msg2Cmps = newBB(69);
+        ByteBuffer msg2Cmps = newBB(KEY_LEN + 5);
         msg2Cmps.put(autoPubSkb).put(autoID);
         //byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
         //byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSkb, autoID));

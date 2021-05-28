@@ -101,9 +101,9 @@ public class Auto implements Receivable, Communicator {
         offset += 4;
 
         //scPubSK + cardID
-        byte[] scPubSKEncoded = new byte[64];
-        msg1.get(scPubSKEncoded,curBufIndex,64);
-        curBufIndex += 64;
+        byte[] scPubSKEncoded = new byte[KEY_LEN];
+        msg1.get(scPubSKEncoded,offset,KEY_LEN);
+        offset += KEY_LEN;
         scPubSK = bytesToPubkey(scPubSKEncoded);
         cardID = new byte[5];
         msg1.get(cardID,offset,5);
