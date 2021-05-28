@@ -375,7 +375,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private void insertMS(APDU apdu){
         // Success message
         //dataLen = (byte) apdu.setIncomingAndReceive();
-        ByteBuffer succMb = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer succMb = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        offset =EAPDU_CDATA_OFFSET;
+        byte[] succMb = apdu.getBuffer();
         /*try {
             succMb = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -383,21 +385,25 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return (PublicKey) errorState("Timeout in insert");
         }*/
 
-        byte success = succMb.get(0);
+        byte success = succMb[0];
+        offset += 1;
         if(success != SUCCESS_BYTE){
             errorState("Wrong code, expected 0xFF");
             currentAwaited = ProtocolAwaited.AUTH;
             return;
         }
-        short nonceSucc = succMb.getShort(1);
+        short nonceSucc = getShort(succMb, offset);
+        offset += 2;
         if (!sc.areSubsequentNonces(nonceCard, nonceSucc)){
             errorState("Wrong nonce in success message of P1");
             currentAwaited = ProtocolAwaited.AUTH;
             return;
         }
-        int nonceSuccSignLen = succMb.getInt(3);
+        int nonceSuccSignLen = getInt(succMb, offset);
+        offset += 4;
         byte[] succMHashSign = newB(nonceSuccSignLen);
-        succMb.get(succMHashSign,7,nonceSuccSignLen);
+        memCpy(succMHashSign, succMb, offset, nonceSuccSignLen);
+        //succMb.get(succMHashSign,7,nonceSuccSignLen);
         //byte[] succMHash = sc.unsign(succMHashSign, autoPubSK);
         //byte[] succByte = {success};
         ByteBuffer succMsgCmps = newBB(3);
@@ -635,7 +641,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     public void kilometerageUpdate(APDU apdu){
-        ByteBuffer receivedKmm = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer receivedKmm = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        byte[] receivedKmm = apdu.getBuffer();
+        offset = EAPDU_CDATA_OFFSET;
         /*try {
             receivedKmm = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -650,10 +658,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] recKmmHashSign = (byte[]) receivedKmmO[1];
         byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
         byte[] validRecKmmHash = sc.createHash(prepareMessage(kilometerage));*/
-        kilometerage = receivedKmm.getInt();
-        int recKmmHashSignLength = receivedKmm.getInt();
+        kilometerage = getInt(receivedKmm, offset);
+        offset += 4;
+        int recKmmHashSignLength = getInt(receivedKmm, offset);
+        offset += 4;
         byte[] recKmmHashSign = newB(recKmmHashSignLength);
-        receivedKmm.get(recKmmHashSign, 8, recKmmHashSignLength);
+        memCpy(recKmmHashSign, receivedKmm, offset, recKmmHashSignLength);
         //byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
         //byte[] validRecKmmHash = sc.createHash(intToByteArray(kilometerage));
         ByteBuffer msgCmps = newBB(4);
@@ -701,7 +711,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
     private void carReturnM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
-        ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        byte[] msg2 = apdu.getBuffer();
+        offset = EAPDU_CDATA_OFFSET;
         /*try {
             msg2 = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -710,11 +722,14 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }*/
         short seqNum1 = (short) (nonceReception + 1);
-        short kmmNonce = msg2.getShort();
-        short seqNum2 = msg2.getShort();
-        int lengthHash = msg2.getInt();
+        short kmmNonce = getShort(msg2, offset);
+        offset += 2;
+        short seqNum2 = getShort(msg2, offset);
+        offset += 2;
+        int lengthHash = getInt(msg2, offset);
+        offset += 4;
         byte[] hash = newB(lengthHash); //To do: new byte -> Transient byte array
-        msg2.get(hash, 8, lengthHash);
+        memCpy(hash,msg2, offset, lengthHash);
         if (!sc.areSubsequentNonces(nonceCard, seqNum2)) {
             errorState("Wrong sequence number in carReturn message 2");
             currentAwaited = ProtocolAwaited.PROC;
@@ -752,7 +767,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private void carReturnMS(APDU apdu) {
         //dataLen = (byte) apdu.setIncomingAndReceive();
 
-        ByteBuffer succMsg = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer succMsg = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        byte[] succMsg = apdu.getBuffer();
+        offset = EAPDU_CDATA_OFFSET;
         /*try {
             succMsg = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -761,21 +778,24 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }*/
 
-        byte success = succMsg.get();
+        byte success = succMsg[0];
+        offset += 1;
         if(success != SUCCESS_BYTE){
             errorState("Wrong code, expected 0xFF");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        short succNonce = succMsg.getShort();
+        short succNonce = getShort(succMsg, offset);
+        offset += 2;
         if (!sc.areSubsequentNonces(nonceCard, succNonce, 2)){
             errorState("Wrong sequence number in success message of P4");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        int hashLength = succMsg.getInt();
+        int hashLength = getInt(succMsg, offset);
+        offset += 4;
         byte[] signedSuccHash = newB(hashLength); //To do: new byte -> Transient byte array
-        succMsg.get(signedSuccHash, 7, hashLength);
+        memCpy(signedSuccHash, succMsg, offset, hashLength);
         //byte[] succHash = sc.unsign((byte[]) signedSuccHash, rtPubSK);
         ByteBuffer msgCmps = newBB(3);
         msgCmps.put(success).putShort(succNonce);
