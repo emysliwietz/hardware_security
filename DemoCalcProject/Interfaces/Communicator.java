@@ -49,7 +49,7 @@ public interface Communicator extends Receivable {
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
-    final int pubKLen = 128;
+    final static int KEY_LEN = 128;
     final static int EAPDU_CDATA_OFFSET = 7;
 
 

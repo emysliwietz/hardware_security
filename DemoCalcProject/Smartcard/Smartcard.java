@@ -1,29 +1,17 @@
 package Smartcard;
 
-import Auto.Auto;
 import Interfaces.Communicator;
 import Interfaces.KeyWallet;
-import Interfaces.Receivable;
-import db.Database;
 import javacard.framework.*;
 import javacardx.apdu.ExtendedLength;
-import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
-import javax.print.attribute.standard.MediaSize;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
+
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
-import javacard.framework.Util;
-
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
 
 public class Smartcard extends Applet implements Communicator, ISO7816, ExtendedLength {
     //Everything here is in EEPROM (persistent)
@@ -35,6 +23,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     private byte[] autoIDStored;
     public PublicKey autoPubSK;
+    short offset;
 
     // SW APDU Response Codes
     final static short AUTH_SUCCESS = 0x6100;
@@ -230,7 +219,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     private void init(APDU apdu){
         //ByteBuffer tmp = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
-        int offset = EAPDU_CDATA_OFFSET;
+        offset = EAPDU_CDATA_OFFSET;
         byte[] tmp = apdu.getBuffer();
         int dataLen = threeBytesToInt(tmp,ISO7816.OFFSET_LC);
         byte[] cardID = newB(5);
@@ -293,7 +282,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     private void insertM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
-        ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        offset = EAPDU_CDATA_OFFSET;
+        byte[] msg2 = apdu.getBuffer();
         /*try {
              msg2 = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -302,18 +293,25 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }*/
 
         //autoPubSK
-        byte[] autoPubSKEncoded = newB(64); //NEW BYTE: DONT DO. We should use transient byte array here
-        msg2.get(autoPubSKEncoded, 0, 64);
+        byte[] autoPubSKEncoded = newB(KEY_LEN);
+        memCpy(autoPubSKEncoded,msg2,offset,KEY_LEN);
+        offset+=KEY_LEN;
+        //msg2.get(autoPubSKEncoded, 0, 64);
         autoPubSK = bytesToPubkey(autoPubSKEncoded);
 
         //autoID
         byte[] autoID = newB(5);
-        msg2.get(autoID, 64, 5);
+        memCpy(autoID,msg2,offset,5);
+        offset+=5;
+        //msg2.get(autoID, 64, 5);
 
         //signature of hash of certificate
-        int certSignLen = msg2.getInt(69);
+        int certSignLen = getInt(msg2,offset);//msg2.getInt(69);
+        offset+=4;
         byte[] autoCertHashSign = newB(certSignLen); //To do: new byte -> Transient byte array
-        msg2.get(autoCertHashSign, 73, certSignLen);
+        memCpy(autoCertHashSign,msg2,offset,certSignLen);
+        offset+=certSignLen;
+        //msg2.get(autoCertHashSign, 73, certSignLen);
         ByteBuffer msg2HashComponents = newBB(69);
         msg2HashComponents.put(autoPubSKEncoded);
         msg2HashComponents.put(autoID);
@@ -328,8 +326,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }
 
         //Response of nonceCard
-        short nonceCardResponse = msg2.getShort(73 + certSignLen);
-        int curBufIndex = 75 + certSignLen;
+        short nonceCardResponse = getShort(msg2,offset);//msg2.getShort(73 + certSignLen);
+        offset+=2;
         if (nonceCard != nonceCardResponse) {
             errorState("Wrong nonce returned in message 2 of P1");
             manipulation = true;
@@ -338,11 +336,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }
 
         //signed hash of nonceCard
-        int msg2NonceSignLen = msg2.getInt(curBufIndex);
-        curBufIndex += 4;
+        int msg2NonceSignLen = getInt(msg2,offset);//msg2.getInt(curBufIndex);
+        offset += 4;
         byte[] nonceCardResponseHashSign = newB(msg2NonceSignLen);
-        msg2.get(nonceCardResponseHashSign, curBufIndex, msg2NonceSignLen);
-        curBufIndex += msg2NonceSignLen;
+        memCpy(nonceCardResponseHashSign,msg2,offset,msg2NonceSignLen);
+        //msg2.get(nonceCardResponseHashSign, curBufIndex, msg2NonceSignLen);
+        offset += msg2NonceSignLen;
         msg2HashComponents.clear();
         msg2HashComponents.rewind();
         msg2HashComponents.putShort(nonceCardResponse);
@@ -357,8 +356,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }
 
         //nonceAuto
-        short nonceAuto = msg2.getShort(curBufIndex);
-
+        short nonceAuto = getShort(msg2,offset);//msg2.getShort(curBufIndex);
         //Message 3
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
@@ -438,7 +436,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
     private void authReceptionM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
-        ByteBuffer response = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        offset = EAPDU_CDATA_OFFSET;
+        byte[] response = apdu.getBuffer();
         /*try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -448,19 +447,21 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }*/
 
         //Object[] responseData = processMessage(response);
-        int receptionCertHSLength = response.get(0);
-        byte[] rtPubSkb = newB(64);
-        response.get(rtPubSkb, 4, 64);
+        int receptionCertHSLength = getInt(response,offset);
+        offset += 4;
+        byte[] rtPubSkb = newB(KEY_LEN);
+        memCpy(rtPubSkb, response, offset, KEY_LEN);
+        offset += KEY_LEN;
         rtPubSK = bytesToPubkey(rtPubSkb);
 
         byte[] receptionID = newB(5);
-        response.get(receptionID, 68, 5);
-
+        memCpy(receptionID,response,offset,5);
+        offset += 5;
 
         byte[] receptionCertHashSign = newB(receptionCertHSLength);
-        response.get(receptionCertHashSign, 73, receptionCertHSLength);
+        //response.get(receptionCertHashSign, 73, receptionCertHSLength);
 
-        nonceReception = response.getShort(73 + receptionCertHSLength);
+        nonceReception = getShort(response,offset);//response.getShort(73 + receptionCertHSLength);
         ByteBuffer msg2Cmps = newBB(69);
         msg2Cmps.put(rtPubSkb).put(receptionID);
 
@@ -489,7 +490,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
     private void authReceptionMS(APDU apdu) {
         //dataLen = (byte) apdu.setIncomingAndReceive();
-        ByteBuffer response2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        offset = EAPDU_CDATA_OFFSET;
+        byte[] response2 = apdu.getBuffer();
+        //ByteBuffer response2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
         /*try {
             response2 = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -498,23 +501,27 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }*/
 
-        byte success = response2.get();
+        byte success = response2[offset];
+        offset++;
         if(success != SUCCESS_BYTE){
             errorState("Wrong byte code, expected 0xFF");
             currentAwaited = ProtocolAwaited.AUTH;
             return;
         }
 
-        short nonceCardResp = response2.getShort();
+        short nonceCardResp = getShort(response2,offset);
+        offset+=2;//response2.getShort();
         if(nonceCardResp != nonceCard){
             errorState("Wrong nonce returned in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
             return;
         }
 
-        int responseData2Length = response2.getInt();
+        int responseData2Length = getInt(response2,offset);//response2.getInt();
+        offset+=4;
         byte[] responseData2 = newB(responseData2Length); //To do: new byte -> Transient byte array
-        response2.get(responseData2, 7, responseData2Length);
+        memCpy(responseData2,response2,offset,responseData2Length);
+        //response2.get(responseData2, 7, responseData2Length);
         //byte[] cardNonceHash = sc.unsign(responseData2, rtPubSK);
         //byte[] successByteArray = {success};
         //byte[] nonceCardHashValid = sc.createHash(concatBytes(successByteArray, shortToByteArray(nonceCard)));
@@ -555,7 +562,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
     private void carAssignmentM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
-        ByteBuffer response = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer response = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        offset = EAPDU_CDATA_OFFSET;
+        byte[] response = apdu.getBuffer();
         /*try {
             response = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -564,16 +573,23 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }*/
 
-        byte[] autoPubSkb = newB(64);
-        response.get(autoPubSkb, 0, 64);
+        byte[] autoPubSkb = newB(KEY_LEN);
+        memCpy(autoPubSkb,response,offset,KEY_LEN);
+        offset+=KEY_LEN;
+        //response.get(autoPubSkb, 0, 64);
         autoPubSK = bytesToPubkey(autoPubSkb);
 
         byte[] autoID = newB(5); //To do: new byte -> Transient byte array
-        response.get(autoID, 69, 5);
+        memCpy(autoID,response,offset,5);
+        offset+=5;
+        //response.get(autoID, 69, 5);
 
-        int autoCertHSLength = response.getInt();
+        int autoCertHSLength = getInt(response,offset);//response.getInt();
+        offset+=4;
         byte[] autoCertHashSign = newB(autoCertHSLength); //To do: new byte -> Transient byte array
-        response.get(autoCertHashSign, 73, autoCertHSLength);
+        memCpy(autoCertHashSign,response,offset,autoCertHSLength);
+        offset+=autoCertHSLength;
+        //response.get(autoCertHashSign, 73, autoCertHSLength);
 
         ByteBuffer msg2Cmps = newBB(69);
         msg2Cmps.put(autoPubSkb).put(autoID);
@@ -587,15 +603,18 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
 
-        short nonceCard2 = response.getShort();
+        short nonceCard2 = getShort(response,offset);//response.getShort();
+        offset+=2;
         if (nonceCard2 != ((short) (nonceCard+1))){ //Step 7 - Sequence
             errorState("Wrong sequence number in message 2 of P3");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        int msg2SignLen = response.getInt();
+        int msg2SignLen = getInt(response,offset);//response.getInt();
+        offset+=4;
         byte[] msg2HashSign = newB(msg2SignLen);
-        response.get(msg2HashSign,79+autoCertHSLength,msg2SignLen);
+        memCpy(msg2HashSign,response,offset,msg2SignLen);
+        //response.get(msg2HashSign,79+autoCertHSLength,msg2SignLen);
         msg2Cmps.put(autoCertHashSign).putShort(nonceCard2);
 
         autoIDStored = autoID;
