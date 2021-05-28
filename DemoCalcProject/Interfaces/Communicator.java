@@ -19,6 +19,8 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import static utility.Util.print;
+
 public interface Communicator extends Receivable {
 
     // CLA codes for APDU header
@@ -51,6 +53,7 @@ public interface Communicator extends Receivable {
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
     final static int KEY_LEN = 128;
     final static int EAPDU_CDATA_OFFSET = 7;
+    final static int ERESPAPDU_CDATA_OFFSET = 0;
 
 
     default byte[] prepareMessage(Object ... objects){
@@ -119,11 +122,12 @@ public interface Communicator extends Receivable {
         b.putShort(0,expLength);
         short modLength = rsaPublicKey.getModulus(b.array(),(short) (4+expLength));
         b.putShort(2+expLength, modLength);
-        byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
+        //byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
         //System.out.println(Arrays.toString(b.array()));
-        memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
-        //return b.array();
-        return bb;
+        //memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
+        //print(bb.length);
+        return b.array();
+        //return bb;
     }
 
     default byte[] privkToBytes(PrivateKey privk){
@@ -134,11 +138,11 @@ public interface Communicator extends Receivable {
         b.putShort(0,expLength);
         short modLength = rsaPrivateKey.getModulus(b.array(),(short) (4+expLength));
         b.putShort(2+expLength, modLength);
-        byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
+        //byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
         //System.out.println(Arrays.toString(b.array()));
-        memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
-        //return b.array();
-        return bb;
+        //memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
+        return b.array();
+        //return bb;
     }
 
 

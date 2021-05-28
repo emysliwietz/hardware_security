@@ -1,13 +1,14 @@
 package test.Smartcard;
 
 import db.Database;
+import javacard.security.PublicKey;
+import javacard.security.RSAPublicKey;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.security.KeyPair;
+import javacard.security.KeyPair;
 import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -82,5 +83,15 @@ class SmartcardTest {
         print(pke);
         print("");
         print("Build-in is " + ((mpr.length + 0.0) / prke.length) + " times smaller than our garbage code");*/
+    }
+
+    @Test
+    void testPubKeyBytes(){
+        Database db = new Database();
+        Object[] kp = db.generateKeyPair();
+        PublicKey pk = (PublicKey) kp[0];
+        RSAPublicKey rpk = (RSAPublicKey) pk;
+        print(Arrays.toString(db.pubkToBytes(pk)));
+        print(Arrays.toString(db.pubkToBytes(db.bytesToPubkey(db.pubkToBytes(pk)))));
     }
 }

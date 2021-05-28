@@ -66,11 +66,13 @@ public class Auto implements Receivable, Communicator {
         }
     }
 
-    public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey) {
+    public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey, PublicKey pubk) {
         ac = new AutoCrypto(autoID, autoCertificate, privateKey);
         File logFile = new File(Base64.getEncoder().encodeToString(autoID) +"_auto_log.txt");
         autoLogger = new Logger(logFile);
         (new SimulatedCardThread()).start();
+        dbPubSK = pubk;
+
     }
 
     public void authenticateSCInitiate(){

@@ -46,7 +46,7 @@ public class Database implements Communicator {
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
 
     private Connection conn;
-    protected PublicKey dbPubSK;
+    public PublicKey dbPubSK;
     protected PrivateKey dbPrivSK;
     protected byte[] databaseID;
     protected DatabaseCrypto dc;
@@ -79,6 +79,10 @@ public class Database implements Communicator {
         byte[] toHash = concatBytes(pubkToBytes(pubk), id);
         byte[] signedHash = dc.sign(toHash);
         return concatBytes(toHash, intToByteArray(signedHash.length),signedHash);
+    }
+
+    public PublicKey getDbPubSK(){
+        return dbPubSK;
     }
 
     //Get and set the database keys and id
@@ -291,7 +295,7 @@ public class Database implements Communicator {
 
         //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
         int certLen = scCERT.length;
-        int ibLen = 5+4+scCERT.length+privkToBytes(scPrivSK).length;
+        int ibLen = 5+4+scCERT.length+privkToBytes(scPrivSK).length+KEY_LEN;
         ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
         installBuf.put(scID);
         installBuf.putInt(scCERT.length);
@@ -299,6 +303,7 @@ public class Database implements Communicator {
         System.out.println(getInt(installBuf.array(),5));
         installBuf.put(scCERT);
         installBuf.put(privkToBytes(scPrivSK));
+        installBuf.put(pubkToBytes(dbPubSK));
         send(reception,installBuf);
 
 
@@ -332,7 +337,7 @@ public class Database implements Communicator {
 
         // Private key and certificate must be send to auto
         //byte[] message = prepareMessage(autoPrivSK, autoCERT);
-        return new Auto(autoID, autoCERT, autoPrivSK);
+        return new Auto(autoID, autoCERT, autoPrivSK,dbPubSK);
         //send(auto, message);
     }
 

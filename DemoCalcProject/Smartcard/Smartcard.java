@@ -233,11 +233,15 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(cardCertificate,tmp,offset,certLength);
         offset += certLength;
         //tmp.get(cardCertificate, 9, certLength);
-        byte[] privateKeyEncoded = newB(dataLen - (offset-EAPDU_CDATA_OFFSET));
+        byte[] privateKeyEncoded = newB(dataLen - (offset-EAPDU_CDATA_OFFSET-KEY_LEN));
         memCpy(privateKeyEncoded,tmp,offset,dataLen-offset);
         //tmp.get(privateKeyEncoded, 9 + certLength, apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
         PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
+        offset+=(offset-EAPDU_CDATA_OFFSET-KEY_LEN);
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
+        byte[] dbPubkB = newB(KEY_LEN);
+        memCpy(dbPubkB,tmp,offset,KEY_LEN);
+        dbPubSK = bytesToPubkey(dbPubkB);
         state = States.ASSIGNED_NONE;
         //msgBufRaw = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
         //msgBuf = ByteBuffer.wrap(msgBufRaw);
@@ -428,8 +432,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         msgBuf.clear();
         msgBuf.rewind();
         byte[] scCert = sc.getCertificate();
-        putInt(apdu.getBuffer(), scCert.length - (KEY_LEN + 5), 0);
-        msgBuf.putInt(sc.getCertificate().length - (KEY_LEN + 5));
+        //putInt(apdu.getBuffer(), scCert.length - (KEY_LEN + 5), 0);
+        //msgBuf.putInt(sc.getCertificate().length - (KEY_LEN + 5));
+        System.out.println(sc.getCertificate().length);
         msgBuf.put(sc.getCertificate());
         msgBuf.putShort(sc.generateNonce());
         short msgLen = (short) (2 + 4 + sc.getCertificate().length);
