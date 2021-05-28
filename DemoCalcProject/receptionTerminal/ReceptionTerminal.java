@@ -53,6 +53,7 @@ public class ReceptionTerminal implements Communicator {
     private ByteBuffer msgBuf = ByteBuffer.allocate(256);
     CardChannel applet;
     ByteBuffer initBuffer;
+    int offset;
 
     @Override
     public Object errorState(String msg) {
@@ -99,6 +100,7 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
             return -1;
         }
+        offset = 0;
 
         //Message 1
         ByteBuffer msg1 = ByteBuffer.wrap(apdu.getData());
@@ -111,7 +113,8 @@ public class ReceptionTerminal implements Communicator {
             return -1;
         }*/
         byte[] carReturnBytes = new byte[10];
-        msg1.get(carReturnBytes,0,10);
+        msg1.get(carReturnBytes,offset,10);
+        offset+=10;
         String carReturn = new String(carReturnBytes, StandardCharsets.UTF_8);
         if (!carReturn.equals("Car Return")) {
             errorState("Wrong command, expected Car Return, got " + carReturn);
@@ -119,15 +122,18 @@ public class ReceptionTerminal implements Communicator {
             return -1;
         }
         short seqNum = msg1.getShort();
+        offset+=2;
         if(!rtc.areSubsequentNonces(termNonce,seqNum)){
             errorState("Wrong sequence number in carReturn message 1");
             rtLogger.fatal("Wrong sequence number", "carReturn message 1", cardID);
             return -1;
         }
         boolean manipulation = booleanFromByte(msg1.get());
+        offset++;
         int msg1HashSignLen = msg1.getInt();
+        offset+=4;
         byte[] msg1HashSign = new byte[msg1HashSignLen];
-        msg1.get(msg1HashSign,17,msg1HashSignLen);
+        msg1.get(msg1HashSign,offset,msg1HashSignLen);
         //byte[] msg1Hash = rtc.unsign(msg1HashSign, scPubSK);
         //byte[] msg1ConfHash = rtc.createHash(concatBytes(carReturn.getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum), booleanToByteArray(manipulation)));
         ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[13]);
@@ -155,6 +161,7 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.rewind();
 
         //Message 3
+        offset=0;
         ByteBuffer msg3 = ByteBuffer.wrap(apdu.getData());
         /*try {
             msg3 = waitForInput();
@@ -165,7 +172,9 @@ public class ReceptionTerminal implements Communicator {
             return -1;
         }*/
         kilometerage = msg3.getInt();
+        offset+=4;
         short kmmNonceResp = msg3.getShort();
+        offset+=2;
         if(kmmNonce != kmmNonceResp){
             //TODO: Error
             errorState("Wrong kilometerage nonce returned");
@@ -173,14 +182,16 @@ public class ReceptionTerminal implements Communicator {
             return -1;
         }
         short seqNum3 = msg3.getShort();
+        offset+=2;
         if(!rtc.areSubsequentNonces(termNonce,seqNum3,2)){
             errorState("Wrong sequence number in carReturn message 3");
             rtLogger.fatal("Wrong sequence number", "carReturn message 3", cardID);
             return -1;
         }
         int msg3HashSignLen = msg3.getInt();
+        offset+=4;
         byte[] msg3HashSign = new byte[msg3HashSignLen];
-        msg3.get(msg3HashSign,12,msg3HashSignLen);
+        msg3.get(msg3HashSign,offset,msg3HashSignLen);
         //byte[] msg3Hash = rtc.unsign(msg3HashSign,scPubSK);
         //byte[] validMsg3Hash = rtc.createHash(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonceResp), shortToByteArray(seqNum3)));
         ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[8]);
@@ -264,21 +275,22 @@ public class ReceptionTerminal implements Communicator {
         int cardCertHashSignLen = response.getInt();
 
         //cardPubSK + cardID
-        byte[] cardPubSKEncoded = new byte[64];
-        response.get(cardPubSKEncoded,4,64);
-        int curBufIndex = 68;
+        offset=4;
+        byte[] cardPubSKEncoded = new byte[KEY_LEN];
+        response.get(cardPubSKEncoded,offset,KEY_LEN);
+        offset+=KEY_LEN;
         cardPubSK = bytesToPubkey(cardPubSKEncoded);
         cardID = new byte[5];
-        response.get(cardID,curBufIndex,5);
-        curBufIndex += 5;
+        response.get(cardID,offset,5);
+        offset += 5;
 
         //Signed hash of certificate
         byte[] cardCertHashSign = new byte[cardCertHashSignLen];
-        response.get(cardCertHashSign,curBufIndex,cardCertHashSignLen);
+        response.get(cardCertHashSign,offset,cardCertHashSignLen);
         scNonce = response.getShort();
         //byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
         //byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
-        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[69]);
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[KEY_LEN+5]);
         msg1Cmps.put(cardPubSKEncoded).put(cardID);
         if (!rtc.verify(msg1Cmps,cardCertHashSign,dbPubSK)){ //Step 3
             errorState("Hash does not match known card");
@@ -296,6 +308,7 @@ public class ReceptionTerminal implements Communicator {
         //Step 4
 
         //Message 3
+        offset = 0;
         ByteBuffer response2 = ByteBuffer.wrap(apdu.getData());
         /*try {
             response2 = waitForInput();
@@ -307,6 +320,7 @@ public class ReceptionTerminal implements Communicator {
         }*/
 
         short termNonceResp = response2.getShort();
+        offset+=2;
         if(termNonceResp != termNonce){
             errorState("Wrong nonce in message 3 of cardAuthentication");
             rtLogger.fatal("Wrong nonce", "cardAuthentication message 3", cardID);
@@ -314,8 +328,10 @@ public class ReceptionTerminal implements Communicator {
         }
 
         int receptionNonceHashSignLen = response2.getInt();
+        offset+=4;
         byte[] receptionNonceHashSign = new byte[receptionNonceHashSignLen];
-        response2.get(receptionNonceHashSign,6,receptionNonceHashSignLen);
+        response2.get(receptionNonceHashSign,offset,receptionNonceHashSignLen);
+        offset+=receptionNonceHashSignLen;
         //byte[] receptionNonceHash = rtc.unsign(receptionNonceHashSign, cardPubSK);
         //byte[] nonceReceptionHashValid = rtc.createHash(shortToByteArray(termNonce));
         ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
@@ -356,7 +372,7 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Aborting: Card not authenticated", "carAssignment", cardID);
             return; //TODO: Placeholder
         }
-
+        offset=0;
         ByteBuffer response = ByteBuffer.wrap(apdu.getData());
         /*try {
             response = waitForInput();
@@ -367,7 +383,8 @@ public class ReceptionTerminal implements Communicator {
             return;
         }*/
         byte[] requestBytes = new byte[4];
-        response.get(requestBytes,0,4);
+        response.get(requestBytes,offset,4);
+        offset+=4;
         String request = new String(requestBytes, StandardCharsets.UTF_8);
         if (!request.equals("Car?")){
             errorState("Expected car request");
@@ -375,14 +392,16 @@ public class ReceptionTerminal implements Communicator {
             return;
         }
         short seqNum1 = response.getShort();
+        offset+=2;
         if(!rtc.areSubsequentNonces(termNonce, seqNum1)){
             errorState("Wrong sequence number in message 1 of P3");
             rtLogger.fatal("Wrong sequence number", "carAssignment message 1", cardID);
         }
 
         int giveCarHashSignLen = response.getInt();
+        offset+=4;
         byte[] giveCarHashSign = new byte[giveCarHashSignLen];
-        response.get(giveCarHashSign,10,giveCarHashSignLen);
+        response.get(giveCarHashSign,offset,giveCarHashSignLen);
         //byte[] giveCarHash= rtc.unsign(giveCarHashSign, cardPubSK);
         //byte[] giveCarHashValid = rtc.createHash(concatBytes("Car?".getBytes(StandardCharsets.UTF_8), shortToByteArray(seqNum1))); //We still dont know if this works
         ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[6]);
@@ -411,6 +430,7 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.clear();
         msgBuf.rewind();
 
+        offset=0;
         ByteBuffer response2;
         try {
             response2 = waitForInput();
@@ -420,14 +440,17 @@ public class ReceptionTerminal implements Communicator {
             rtLogger.warning("Aborting: Timeout", "carAssignment database communication",cardID);
             return;
         }
-        byte[] autoPubSKBytes = new byte[128];
-        response2.get(autoPubSKBytes,0,128);
+        byte[] autoPubSKBytes = new byte[KEY_LEN];
+        response2.get(autoPubSKBytes,offset,KEY_LEN);
+        offset+=KEY_LEN;
         PublicKey autoPubSK = bytesToPubkey(autoPubSKBytes);
         byte[] autoID = new byte[5];
-        response2.get(autoID,128,5);
+        response2.get(autoID,offset,5);
+        offset+=5;
         int autoCertHashSignLen = response2.getInt();
+        offset+=4;
         byte[] autoCertHashSign = new byte[autoCertHashSignLen];
-        response2.get(autoCertHashSign,133,autoCertHashSignLen);
+        response2.get(autoCertHashSign,offset,autoCertHashSignLen);
 
         System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
         msgBuf.put(pubkToBytes(autoPubSK));
@@ -440,6 +463,7 @@ public class ReceptionTerminal implements Communicator {
         msgBuf.rewind();
 
         // Success message?
+        offset=0;
         ByteBuffer succMsg = ByteBuffer.wrap(apdu.getData());
         /*try {
             succMsg = waitForInput();
@@ -451,20 +475,23 @@ public class ReceptionTerminal implements Communicator {
         }*/
 
         byte success = succMsg.get();
+        offset++;
         if(success != SUCCESS_BYTE){
             errorState("Wrong byte code, expected 0xFF");
             rtLogger.warning("Wrong byte, expected 0xFF, got " + success, "carAssignment", cardID);
             return;
         }
         short seqNum2 = succMsg.getShort();
+        offset+=2;
         if(!rtc.areSubsequentNonces(termNonce, seqNum2, 2)){
             errorState("Wrong sequence number in success message of P3");
             rtLogger.fatal("Wrong sequence number ", "carAssignment success message", cardID);
             return;
         }
         int succHashSignLen = succMsg.getInt();
+        offset+=4;
         byte[] succHashSign = new byte[succHashSignLen];
-        succMsg.get(succHashSign,7,succHashSignLen);
+        succMsg.get(succHashSign,offset,succHashSignLen);
         //byte[] succHash = rtc.unsign(succHashSign, cardPubSK);
         //byte[] succByte = {success};
         ByteBuffer succMsgCmps = ByteBuffer.wrap(new byte[3]);

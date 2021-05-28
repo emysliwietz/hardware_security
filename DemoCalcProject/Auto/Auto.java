@@ -45,6 +45,7 @@ public class Auto implements Receivable, Communicator {
     private Logger autoLogger;
     private byte[] cardID  = null;
     private ByteBuffer msgBuf = ByteBuffer.allocate(256);
+    int offset;
 
     @Override
     public Object errorState(String msg) {
@@ -87,6 +88,7 @@ public class Auto implements Receivable, Communicator {
     //Protocol 1
     public void authenticateSmartCard(ResponseAPDU apdu){
         //Message 1
+        offset = 0;
         ByteBuffer msg1 = ByteBuffer.wrap(apdu.getData());
         /*try {
             msg1 = waitForInput();
@@ -95,9 +97,8 @@ public class Auto implements Receivable, Communicator {
             autoLogger.warning("Aborting: timeout", "authenticateSmartCard message 1", cardID);
             return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
         }*/
-        int curBufIndex = 0;
-        int scCertHashSignLen = msg1.getInt(curBufIndex);
-        curBufIndex += 4;
+        int scCertHashSignLen = msg1.getInt(offset);
+        offset += 4;
 
         //scPubSK + cardID
         byte[] scPubSKEncoded = new byte[64];
@@ -105,14 +106,14 @@ public class Auto implements Receivable, Communicator {
         curBufIndex += 64;
         scPubSK = bytesToPubkey(scPubSKEncoded);
         cardID = new byte[5];
-        msg1.get(cardID,curBufIndex,5);
-        curBufIndex += 5;
+        msg1.get(cardID,offset,5);
+        offset += 5;
 
         //scCertHash signature
         byte[] scCertHashSign = new byte[scCertHashSignLen];
-        msg1.get(scCertHashSign,curBufIndex,scCertHashSignLen);
-        curBufIndex += scCertHashSignLen;
-        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[69]);
+        msg1.get(scCertHashSign,offset,scCertHashSignLen);
+        offset += scCertHashSignLen;
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[KEY_LEN + 5]);
         msg1Cmps.put(scPubSKEncoded).put(cardID);
         //byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
         //byte[] cardIDPubSKHash = ac.createHash(concatBytes(scPubSK.getEncoded(), cardID));
@@ -123,10 +124,9 @@ public class Auto implements Receivable, Communicator {
         }
 
         //Nonces
-        short cardNonce = msg1.getShort(curBufIndex);
+        short cardNonce = msg1.getShort();
 
         //Message 2
-        curBufIndex = 0;
         short autoNonce = ac.generateNonce();
         byte[] cardNonceHashSign = ac.sign(shortToByteArray(cardNonce));
         msgBuf.putInt(ac.getCertificate().length - 133);
@@ -141,6 +141,7 @@ public class Auto implements Receivable, Communicator {
         msgBuf.rewind();
 
         //Message 3
+        offset=0;
         ByteBuffer msg3 = ByteBuffer.wrap(apdu.getData());
         /*try {
             msg3 = waitForInput();
@@ -151,11 +152,14 @@ public class Auto implements Receivable, Communicator {
             return;
         }*/
         //
-        short autoNonceResp = msg3.getShort(0);
+        short autoNonceResp = msg3.getShort();
+        offset+=2;
         byte[] autoNonceRespHashSignLenByte = new byte[4];
-        msg3.get(autoNonceRespHashSignLenByte,2,4);
+        msg3.get(autoNonceRespHashSignLenByte,offset,4);
+        offset+=4;
         int autoNonceRespHashSignLen = intFromByteArray(autoNonceRespHashSignLenByte);
         byte[] autoNonceRespHashSign = new byte[autoNonceRespHashSignLen];
+        msg3.get(autoNonceRespHashSign,offset,autoNonceRespHashSignLen);
         //byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
         //byte[] autoNonceHash = ac.createHash(shortToByteArray(autoNonce));
         ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
@@ -195,6 +199,7 @@ public class Auto implements Receivable, Communicator {
         msgBuf.rewind();
 
         //Message 2
+        offset=0;
         ByteBuffer confirmation = ByteBuffer.wrap(apdu.getData());
         /*try {
             confirmation = waitForInput();
@@ -205,14 +210,17 @@ public class Auto implements Receivable, Communicator {
             return;
         }*/
         byte confBYTE = confirmation.get();
+        offset++;
         int curKmmCard = confirmation.getInt();
+        offset+=4;
         if (kilometerage != curKmmCard){
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
         }
         int confHashSignLen = confirmation.getInt();
+        offset+=4;
         byte[] confHashSigned = new byte[confHashSignLen];
-        confirmation.get(confHashSigned,9,confHashSignLen);
+        confirmation.get(confHashSigned,offset,confHashSignLen);
         //byte[] confHash = ac.unsign(confHashSigned, scPubSK);
         //byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
         ByteBuffer msgCmps = ByteBuffer.wrap(new byte[5]);
