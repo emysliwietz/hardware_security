@@ -28,6 +28,7 @@ public interface Communicator extends Receivable {
     final static byte CARD_CONT  = (byte) 0xD0; //protocol continuation messages
     final static byte CARD_EOL   = (byte) 0xE0;
     final static byte CARD_INIT  = (byte) 0xF0;
+    final static byte CARD_DEBUG = (byte) 0xA0;
 
     // INS codes for APDU header
     final static byte INSERT_START = (byte) 0x20;
@@ -44,9 +45,12 @@ public interface Communicator extends Receivable {
     final static byte CAR_RETURN_MS = (byte) 0x63;
     final static byte BLOCK = (byte) 0x70;
     final static byte INIT = (byte) 0x80;
+    final static byte DEBUG = (byte) 0x90;
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
+    final int pubKLen = 128;
+    final static int EAPDU_CDATA_OFFSET = 7;
 
 
     default byte[] prepareMessage(Object ... objects){
@@ -66,12 +70,14 @@ public interface Communicator extends Receivable {
     default PublicKey bytesToPubkey(byte[] bytes) {
         RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
         ByteBuffer b = ByteBuffer.wrap(bytes);
-        short expLength = b.getShort();
+        short expLength = getShort(bytes,0);//b.getShort();
         byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
-        b.get(exp, 0, expLength);
-        short modLength = b.getShort();
+        memCpy(exp,bytes,2,expLength);
+        //b.get(exp, 0, expLength);
+        short modLength = getShort(bytes,2+expLength);//b.getShort(2+expLength);
         byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
-        b.get(mod,0, modLength);
+        memCpy(mod,bytes,expLength+4,modLength);
+        //b.get(mod,0, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -86,12 +92,14 @@ public interface Communicator extends Receivable {
     default PrivateKey bytesToPrivkey(byte[] bytes) {
         RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
         ByteBuffer b = ByteBuffer.wrap(bytes);
-        short expLength = b.getShort();
+        short expLength = getShort(bytes,0);//b.getShort();
         byte[] exp = JCSystem.makeTransientByteArray(expLength, JCSystem.CLEAR_ON_RESET);
-        b.get(exp, 0, expLength);
-        short modLength = b.getShort();
+        memCpy(exp,bytes,2,expLength);
+        //b.get(exp, 0, expLength);
+        short modLength = getShort(bytes,2+expLength);//b.getShort(2+expLength);
         byte[] mod = JCSystem.makeTransientByteArray(modLength, JCSystem.CLEAR_ON_RESET);
-        b.get(mod, 0, modLength);
+        memCpy(mod,bytes,expLength+4,modLength);
+        //b.get(mod, 0, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -104,23 +112,33 @@ public interface Communicator extends Receivable {
     }
 
     default byte[] pubkToBytes(PublicKey pubk){
+        //Crash if we reduce length. Actual lengthz trimmed with memCpy
         ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((1024/8)),JCSystem.CLEAR_ON_RESET));
         RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
         short expLength = rsaPublicKey.getExponent(b.array(),(short) 2);
         b.putShort(0,expLength);
         short modLength = rsaPublicKey.getModulus(b.array(),(short) (4+expLength));
         b.putShort(2+expLength, modLength);
-        return b.array();
+        byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
+        //System.out.println(Arrays.toString(b.array()));
+        memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
+        //return b.array();
+        return bb;
     }
 
     default byte[] privkToBytes(PrivateKey privk){
+        //Crash if we reduce length. Actual lengthz trimmed with memCpy
         ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((1024/8)+4),JCSystem.CLEAR_ON_RESET));
         RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
         short expLength = rsaPrivateKey.getExponent(b.array(),(short) 2);
         b.putShort(0,expLength);
         short modLength = rsaPrivateKey.getModulus(b.array(),(short) (4+expLength));
         b.putShort(2+expLength, modLength);
-        return b.array();
+        byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
+        //System.out.println(Arrays.toString(b.array()));
+        memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
+        //return b.array();
+        return bb;
     }
 
 
@@ -163,6 +181,21 @@ public interface Communicator extends Receivable {
                 (byte)value};
     }
 
+    default void putInt(byte[] b, int i, int offset){
+        byte[] a = intToByteArray(i);
+        for(byte j=0;j<4;j++){
+            b[j+offset] = a[j];
+        }
+    }
+
+    default int threeBytesToInt(byte[] b, int offset){
+        return intFromByteArray(new byte[]{0,b[offset],b[offset+1],b[offset+2]});
+    }
+
+    default int getInt(byte[] b, int offset){
+        return intFromByteArray(new byte[]{b[offset],b[offset+1],b[offset+2],b[offset+3]});
+    }
+
     default int intFromByteArray(byte[] bytes) {
         return ((bytes[0] & 0xFF) << 24) |
                 ((bytes[1] & 0xFF) << 16) |
@@ -176,9 +209,13 @@ public interface Communicator extends Receivable {
                 (byte)value};
     }
 
+    default short getShort(byte[] b, int offset){
+        return shortFromByteArray(new byte[]{b[offset],b[offset+1]});
+    }
+
     default short shortFromByteArray(byte[] bytes) {
-        return (short) (((bytes[2] & 0xFF) << 8 ) |
-                ((bytes[3] & 0xFF)));
+        return (short) (((bytes[0] & 0xFF) << 8 ) |
+                ((bytes[1] & 0xFF)));
     }
 
     default byte[] booleanToByteArray(boolean b) {
@@ -239,6 +276,16 @@ public interface Communicator extends Receivable {
             }
         }
         return inputQueue.remove();
+    }
+
+    default void memCpy(byte[] dest, byte[] src, int offset, short n){
+        for(short i=0;i<n;i++){
+            dest[i] = src[offset+i];
+        }
+    }
+
+    default void memCpy(byte[] dest, byte[] src, int offset, int n){
+        memCpy(dest,src,offset, (short) n);
     }
 
 

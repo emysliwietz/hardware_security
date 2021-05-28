@@ -64,7 +64,7 @@ public class ReceptionTerminal implements Communicator {
     }
 
     private ResponseAPDU sendAPDU(int cla, int ins, ByteBuffer data) {
-        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length);
+        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length,1024);
         try {
             return applet.transmit(commandAPDU);
         } catch (CardException e) {
@@ -239,7 +239,7 @@ public class ReceptionTerminal implements Communicator {
             }
             return;
         }
-        CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,256);
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,1024);
         ResponseAPDU apdu;
         try {
             apdu = applet.transmit(commandAPDU);
@@ -535,6 +535,7 @@ public class ReceptionTerminal implements Communicator {
             e.printStackTrace();
             return;
         }
+        System.out.println(getInt(initBuffer.array(),5));
     }
 
     class SimulatedCardThread extends Thread {

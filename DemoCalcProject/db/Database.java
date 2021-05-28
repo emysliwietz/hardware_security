@@ -22,6 +22,7 @@ import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import javacard.security.KeyPair;
 import java.sql.*;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.UUID;
 
@@ -259,6 +260,17 @@ public class Database implements Communicator {
     }
 
     public void generateCard(ReceptionTerminal reception){
+
+        // Create simulator
+        JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
+
+        // Install applet
+        //AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
+        AID scAID = AIDUtil.create(SC_APPLET_AID);
+        simulator.installApplet(scAID, Smartcard.class);
+        //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
+        simulator.transmitCommand(SELECT_APDU);
+
         convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
@@ -277,22 +289,14 @@ public class Database implements Communicator {
             System.out.println(e.getMessage());
         }
 
-        // Create simulator
-        JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
-
-        // Install applet
-        //AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
-        AID scAID = AIDUtil.create(SC_APPLET_AID);
-        simulator.installApplet(scAID, Smartcard.class);
-        //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
-        simulator.transmitCommand(SELECT_APDU);
-
         //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
         int certLen = scCERT.length;
         int ibLen = 5+4+scCERT.length+privkToBytes(scPrivSK).length;
         ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
         installBuf.put(scID);
         installBuf.putInt(scCERT.length);
+        System.out.println(scCERT.length);
+        System.out.println(getInt(installBuf.array(),5));
         installBuf.put(scCERT);
         installBuf.put(privkToBytes(scPrivSK));
         send(reception,installBuf);

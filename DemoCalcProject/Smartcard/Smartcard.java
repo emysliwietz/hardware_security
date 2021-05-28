@@ -19,6 +19,8 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
+import javacard.framework.Util;
+
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
@@ -43,7 +45,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     final static short PROC_FAILED = 0x5200;
     final static short WRONG_CONTINUATION = 0x5300;
 
-    //TODO: Use this
     public enum ProtocolAwaited{
         AUTH,   //card waits for an authentication protocol (insert, authReception)
         PROC,   //card waits for a processing protocol (assignment, kmmUpdate, carReturn)
@@ -103,7 +104,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
                         return;
                 }
             case CARD_CONT:
-                switch(buffer.get(ISO7816.OFFSET_CLA)){
+                switch(buffer.get(ISO7816.OFFSET_INS)){
                     case INSERT_M2:
                         if (currentAwaited != ProtocolAwaited.INS2) {
                             return;
@@ -151,17 +152,30 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
                         return;
                 }
             case CARD_EOL:
-                if(buffer.get(ISO7816.OFFSET_CLA) == BLOCK){
+                if(buffer.get(ISO7816.OFFSET_INS) == BLOCK){
                     state = States.END_OF_LIFE;
                 } else {
-                    ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+                    ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
                 }
                 return;
             case CARD_INIT:
-                if(buffer.get(ISO7816.OFFSET_CLA) == INIT){
+                if(buffer.get(ISO7816.OFFSET_INS) == INIT){
                     init(apdu);
                 } else {
-                    ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+                    ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+                }
+                return;
+            case CARD_DEBUG:
+                if(buffer.get(ISO7816.OFFSET_INS) == DEBUG){
+                    apdu.setOutgoing();
+                    ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
+                    msgBuf.clear();
+                    msgBuf.rewind();
+                    msgBuf.put((byte) 0x42);
+                    apdu.setOutgoingLength((short) 1);
+                    apdu.sendBytes((short) 0, (short) 1);
+                } else {
+                    ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
                 }
                 return;
 
@@ -215,14 +229,24 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void init(APDU apdu){
-        ByteBuffer tmp = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        //ByteBuffer tmp = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
+        int offset = EAPDU_CDATA_OFFSET;
+        byte[] tmp = apdu.getBuffer();
+        int dataLen = threeBytesToInt(tmp,ISO7816.OFFSET_LC);
         byte[] cardID = newB(5);
-        tmp.get(cardID, 0, 5);
-        int certLength = tmp.getInt();
+        //System.out.println(apdu.getBuffer()[1]);
+        memCpy(cardID, tmp, offset,(short) 5);
+        offset += 5;
+        //tmp.get(cardID, 0, 5);
+        int certLength = getInt(tmp,offset);//tmp.getInt();
+        offset += 4;
         byte[] cardCertificate = newB(certLength);
-        tmp.get(cardCertificate, 9, certLength);
-        byte[] privateKeyEncoded = newB(apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
-        tmp.get(privateKeyEncoded, 9 + certLength, apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
+        memCpy(cardCertificate,tmp,offset,certLength);
+        offset += certLength;
+        //tmp.get(cardCertificate, 9, certLength);
+        byte[] privateKeyEncoded = newB(dataLen - (offset-EAPDU_CDATA_OFFSET));
+        memCpy(privateKeyEncoded,tmp,offset,dataLen-offset);
+        //tmp.get(privateKeyEncoded, 9 + certLength, apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
         PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         state = States.ASSIGNED_NONE;
@@ -396,7 +420,14 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
-        msgBuf.putInt(sc.getCertificate().length - 133).put(sc.getCertificate()).putShort(sc.generateNonce());
+        msgBuf.rewind();
+        msgBuf.clear();
+        msgBuf.rewind();
+        byte[] scCert = sc.getCertificate();
+        putInt(apdu.getBuffer(), scCert.length - 69, 0);
+        msgBuf.putInt(sc.getCertificate().length - 69);
+        msgBuf.put(sc.getCertificate());
+        msgBuf.putShort(sc.generateNonce());
         short msgLen = (short) (2 + 4 + sc.getCertificate().length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
