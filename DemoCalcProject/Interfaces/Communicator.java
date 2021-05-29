@@ -202,6 +202,7 @@ public interface Communicator {
                 (byte)value};
     }
 
+    // Take first two bytes of b at the offset and turn them into a short
     default short getShort(byte[] b, int offset){
         return shortFromByteArray(new byte[]{b[offset],b[offset+1]});
     }
