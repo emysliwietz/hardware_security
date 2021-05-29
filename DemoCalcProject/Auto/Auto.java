@@ -1,6 +1,7 @@
 package Auto;
 
 import Interfaces.Communicator;
+import Interfaces.CommunicatorExtended;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
@@ -23,48 +24,16 @@ import javax.smartcardio.*;
 import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 
-public class Auto implements Receivable, Communicator {
+public class Auto extends CommunicatorExtended {
 
-    static final byte[] SC_APPLET_AID = {
-            (byte) 0x3B,
-            (byte) 0x29,
-            (byte) 0x63,
-            (byte) 0x61,
-            (byte) 0x6C,
-            (byte) 0x63,
-            (byte) 0x01
-    };
-    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
-    CardChannel applet;
 
     private AutoCrypto ac;
     public PublicKey dbPubSK;
-    private boolean cardAuthenticated = false;
     private int kilometerage = 0;
     public PublicKey scPubSK;
     private Logger autoLogger;
-    private byte[] cardID  = null;
     private ByteBuffer msgBuf = ByteBuffer.allocate(256);
     int offset;
-
-    @Override
-    public Object errorState(String msg) {
-        System.err.println("I don't want to be here...");
-        System.err.println(msg);
-        cardAuthenticated = false;
-        cardID = null;
-        return null;
-    }
-
-    private ResponseAPDU sendAPDU(int cla, int ins, ByteBuffer data) {
-        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length);
-        try {
-            return applet.transmit(commandAPDU);
-        } catch (CardException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey, PublicKey pubk) {
         ac = new AutoCrypto(autoID, autoCertificate, privateKey);
