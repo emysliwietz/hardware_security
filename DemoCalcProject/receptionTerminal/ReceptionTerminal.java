@@ -2,6 +2,7 @@ package receptionTerminal;
 
 import Auto.Auto;
 import Interfaces.Communicator;
+import Interfaces.CommunicatorExtended;
 import Interfaces.KeyWallet;
 import Interfaces.Receivable;
 import Smartcard.Smartcard;
@@ -26,58 +27,28 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.UUID;
 
-public class ReceptionTerminal implements Communicator {
+public class ReceptionTerminal extends CommunicatorExtended {
 
-    static final byte[] SC_APPLET_AID = {
-            (byte) 0x3B,
-            (byte) 0x29,
-            (byte) 0x63,
-            (byte) 0x61,
-            (byte) 0x6C,
-            (byte) 0x63,
-            (byte) 0x01
-    };
-    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
-
-    private ReceptionTerminal.RTCrypto rtc;
+    private RTCrypto rtc;
     public PublicKey dbPubSK;
-    private boolean cardAuthenticated = false;
     private short termNonce; //Placeholder
-    private short scNonce; //Placeholder
+    private short scNonce; //Placehoder
     private PublicKey cardPubSK; //TEMP until better solution
     private byte[] cardID; //TEMP see above
     private Database database; //who knows at this point
     public PublicKey scPubSK;
     public int kilometerage;
     private Logger rtLogger;
-    private ByteBuffer msgBuf = ByteBuffer.allocate(256);
-    CardChannel applet;
-    ByteBuffer initBuffer;
+    protected ByteBuffer initBuffer;
     int offset;
 
-    @Override
-    public Object errorState(String msg) {
-        System.err.println("I don't want to be here...");
-        System.err.println(msg);
-        cardAuthenticated = false;
-        cardID = null;
-        return null;
-    }
 
-    private ResponseAPDU sendAPDU(int cla, int ins, ByteBuffer data) {
-        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length,1024);
-        try {
-            return applet.transmit(commandAPDU);
-        } catch (CardException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate, privateKey);
         File logFile = new File(Base64.getEncoder().encodeToString(rtID)+"_reception_terminal_log.txt");
         rtLogger = new Logger(logFile);
+        super.logger = rtLogger;
         database = db;
         dbPubSK = db.getDbPubSK();
         (new SimulatedCardThread()).start();

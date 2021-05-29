@@ -21,7 +21,7 @@ import java.util.Queue;
 
 import static utility.Util.print;
 
-public interface Communicator extends Receivable {
+public interface Communicator {
 
     // CLA codes for APDU header
     final static byte CARD_SELECT = ISO7816.CLA_ISO7816;
@@ -50,24 +50,17 @@ public interface Communicator extends Receivable {
     final static byte DEBUG = (byte) 0x90;
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
-    final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
+
     final static int KEY_LEN = 128;
     final static int EAPDU_CDATA_OFFSET = 7;
     final static int ERESPAPDU_CDATA_OFFSET = 0;
 
-
-    default byte[] prepareMessage(Object ... objects){
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
-        try {
-            oos = new ObjectOutputStream(bos);
-            oos.writeObject(objects);
-            oos.flush();
-            oos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return bos.toByteArray();
+    //TODO: Remove
+    //Smartcard probably doesn't support print method
+    default Object errorState(String msg) {
+        System.err.println("I don't want to be here...");
+        System.err.println(msg);
+        return null;
     }
 
     default PublicKey bytesToPubkey(byte[] bytes) {
@@ -148,8 +141,11 @@ public interface Communicator extends Receivable {
 
     default byte[] concatBytes(byte[] a, byte[] b){
         byte[] c = new byte[a.length + b.length];
-        System.arraycopy(a,0,c,0,a.length);
-        System.arraycopy(b,0,c,a.length,b.length);
+
+        //System.arraycopy(a,0,c,0,a.length);
+        //System.arraycopy(b,0,c,a.length,b.length);
+        memCpy(c, a, 0, 0, a.length);
+        memCpy(c, b, a.length, 0, b.length);
         return c;
     }
 
@@ -161,21 +157,13 @@ public interface Communicator extends Receivable {
         }
         byte[] c = new byte[total_length];
         for (byte[] b : byteArrays) {
-            System.arraycopy(b, 0, c, curr, b.length);
+            //System.arraycopy(b, 0, c, curr, b.length);
+            memCpy(c, b, curr, 0, b.length);
             curr += b.length;
         }
         return c;
     }
 
-    default Object errorState(String msg) {
-        System.err.println("I don't want to be here...");
-        System.err.println(msg);
-        return null;
-    }
-
-    default void sendLegacy(Receivable receiver, Object... msgComponents){
-        receiver.receive(prepareMessage(msgComponents));
-    }
 
     default byte[] intToByteArray(int value) {
         return new byte[] {
@@ -187,9 +175,10 @@ public interface Communicator extends Receivable {
 
     default void putInt(byte[] b, int i, int offset){
         byte[] a = intToByteArray(i);
-        for(byte j=0;j<4;j++){
+        /*for(byte j=0;j<4;j++){
             b[j+offset] = a[j];
-        }
+        }*/
+        memCpy(b, a, (short) offset, (short) 0, (short) 4);
     }
 
     default int threeBytesToInt(byte[] b, int offset){
@@ -223,77 +212,35 @@ public interface Communicator extends Receivable {
     }
 
     default byte[] booleanToByteArray(boolean b) {
-        if (b) {
-            return new byte[] { Byte.MAX_VALUE };
-        } else {
-            return new byte[] { 0x0 };
-        }
+        return new byte[b ? Byte.MAX_VALUE : 0x00];
     }
 
     default boolean booleanFromByte(byte b) {
         return (b != 0);
     }
 
-    default void send(Receivable receiver, ByteBuffer msgBuf){
-        receiver.receive(msgBuf.array());
-    }
-
-    default Object[] processMessage(byte[] message){
-        ByteArrayInputStream bis = new ByteArrayInputStream(message);
-        Object o = null;
-        try {
-            ObjectInputStream ois = new ObjectInputStream(bis);
-            o = ois.readObject();
-            ois.close();
-            bis.close();
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return (Object[]) o;
-    }
-
-  /*  default byte[] waitForInputLegacy() throws MessageTimeoutException {
-        int totalwait = 0;
-        while (inputQueue.isEmpty()){
-            try {
-                Thread.sleep(100);
-                totalwait += 100;
-                if (totalwait > WAITING_TIMEOUT)
-                    throw new MessageTimeoutException();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        return inputQueue.remove();
-    }*/
-
-    default ByteBuffer waitForInput() throws MessageTimeoutException {
-        int totalwait = 0;
-        while (inputQueue.isEmpty()){
-            try {
-                Thread.sleep(100);
-                totalwait += 100;
-                if (totalwait > WAITING_TIMEOUT)
-                    throw new MessageTimeoutException();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        return inputQueue.remove();
-    }
-
-    default void memCpy(byte[] dest, byte[] src, int offset, short n){
+    default void memCpy(byte[] dest, byte[] src, short destOffset, short srcOffset, short n) {
+        //We don't use "if (n >= 0) System.arraycopy(src, offset + 0, dest, 0, n);"
+        //because we're not sure if a smartcard supports this library operation
+        //(ByteBuffer, although a library class as well, should be different, as
+        // it _should_ be translated directly into JVM bytecode without any class
+        // overhead. The same _probably_ applies to System.arraycopy but we didn't
+        // confirmed that, so we opted for this manual implementation.)
         for(short i=0;i<n;i++){
-            dest[i] = src[offset+i];
+            dest[destOffset + i] = src[srcOffset + i];
         }
+    }
+
+    default void memCpy(byte[] dest, byte[] src, short offset, short n){
+        memCpy(dest, src, (short) 0, offset, n);
+    }
+
+    default void memCpy(byte[] dest, byte[] src, int destOffset, int srcOffset, int n){
+        memCpy(dest, src, (short) destOffset, (short) srcOffset, (short) n);
     }
 
     default void memCpy(byte[] dest, byte[] src, int offset, int n){
-        memCpy(dest,src,offset, (short) n);
+        memCpy(dest, src, (short) offset, (short) n);
     }
 
-
-
-    class MessageTimeoutException extends Exception {
-    }
 }

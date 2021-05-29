@@ -2,6 +2,7 @@ package db;
 
 import Auto.Auto;
 import Interfaces.Communicator;
+import Interfaces.CommunicatorExtended;
 import Interfaces.KeyWallet;
 import Smartcard.Smartcard;
 import com.licel.jcardsim.io.JavaxSmartCardInterface;
@@ -31,19 +32,7 @@ import db.convertKey;
 import javax.smartcardio.CommandAPDU;
 
 
-public class Database implements Communicator {
-
-    static final byte[] SC_APPLET_AID = {
-            (byte) 0x3B,
-            (byte) 0x29,
-            (byte) 0x63,
-            (byte) 0x61,
-            (byte) 0x6C,
-            (byte) 0x63,
-            (byte) 0x01
-    };
-
-    static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
+public class Database extends CommunicatorExtended {
 
     private Connection conn;
     public PublicKey dbPubSK;
