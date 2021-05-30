@@ -116,7 +116,6 @@ public class Database extends CommunicatorExtended {
         try{
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
-            //Below does not work for every PC. E.g. Alessandra needs to remove /DemoCalcProject/ for it to work. Find fix
             String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\","\\\\") + "/DemoCalcProject/db/CarCompany.db";
             conn = DriverManager.getConnection(url);
         } catch(Exception e){
@@ -179,7 +178,7 @@ public class Database extends CommunicatorExtended {
 
 
         byte[] message = prepareMessage(autoCert);
-        msgBuf.put(autoCert);
+        msgBuf.put(message);
         send(reception, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
@@ -211,7 +210,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String confirmation = cardID.toString() + " has been removed from Rent Relations.";
+        String confirmation = new String(cardID) + " has been removed from Rent Relations.";
         byte[] message = prepareMessage(confirmation);
         msgBuf.put(message);
         send(reception, msgBuf);
@@ -245,8 +244,9 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String confirmation = cardID.toString() + " has been removed from cards.";
+        String confirmation = new String(cardID) + " has been removed from cards.";
         byte[] message = prepareMessage(confirmation);
+        msgBuf.put(message);
         send(reception, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();

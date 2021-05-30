@@ -117,8 +117,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
             return -1;
         }
         if (manipulation){
-            errorState("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify");
-            rtLogger.warning("Kilometerage on card " + cardID.toString() + " might have been manipulated. Please verify", "carReturn message 1", cardID);
+            errorState("Kilometerage on card " + new String(cardID) + " might have been manipulated. Please verify");
+            rtLogger.warning("Kilometerage on card " + new String(cardID) + " might have been manipulated. Please verify", "carReturn message 1", cardID);
             return -1;
         }
 
@@ -249,7 +249,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             return;
         }*/
 
-        //cardPubSK + cardID
+        //cardPubSK + cardID = Certificate
         byte[] cardPubSKEncoded = new byte[KEY_LEN];
         memCpy(cardPubSKEncoded,response,offset,KEY_LEN);
         //response.get(cardPubSKEncoded,offset,KEY_LEN);
@@ -289,7 +289,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
         //Message 3
         offset = ERESPAPDU_CDATA_OFFSET;
-        byte[] response2 = apdu.getData();
+        byte[] response2 = apdu.getData(); //empty!
         /*try {
             response2 = waitForInput();
         } catch (MessageTimeoutException e) {
@@ -299,7 +299,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             return;
         }*/
 
-        short termNonceResp = getShort(response2,offset);//response2.getShort();
+        short termNonceResp = getShort(response2,offset);//response2.getShort(); //ERROR HERE, RESPONSE2 EMPTY
         offset+=2;
         if(termNonceResp != termNonce){
             errorState("Wrong nonce in message 3 of cardAuthentication");
@@ -434,7 +434,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         byte[] autoCertHashSign = new byte[autoCertHashSignLen];
         response2.get(autoCertHashSign,offset,autoCertHashSignLen);
 
-        System.out.println(autoID); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
+        System.out.println(new String(autoID)); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
         msgBuf.put(pubkToBytes(autoPubSK));
         msgBuf.put(autoID).putInt(autoCertHashSignLen).put(autoCertHashSign).putShort((short) (scNonce+1));
         byte[] msg2Sign = rtc.sign(concatBytes(pubkToBytes(autoPubSK), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1))));
@@ -484,7 +484,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Invalid hash", "carAssignment success message", cardID);
             return;
         }
-        rtLogger.info("Car " + autoID + " successfully assigned", "carAssignment", cardID);
+        rtLogger.info("Car " + new String(autoID) + " successfully assigned", "carAssignment", cardID);
         cardID = null;
         cardAuthenticated = false;
     }
@@ -500,11 +500,11 @@ public class ReceptionTerminal extends CommunicatorExtended {
             e.printStackTrace();
             return;
         }
-        int msgLen =cardID.toString().length() + 29;
+        int msgLen = new String(cardID).length() + 29;
         byte[] msg = new byte[msgLen];
         resp.get(msg,0,msgLen);
         String request = new String(msg, StandardCharsets.UTF_8);
-        if(!request.equals(cardID.toString() + " has been removed from cards.")){
+        if(!request.equals(new String(cardID) + " has been removed from cards.")){
             errorState("Database returned wrong message after blocking card");
             rtLogger.fatal("Database returned wrong message", "blockCard", cardID);
             return;

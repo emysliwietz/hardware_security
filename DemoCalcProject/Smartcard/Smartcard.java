@@ -7,8 +7,11 @@ import javacardx.apdu.ExtendedLength;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.ReadOnlyBufferException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
@@ -258,10 +261,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
+    //make a transient byte array with length len
     public byte[] newB(int len) {
         return JCSystem.makeTransientByteArray((short) len, JCSystem.CLEAR_ON_RESET);
     }
 
+    //make a byte buffer with length len
     public ByteBuffer newBB(int len) {
         return ByteBuffer.wrap(newB(len));
     }
@@ -423,9 +428,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void authReception(APDU apdu) {
-        // How does the card know if it is in a terminal or a car?
-        // Potential solution: terminal or auto sends a basic message like "terminal!" or  "auto!"
-        //note for P1: overleaf states you send 2 nonces in step 4. Current algorithm sends only 1.
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
         msgBuf.rewind();
@@ -434,7 +436,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] scCert = sc.getCertificate();
         //putInt(apdu.getBuffer(), scCert.length - (KEY_LEN + 5), 0);
         //msgBuf.putInt(sc.getCertificate().length - (KEY_LEN + 5));
-        System.out.println(sc.getCertificate().length);
+        System.out.println(sc.getCertificate().length); //Should this still be present?
         msgBuf.put(sc.getCertificate());
         msgBuf.putShort(sc.generateNonce());
         short msgLen = (short) (2 + 4 + sc.getCertificate().length);
@@ -445,6 +447,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.AUTHR2;
 
     }
+
+    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     private void authReceptionM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
         offset = EAPDU_CDATA_OFFSET;
@@ -470,16 +474,17 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += 5;
 
         byte[] receptionCertHashSign = newB(receptionCertHSLength);
+        memCpy(receptionCertHashSign,response,offset,receptionCertHSLength);
         //response.get(receptionCertHashSign, 73, receptionCertHSLength);
 
         nonceReception = getShort(response,offset);//response.getShort(73 + receptionCertHSLength);
-        ByteBuffer msg2Cmps = newBB(69);
+        ByteBuffer msg2Cmps = newBB(133); //og 69. made 133 bc bufferoverflowexception
         msg2Cmps.put(rtPubSkb).put(receptionID);
 
-        //byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
 
+        //byte[] receptionCertHash = sc.unsign(receptionCertHashSign, dbPubSK);
         //byte[] receptionIDPubSKHash = sc.createHash(concatBytes(rtPubSkb, receptionID));
-        if (!sc.verify(msg2Cmps,receptionCertHashSign,dbPubSK)) { //Step 5
+        if (!sc.verify(msg2Cmps,receptionCertHashSign,dbPubSK)) { //Step 5 //ERROR HERE. CRYPTO EXCEPTION
             manipulation = true;
             errorState("ReceptionCertHash does not match expected value, check for manipulation.");
             //TODO: Send message to terminal that process is stopped
@@ -499,6 +504,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.AUTHRS;
 
     }
+
+    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     private void authReceptionMS(APDU apdu) {
         //dataLen = (byte) apdu.setIncomingAndReceive();
         offset = EAPDU_CDATA_OFFSET;
@@ -569,8 +576,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.clear();
         //msgBuf.rewind();
         //Step2
-
     }
+
+    /*Protocol 3 - Assignment of car to smartcard */
     private void carAssignmentM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
         //ByteBuffer response = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
@@ -645,6 +653,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.clear().rewind();
     }
 
+    /*protocol 5  - Adding kilometerage to smartcard */
     public void kilometerageUpdate(APDU apdu){
         //ByteBuffer receivedKmm = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
         byte[] receivedKmm = apdu.getBuffer();
@@ -698,6 +707,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.clear().reset();
     }
 
+    /* Protocol 4 - Car return and kilometerage check */
     private void carReturnStart(APDU apdu) {
         short seqNum1 = (short) (nonceReception + 1);
         byte[] car_return = "Car Return".getBytes(StandardCharsets.UTF_8);
@@ -714,6 +724,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.clear().reset();
 
     }
+
+    /* Protocol 4 - Car return and kilometerage check */
     private void carReturnM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
         //ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
@@ -769,6 +781,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.CRETS;
 
     }
+
+    /* Protocol 4 - Car return and kilometerage check */
     private void carReturnMS(APDU apdu) {
         //dataLen = (byte) apdu.setIncomingAndReceive();
 
