@@ -3,6 +3,7 @@ package utility;
 import java.io.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 
 import static utility.Util.print;
 
@@ -26,8 +27,9 @@ public class Logger {
                 ZoneId.of("Europe/Amsterdam")
         ).toString();
         String lvls = " ".repeat(level.WARNING.toString().length() - lvl.toString().length()) + lvl.toString()+ " ";
-        String toFile = timestamp + lvls + "(" + cardID.toString() + ") " + message + " (Source: " + msgSrc + ")";
+        String toFile = timestamp + lvls + "(" + Arrays.toString(cardID) + ") " + message + " (Source: " + msgSrc + ")";
         pw.println(toFile);
+        System.out.println(toFile);
     }
 
     public void info(String message, String msgSrc, byte[] cardID){

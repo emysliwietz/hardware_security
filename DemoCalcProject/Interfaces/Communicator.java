@@ -173,12 +173,26 @@ public interface Communicator {
                 (byte)value};
     }
 
-    default void putInt(byte[] b, int i, int offset){
+    //Used to return reference to same byte[] so method is nestable,
+    //but resulting code is ugly, so returns length of toPut
+    default short put(byte[] b, byte[] toPut, int offset) {
+        memCpy(b, toPut, offset, toPut.length);
+        return (short) toPut.length;
+    }
+
+    default short putShort(byte[] b, short s, int offset) {
+        byte[] a = shortToByteArray(s);
+        memCpy(b, a, (short) offset, (short) 0, (short) a.length);
+        return (short) a.length; //2
+    }
+
+    default short putInt(byte[] b, int i, int offset){
         byte[] a = intToByteArray(i);
         /*for(byte j=0;j<4;j++){
             b[j+offset] = a[j];
         }*/
-        memCpy(b, a, (short) offset, (short) 0, (short) 4);
+        memCpy(b, a, (short) offset, (short) 0, (short) a.length);
+        return (short) a.length; //4
     }
 
     default int threeBytesToInt(byte[] b, int offset){
