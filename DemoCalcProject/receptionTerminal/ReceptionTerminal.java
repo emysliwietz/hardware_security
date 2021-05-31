@@ -233,7 +233,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             }
             return;
         }
-        CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,1024);
+        CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,512);
         ResponseAPDU apdu;
         try {
             apdu = applet.transmit(commandAPDU);

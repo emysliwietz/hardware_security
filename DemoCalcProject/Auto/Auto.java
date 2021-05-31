@@ -173,6 +173,7 @@ public class Auto extends CommunicatorExtended {
             return;
         }
         //Message 1
+        kilometerage+=1;
         msgBuf.putInt(kilometerage).putInt(ac.sign(intToByteArray(kilometerage)).length).put(ac.sign(intToByteArray(kilometerage)));
         ResponseAPDU apdu = sendAPDU(CARD_PROC,KMM_UPDATE,msgBuf);
         //send(sc, msgBuf);
@@ -191,7 +192,7 @@ public class Auto extends CommunicatorExtended {
             autoLogger.warning("Aborting: Timeout", "kilometerageUpdate wait for update", cardID);
             return;
         }*/
-        byte confBYTE = confirmation[0];
+        byte confBYTE = confirmation[offset];
         offset++;
         int curKmmCard = getInt(confirmation, offset);
         offset+=4;

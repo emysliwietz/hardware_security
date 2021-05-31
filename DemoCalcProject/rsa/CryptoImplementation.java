@@ -88,4 +88,8 @@ public abstract class CryptoImplementation {
         return rc.verify(msgComponents.array(), signature, pubSK);
     }
 
+    public boolean verify(byte[] msgComponents, byte[] signature, PublicKey pubSK){
+        return rc.verify(msgComponents, signature, pubSK);
+    }
+
 }

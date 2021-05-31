@@ -23,7 +23,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private SmartcardCrypto sc;
     public PublicKey dbPubSK;
     private boolean manipulation = false;
-    private int kilometerage; //TODO: Change to less storage intensive type (short)
+    private int kilometerage = 0; //TODO: Change to less storage intensive type (short)
     public PublicKey rtPubSK;
 
     private byte[] autoIDStored;
@@ -404,7 +404,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return (PublicKey) errorState("Timeout in insert");
         }*/
 
-        byte success = succMb[0];
+        byte success = succMb[offset];
         offset += 1;
         if(success != SUCCESS_BYTE){
             errorState("Wrong code, expected 0xFF");
@@ -706,9 +706,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(recKmmHashSign, receivedKmm, offset, recKmmHashSignLength);
         //byte[] recKmmHash = sc.unsign(recKmmHashSign, autoPubSK);
         //byte[] validRecKmmHash = sc.createHash(intToByteArray(kilometerage));
-        ByteBuffer msgCmps = newBB(4);
-        msgCmps.putInt(kilometerage);
-        if(!sc.verify(msgCmps,recKmmHashSign,rtPubSK)){
+        if(!sc.verify(intToByteArray(kilometerage),recKmmHashSign,autoPubSK)){
             errorState("Hashes do not match in kilometerage update! Potential manipulation!");
             currentAwaited = ProtocolAwaited.PROC;
             return;
