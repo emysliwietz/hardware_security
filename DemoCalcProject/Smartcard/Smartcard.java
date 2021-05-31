@@ -193,6 +193,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     boolean terminalAuthenticated = false; //in temporary storage
     private short nonceReception; //TEMP because this should be yeeted when card is pulled out
     private short nonceCard; //TEMP same as above
+    byte[] cardCertificate;
+    byte[] cardID;
+    PrivateKey privateKey;
     //byte[] t;
     // t = JCSystem.makeTransientByteArray((short)128,JCSystem.CLEAR_ON_RESET);
                                             //length
@@ -227,21 +230,21 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset = EAPDU_CDATA_OFFSET;
         byte[] tmp = apdu.getBuffer();
         int dataLen = threeBytesToInt(tmp,ISO7816.OFFSET_LC);
-        byte[] cardID = newB(5);
+        cardID = newStaticB(5);
         //System.out.println(apdu.getBuffer()[1]);
         memCpy(cardID, tmp, offset,(short) 5);
         offset += 5;
         //tmp.get(cardID, 0, 5);
         int certLength = getInt(tmp,offset);//tmp.getInt();
         offset += 4;
-        byte[] cardCertificate = newB(certLength);
+        cardCertificate = newStaticB(certLength);
         memCpy(cardCertificate,tmp,offset,certLength);
         offset += certLength;
         //tmp.get(cardCertificate, 9, certLength);
-        byte[] privateKeyEncoded = newB(KEY_LEN);
+        byte[] privateKeyEncoded = newStaticB(KEY_LEN);
         memCpy(privateKeyEncoded,tmp,offset,KEY_LEN);
         //tmp.get(privateKeyEncoded, 9 + certLength, apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
-        PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
+        privateKey = bytesToPrivkey(privateKeyEncoded);
         offset+=KEY_LEN;
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         byte[] dbPubkB = newB(KEY_LEN);
@@ -256,6 +259,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     public boolean select() {
         //reject activation if card is no longer alive
         print("Hi, I'm selecting");
+        print(Arrays.toString(cardID));
+        sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         return state != States.END_OF_LIFE;
     }
 
@@ -269,6 +274,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         return JCSystem.makeTransientByteArray((short) len, JCSystem.CLEAR_ON_RESET);
     }
 
+    public byte[] newStaticB(int len) {
+        return new byte[len];
+        //return JCSystem.makeTransientByteArray((short) len, JCSystem.MEMORY_TYPE_PERSISTENT);
+    }
+
     //make a byte buffer with length len
     public ByteBuffer newBB(int len) {
         return ByteBuffer.wrap(newB(len));
@@ -279,12 +289,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //Message 1
         nonceCard = sc.generateNonce();
         apdu.setOutgoing();
-        ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
-        msgBuf.putInt(sc.getCertificate().length - 133);
-        msgBuf.put(sc.getCertificate()).putShort(nonceCard);
+        ByteBuffer msgBuf = ByteBuffer.wrap(clearBuf(apdu));
+        byte[] scCert = sc.getCertificate();
+        msgBuf.put(scCert).putShort(nonceCard);
         //send(auto, sc.getCertificate(), nonceCard);
         //send(auto, msgBuf);
-        short msgLen = (short) (4 + 2 + sc.getCertificate().length);
+        short msgLen = (short) (2 + scCert.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         //msgBuf.clear();
@@ -354,12 +364,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(nonceCardResponseHashSign,msg2,offset,msg2NonceSignLen);
         //msg2.get(nonceCardResponseHashSign, curBufIndex, msg2NonceSignLen);
         offset += msg2NonceSignLen;
-        msg2HashComponents.clear();
-        msg2HashComponents.rewind();
-        msg2HashComponents.putShort(nonceCardResponse);
         //byte[] nonceCardResponseHash = sc.unsign(nonceCardResponseHashSign, autoPubSK);
         //byte[] nonceValidHash = sc.createHash(prepareMessage(nonceCard));
-        if (!sc.verify(msg2HashComponents,nonceCardResponseHashSign,autoPubSK)) {
+        if (!sc.verify(ByteBuffer.wrap(shortToByteArray(nonceCardResponse)),nonceCardResponseHashSign,autoPubSK)) {
             //TODO: throw error or something (tamper bit). Also stop further actions.
             errorState("Invalid hash of nonce returned in message 2 of P1");
             manipulation = true;

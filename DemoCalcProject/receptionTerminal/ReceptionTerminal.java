@@ -214,6 +214,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
     /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void cardAuthenticationInitiate(){
+        select();
         rtLogger.info("Started Card Authentication", "cardAuthenticationInitiate", cardID);
         if (initBuffer != null){
             sendAPDU(CARD_INIT,INIT,initBuffer);

@@ -76,8 +76,6 @@ public class Auto extends CommunicatorExtended {
             autoLogger.warning("Aborting: timeout", "authenticateSmartCard message 1", cardID);
             return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
         }*/
-        int scCertHashSignLen = getInt(msg1, offset);
-        offset += 4;
 
         //scPubSK + cardID
         byte[] scPubSKEncoded = new byte[KEY_LEN];
@@ -87,6 +85,9 @@ public class Auto extends CommunicatorExtended {
         cardID = new byte[5];
         memCpy(cardID,msg1, offset,5);
         offset += 5;
+
+        int scCertHashSignLen = getInt(msg1, offset);
+        offset += 4;
 
         //scCertHash signature
         byte[] scCertHashSign = new byte[scCertHashSignLen];
@@ -109,7 +110,6 @@ public class Auto extends CommunicatorExtended {
         //Message 2
         short autoNonce = ac.generateNonce();
         byte[] cardNonceHashSign = ac.sign(shortToByteArray(cardNonce));
-        msgBuf.putInt(ac.getCertificate().length - 133);
         msgBuf.put(ac.getCertificate());
         msgBuf.putShort(cardNonce);
         msgBuf.putInt(cardNonceHashSign.length);

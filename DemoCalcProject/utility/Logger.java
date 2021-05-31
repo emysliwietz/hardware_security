@@ -26,7 +26,7 @@ public class Logger {
         String timestamp = ZonedDateTime.now(
                 ZoneId.of("Europe/Amsterdam")
         ).toString();
-        String lvls = " ".repeat(level.WARNING.toString().length() - lvl.toString().length()) + lvl.toString()+ " ";
+        String lvls = " ".repeat(1+level.WARNING.toString().length() - lvl.toString().length()) + lvl.toString()+ " ";
         String toFile = timestamp + lvls + "(" + Arrays.toString(cardID) + ") " + message + " (Source: " + msgSrc + ")";
         pw.println(toFile);
         System.out.println(toFile);
