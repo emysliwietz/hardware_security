@@ -619,11 +619,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset+=autoCertHSLength;
         //response.get(autoCertHashSign, 73, autoCertHSLength);
 
-        ByteBuffer msg2Cmps = newBB(KEY_LEN + 5);
-        msg2Cmps.put(autoPubSkb).put(autoID);
+        ByteBuffer autoCertCmps = newBB(KEY_LEN + 5);
+        autoCertCmps.put(autoPubSkb).put(autoID);
         //byte[] autoCertHash = sc.unsign(autoCertHashSign, dbPubSK);
         //byte[] autoIDPubSKHash = sc.createHash(concatBytes(autoPubSkb, autoID));
-        if (!sc.verify(msg2Cmps,autoCertHashSign,dbPubSK)){ //Step 7 - certificate
+        if (!sc.verify(autoCertCmps,autoCertHashSign,dbPubSK)){ //Step 7 - certificate
             //manipulation = true;
             errorState("Invalid car certificate received");
             currentAwaited = ProtocolAwaited.PROC;
@@ -643,7 +643,15 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] msg2HashSign = newB(msg2SignLen);
         memCpy(msg2HashSign,response,offset,msg2SignLen);
         //response.get(msg2HashSign,79+autoCertHSLength,msg2SignLen);
-        msg2Cmps.put(autoCertHashSign).putShort(nonceCard2);
+        ByteBuffer msg2Cmps = newBB(KEY_LEN+5+64+2);
+        msg2Cmps.put(autoPubSkb).put(autoID).put(autoCertHashSign).putShort(nonceCard2);
+        if (!sc.verify(msg2Cmps,msg2HashSign,rtPubSK)){ //Step 7 - certificate
+            //manipulation = true;
+            errorState("Wrong signature in msg2 of P3");
+            currentAwaited = ProtocolAwaited.PROC;
+            //TODO: Send message to terminal that process is stopped
+            return;
+        }
 
         autoIDStored = autoID;
         //State transition????

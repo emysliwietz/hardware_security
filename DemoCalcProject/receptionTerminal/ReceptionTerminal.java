@@ -118,8 +118,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
             return -1;
         }
         if (manipulation){
-            errorState("Kilometerage on card " + new String(cardID) + " might have been manipulated. Please verify");
-            rtLogger.warning("Kilometerage on card " + new String(cardID) + " might have been manipulated. Please verify", "carReturn message 1", cardID);
+            errorState("Kilometerage on card " + Arrays.toString(cardID) + " might have been manipulated. Please verify");
+            rtLogger.warning("Kilometerage on card " + Arrays.toString(cardID) + " might have been manipulated. Please verify", "carReturn message 1", cardID);
             return -1;
         }
 
@@ -408,6 +408,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         t2.start();
         try {
             t1.join();
+            t2.join();
             //TODO: t2.join();?????
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -415,7 +416,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         msgBuf.clear();
         msgBuf.rewind();
 
-        offset=ERESPAPDU_CDATA_OFFSET;
         ByteBuffer response2;
         try {
             response2 = waitForInput();
@@ -426,18 +426,15 @@ public class ReceptionTerminal extends CommunicatorExtended {
             return;
         }
         byte[] autoPubSKBytes = new byte[KEY_LEN];
-        response2.get(autoPubSKBytes,offset,KEY_LEN);
-        offset+=KEY_LEN;
+        response2.get(autoPubSKBytes,0,KEY_LEN);
         PublicKey autoPubSK = bytesToPubkey(autoPubSKBytes);
         byte[] autoID = new byte[5];
-        response2.get(autoID,offset,5);
-        offset+=5;
+        response2.get(autoID,0,5);
         int autoCertHashSignLen = response2.getInt();
-        offset+=4;
         byte[] autoCertHashSign = new byte[autoCertHashSignLen];
-        response2.get(autoCertHashSign,offset,autoCertHashSignLen);
+        response2.get(autoCertHashSign,0,autoCertHashSignLen);
 
-        System.out.println(new String(autoID)); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
+        //System.out.println(new String(autoID)); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
         msgBuf.put(pubkToBytes(autoPubSK));
         msgBuf.put(autoID).putInt(autoCertHashSignLen).put(autoCertHashSign).putShort((short) (scNonce+1));
         byte[] msg2Sign = rtc.sign(concatBytes(pubkToBytes(autoPubSK), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1))));
@@ -487,7 +484,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Invalid hash", "carAssignment success message", cardID);
             return;
         }
-        rtLogger.info("Car " + new String(autoID) + " successfully assigned", "carAssignment", cardID);
+        rtLogger.info("Car " + Arrays.toString(autoID) + " successfully assigned", "carAssignment", cardID);
         cardID = null;
         cardAuthenticated = false;
     }

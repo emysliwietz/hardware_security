@@ -41,7 +41,8 @@ public class Database extends CommunicatorExtended {
     protected PrivateKey dbPrivSK;
     protected byte[] databaseID;
     protected DatabaseCrypto dc;
-    protected ByteBuffer msgBuf = ByteBuffer.allocate(256);
+    protected ByteBuffer msgBuf = ByteBuffer.allocate(512);
+    convertKey conv = new convertKey();
 
 
     public Object[] generateKeyPair(){
@@ -149,16 +150,16 @@ public class Database extends CommunicatorExtended {
         String autoID = null;
 
         String sqlFindCar = "SELECT a.* FROM autos a LEFT JOIN rentrelations r ON a.id = r.autoID " +
-                "WHERE r.autoID IS NULL ORDER BY random() LIMIT 1"; //Store link between auto and card
+                "/*WHERE r.autoID IS NULL*/ ORDER BY random() LIMIT 1"; //Store link between auto and card
 
-       byte[] autoCert = null;
+        byte[] autoCert = null;
 
         try (
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(sqlFindCar)){
 
                 autoID = rs.getString("id");
-                autoCert = rs.getString("certificate").getBytes();
+                autoCert = conv.fromHexString(rs.getString("certificate"));
             }
         catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -173,15 +174,12 @@ public class Database extends CommunicatorExtended {
 
         try ( PreparedStatement pstmt = conn.prepareStatement(sqlSetRelation)){
             pstmt.setString(1, autoID);
-            pstmt.setString(2, new String(cardID));
+            pstmt.setString(2, conv.toHexString(cardID));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
-
-
-        byte[] message = prepareMessage(autoCert);
-        msgBuf.put(message);
+        msgBuf.put(autoCert);
         send(reception, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
@@ -267,7 +265,6 @@ public class Database extends CommunicatorExtended {
         //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
         simulator.transmitCommand(SELECT_APDU);
 
-        convertKey conv = new convertKey();
         Object [] scKeyPair = generateKeyPair();
         PublicKey scPubSK = (PublicKey) scKeyPair[0];
         PrivateKey scPrivSK = (PrivateKey) scKeyPair[1];
@@ -277,9 +274,9 @@ public class Database extends CommunicatorExtended {
         String sql ="INSERT INTO cards(id,publickey,certificate) VALUES(?,?,?)";
 
         try ( PreparedStatement pstmt = conn.prepareStatement(sql)){
-            pstmt.setString(1, new String(scID));
+            pstmt.setString(1, conv.toHexString(scID));
             pstmt.setString(2, conv.publicToString(scPubSK));
-            pstmt.setString(3, new String(scCERT));
+            pstmt.setString(3, conv.toHexString(scCERT));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -309,7 +306,6 @@ public class Database extends CommunicatorExtended {
 
     }
     public Auto generateAuto(){
-        convertKey conv = new convertKey();
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
@@ -319,9 +315,9 @@ public class Database extends CommunicatorExtended {
         String sql ="INSERT INTO autos(id,publickey,certificate) VALUES(?,?,?)";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)){
-            pstmt.setString(1, new String(autoID));
+            pstmt.setString(1, conv.toHexString(autoID));
             pstmt.setString(2, conv.publicToString(autoPubSK));
-            pstmt.setString(3, new String(autoCERT));
+            pstmt.setString(3, conv.toHexString(autoCERT));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -334,7 +330,6 @@ public class Database extends CommunicatorExtended {
     }
 
     public ReceptionTerminal generateTerminal(){
-        convertKey conv = new convertKey();
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
@@ -344,9 +339,9 @@ public class Database extends CommunicatorExtended {
         String sql ="INSERT INTO terminals(id,publickey,certificate) VALUES(?,?,?)";
 
         try ( PreparedStatement pstmt = conn.prepareStatement(sql)){
-            pstmt.setString(1, new String(rtID));
+            pstmt.setString(1, conv.toHexString(rtID));
             pstmt.setString(2, conv.publicToString(rtPubSK));
-            pstmt.setString(3, new String(rtCERT));
+            pstmt.setString(3, conv.toHexString(rtCERT));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());

@@ -12,7 +12,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public abstract class CommunicatorExtended implements Communicator, Receivable {
-    final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
+    final int WAITING_TIMEOUT /* ms */ = 10000 * 10;
     protected static final byte[] SC_APPLET_AID = {
             (byte) 0x3B,
             (byte) 0x29,
@@ -26,7 +26,7 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     protected CardChannel applet;
     protected boolean cardAuthenticated = false;
     protected final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
-    protected ByteBuffer msgBuf = ByteBuffer.allocate(256);
+    protected ByteBuffer msgBuf = ByteBuffer.allocate(512);
     protected Logger logger;
 
     @Override
