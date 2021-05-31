@@ -32,19 +32,26 @@ public class Auto extends CommunicatorExtended {
     private int kilometerage = 0;
     public PublicKey scPubSK;
     private Logger autoLogger;
-    int offset;
+    private int offset;
+    private CardSimulator smartcard;
+    private CardTerminals cardTerminals; //= CardTerminalSimulator.terminals(Arrays.toString(ac.getID()));
+    private CardTerminal autoTerminal; //= cardTerminals.getTerminal(Arrays.toString(ac.getID()));
 
-    public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey, PublicKey pubk) {
+    public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey, PublicKey pubk, CardSimulator smartcard) {
         ac = new AutoCrypto(autoID, autoCertificate, privateKey);
         File logFile = new File(Base64.getEncoder().encodeToString(autoID) +"_auto_log.txt");
         autoLogger = new Logger(logFile);
         super.logger = autoLogger;
+        this.smartcard = smartcard;
+        cardTerminals = CardTerminalSimulator.terminals(Arrays.toString(ac.getID()));
+        autoTerminal = cardTerminals.getTerminal(Arrays.toString(ac.getID()));
         (new SimulatedCardThread()).start();
         dbPubSK = pubk;
 
     }
 
     public void authenticateSCInitiate(){
+        select();
         CommandAPDU start = new CommandAPDU(CARD_AUTH,INSERT_START,0,0,256);
         ResponseAPDU apdu;
         try {
@@ -237,15 +244,50 @@ public class Auto extends CommunicatorExtended {
         }
     }
 
+    private void select(){
+        try {
+            if(autoTerminal.isCardPresent()){
+                return;
+            }
+        } catch (CardException e) {
+            e.printStackTrace();
+        }
+        smartcard.assignToTerminal(autoTerminal);
+        try{
+            Card card = autoTerminal.connect("*");
+            applet = card.getBasicChannel();
+            ResponseAPDU resp = applet.transmit(SELECT_APDU);
+            if(resp.getSW() != 0x9000){
+                throw new Exception("Select failed");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void deselect(){
+        try {
+            if (!autoTerminal.isCardPresent()){
+                autoLogger.warning("Tried to deselect card that is not present","Deselect",cardID);
+                return;
+            }
+        } catch (CardException e) {
+            e.printStackTrace();
+        }
+        smartcard.assignToTerminal(null);
+        applet = null;
+    }
+
     class SimulatedCardThread extends Thread {
         public void run(){
             CardTerminals cardTerminals = CardTerminalSimulator.terminals(
                     Arrays.toString(ac.getID()));
             CardTerminal autoTerminal = cardTerminals.getTerminal(Arrays.toString(ac.getID()));
-            CardSimulator smartcard = new CardSimulator();
+            //CardSimulator smartcard = new CardSimulator();
             AID scAppletAID = AIDUtil.create(SC_APPLET_AID);
-            smartcard.installApplet(scAppletAID,Smartcard.class);
-            smartcard.assignToTerminal(autoTerminal);
+            select();
+            //smartcard.installApplet(scAppletAID,Smartcard.class);
+            /*smartcard.assignToTerminal(autoTerminal);
             try{
                 Card card = autoTerminal.connect("*");
                 applet = card.getBasicChannel();
@@ -255,7 +297,7 @@ public class Auto extends CommunicatorExtended {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            }
+            }*/
         }
     }
 }

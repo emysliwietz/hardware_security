@@ -41,17 +41,23 @@ public class ReceptionTerminal extends CommunicatorExtended {
     public int kilometerage;
     private Logger rtLogger;
     protected ByteBuffer initBuffer;
-    int offset;
+    private int offset;
+    private CardSimulator smartcard;
+    private CardTerminals cardTerminals; //= CardTerminalSimulator.terminals(Arrays.toString(rtc.getID()));
+    private CardTerminal rtTerminal; //= cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
 
 
 
-    public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey) {
+    public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey, CardSimulator smartcard) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate, privateKey);
         File logFile = new File(Base64.getEncoder().encodeToString(rtID)+"_reception_terminal_log.txt");
         rtLogger = new Logger(logFile);
         super.logger = rtLogger;
         database = db;
         dbPubSK = db.getDbPubSK();
+        this.smartcard = smartcard;
+        cardTerminals = CardTerminalSimulator.terminals(Arrays.toString(rtc.getID()));
+        rtTerminal = cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
         (new SimulatedCardThread()).start();
     }
 
@@ -340,6 +346,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
     /*Protocol 3 - Assignment of car to smartcard */
     public void carAssignmentInitiate(){
+        select();
         CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC,CAR_ASSIGNMENT_START,0,0,256);
         ResponseAPDU apdu;
         try {
@@ -487,6 +494,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         rtLogger.info("Car " + Arrays.toString(autoID) + " successfully assigned", "carAssignment", cardID);
         cardID = null;
         cardAuthenticated = false;
+        deselect();
     }
 
     public void blockCard(){
@@ -548,24 +556,46 @@ public class ReceptionTerminal extends CommunicatorExtended {
         System.out.println(getInt(initBuffer.array(),5));
     }
 
+    private void select(){
+        try {
+            if(rtTerminal.isCardPresent()){
+                return;
+            }
+        } catch (CardException e) {
+            e.printStackTrace();
+        }
+        smartcard.assignToTerminal(rtTerminal);
+        try{
+            Card card = rtTerminal.connect("*");
+            applet = card.getBasicChannel();
+            ResponseAPDU resp = applet.transmit(SELECT_APDU);
+            if(resp.getSW() != 0x9000){
+                throw new Exception("Select failed");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void deselect(){
+        try {
+            if (!rtTerminal.isCardPresent()){
+                rtLogger.warning("Tried to deselect card that is not present","Deselect",cardID);
+                return;
+            }
+        } catch (CardException e) {
+            e.printStackTrace();
+        }
+        smartcard.assignToTerminal(null);
+        applet = null;
+    }
+
     class SimulatedCardThread extends Thread {
         public void run(){
-            CardTerminals cardTerminals = CardTerminalSimulator.terminals(Arrays.toString(rtc.getID()));
-            CardTerminal rtTerminal = cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
-            CardSimulator smartcard = new CardSimulator();
+            //CardSimulator smartcard = new CardSimulator();
             AID scAppletAID = AIDUtil.create(SC_APPLET_AID);
             smartcard.installApplet(scAppletAID,Smartcard.class);
-            smartcard.assignToTerminal(rtTerminal);
-            try{
-                Card card = rtTerminal.connect("*");
-                applet = card.getBasicChannel();
-                ResponseAPDU resp = applet.transmit(SELECT_APDU);
-                if(resp.getSW() != 0x9000){
-                    throw new Exception("Select failed");
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            select();
         }
     }
 }

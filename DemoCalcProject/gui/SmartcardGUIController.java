@@ -174,6 +174,7 @@ public class SmartcardGUIController {
         System.out.println("Car start");
         //TODO: Looping
         a.kilometerageUpdate();
+        a.deselect();
         display.setText("Current mileage: 69");
         inscard.setText("Stop the car");
         insLab.setCursor(Cursor.HAND);

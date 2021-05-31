@@ -6,6 +6,7 @@ import Interfaces.CommunicatorExtended;
 import Interfaces.KeyWallet;
 import Smartcard.Smartcard;
 import com.licel.jcardsim.io.JavaxSmartCardInterface;
+import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import gui.SmartcardGUI;
 import javacard.framework.AID;
@@ -43,6 +44,7 @@ public class Database extends CommunicatorExtended {
     protected DatabaseCrypto dc;
     protected ByteBuffer msgBuf = ByteBuffer.allocate(512);
     convertKey conv = new convertKey();
+    CardSimulator smartcard = new CardSimulator();
 
 
     public Object[] generateKeyPair(){
@@ -325,7 +327,7 @@ public class Database extends CommunicatorExtended {
 
         // Private key and certificate must be send to auto
         //byte[] message = prepareMessage(autoPrivSK, autoCERT);
-        return new Auto(autoID, autoCERT, autoPrivSK,dbPubSK);
+        return new Auto(autoID, autoCERT, autoPrivSK,dbPubSK,smartcard);
         //send(auto, message);
     }
 
@@ -349,7 +351,7 @@ public class Database extends CommunicatorExtended {
 
         // and send the info back
         //private key and certificate must be send to terminal
-        return new ReceptionTerminal(rtID, rtCERT, this, rtPrivSK);
+        return new ReceptionTerminal(rtID, rtCERT, this, rtPrivSK,smartcard);
         //byte[] message = prepareMessage(rtPrivSK, rtCERT);
         //send(terminal, message);
 

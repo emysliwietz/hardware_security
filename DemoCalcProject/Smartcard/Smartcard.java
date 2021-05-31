@@ -255,6 +255,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     // Wakes up smartcard from suspended state and returns whether it's ready to process requests.
     public boolean select() {
         //reject activation if card is no longer alive
+        print("Hi, I'm selecting");
         return state != States.END_OF_LIFE;
     }
 
