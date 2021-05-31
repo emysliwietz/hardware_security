@@ -16,6 +16,8 @@ import java.util.Arrays;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 
+import static utility.Util.print;
+
 public class Smartcard extends Applet implements Communicator, ISO7816, ExtendedLength {
     //Everything here is in EEPROM (persistent)
     private SmartcardCrypto sc;
@@ -236,11 +238,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(cardCertificate,tmp,offset,certLength);
         offset += certLength;
         //tmp.get(cardCertificate, 9, certLength);
-        byte[] privateKeyEncoded = newB(dataLen - (offset-EAPDU_CDATA_OFFSET-KEY_LEN));
-        memCpy(privateKeyEncoded,tmp,offset,dataLen-offset);
+        byte[] privateKeyEncoded = newB(KEY_LEN);
+        memCpy(privateKeyEncoded,tmp,offset,KEY_LEN);
         //tmp.get(privateKeyEncoded, 9 + certLength, apdu.getBuffer()[ISO7816.OFFSET_LC] - (certLength + 9));
         PrivateKey privateKey = bytesToPrivkey(privateKeyEncoded);
-        offset+=(offset-EAPDU_CDATA_OFFSET-KEY_LEN);
+        offset+=KEY_LEN;
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         byte[] dbPubkB = newB(KEY_LEN);
         memCpy(dbPubkB,tmp,offset,KEY_LEN);
@@ -438,7 +440,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.putInt(sc.getCertificate().length - (KEY_LEN + 5));
         System.out.println(sc.getCertificate().length); //Should this still be present?
         msgBuf.put(sc.getCertificate());
-        msgBuf.putShort(sc.generateNonce());
+        nonceCard = sc.generateNonce();
+        msgBuf.putShort(nonceCard);
         short msgLen = (short) (2 + 4 + sc.getCertificate().length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
@@ -462,8 +465,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }*/
 
         //Object[] responseData = processMessage(response);
-        int receptionCertHSLength = getInt(response,offset);
-        offset += 4;
         byte[] rtPubSkb = newB(KEY_LEN);
         memCpy(rtPubSkb, response, offset, KEY_LEN);
         offset += KEY_LEN;
@@ -473,12 +474,16 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(receptionID,response,offset,5);
         offset += 5;
 
+        int receptionCertHSLength = getInt(response,offset);
+        offset += 4;
+
         byte[] receptionCertHashSign = newB(receptionCertHSLength);
         memCpy(receptionCertHashSign,response,offset,receptionCertHSLength);
+        offset += receptionCertHSLength;
         //response.get(receptionCertHashSign, 73, receptionCertHSLength);
 
         nonceReception = getShort(response,offset);//response.getShort(73 + receptionCertHSLength);
-        ByteBuffer msg2Cmps = newBB(133); //og 69. made 133 bc bufferoverflowexception
+        ByteBuffer msg2Cmps = newBB(KEY_LEN+5); //og 69. made 133 bc bufferoverflowexception
         msg2Cmps.put(rtPubSkb).put(receptionID);
 
 
@@ -494,7 +499,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] noncePrepped = shortToByteArray(nonceReception);
         byte[] nonceReceptionHashSign = sc.sign(noncePrepped);
         apdu.setOutgoing();
-        ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
+        ByteBuffer msgBuf = ByteBuffer.wrap(clearBuf(apdu));
+        msgBuf.clear();
+        msgBuf.rewind();
         msgBuf.putShort(nonceReception).putInt(nonceReceptionHashSign.length).put(nonceReceptionHashSign);
         short msgLen = (short) (2 + 4 + nonceReceptionHashSign.length);
         apdu.setOutgoingLength(msgLen);
@@ -529,6 +536,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         short nonceCardResp = getShort(response2,offset);
         offset+=2;//response2.getShort();
+        print(Arrays.toString(shortToByteArray(nonceCard)));
+        print(Arrays.toString(shortToByteArray(nonceCardResp)));
         if(nonceCardResp != nonceCard){
             errorState("Wrong nonce returned in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
@@ -643,7 +652,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] successByteArray = {SUCCESS_BYTE};
         byte[] successHash = sc.sign(concatBytes(successByteArray, shortToByteArray((short) (nonceReception + 2))));
         apdu.setOutgoing();
-        ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
+        ByteBuffer msgBuf = ByteBuffer.wrap(clearBuf(apdu));
+        msgBuf.rewind();
         msgBuf.put(SUCCESS_BYTE).putShort((short) (nonceReception+2)).putInt(successHash.length).put(successHash);
         short msgLen = (short) (1+2+4+successHash.length);
         apdu.setOutgoingLength(msgLen);

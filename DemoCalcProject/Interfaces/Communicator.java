@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 
 import javacard.framework.JCSystem;
 import javacard.security.*;
+import javacard.framework.APDU;
 
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -51,7 +52,7 @@ public interface Communicator {
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
 
-    final static int KEY_LEN = 128;
+    final static int KEY_LEN = 2+64+2+64; //132
     final static int EAPDU_CDATA_OFFSET = 7;
     final static int ERESPAPDU_CDATA_OFFSET = 0;
 
@@ -109,7 +110,7 @@ public interface Communicator {
 
     default byte[] pubkToBytes(PublicKey pubk){
         //Crash if we reduce length. Actual lengthz trimmed with memCpy
-        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((1024/8)),JCSystem.CLEAR_ON_RESET));
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) (KEY_LEN),JCSystem.CLEAR_ON_RESET));
         RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
         short expLength = rsaPublicKey.getExponent(b.array(),(short) 2);
         b.putShort(0,expLength);
@@ -125,7 +126,7 @@ public interface Communicator {
 
     default byte[] privkToBytes(PrivateKey privk){
         //Crash if we reduce length. Actual lengthz trimmed with memCpy
-        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) ((1024/8)+4),JCSystem.CLEAR_ON_RESET));
+        ByteBuffer b = ByteBuffer.wrap(JCSystem.makeTransientByteArray((short) (KEY_LEN),JCSystem.CLEAR_ON_RESET));
         RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
         short expLength = rsaPrivateKey.getExponent(b.array(),(short) 2);
         b.putShort(0,expLength);
@@ -256,6 +257,15 @@ public interface Communicator {
 
     default void memCpy(byte[] dest, byte[] src, int offset, int n){
         memCpy(dest, src, (short) offset, (short) n);
+    }
+
+    default byte[] clearBuf(APDU apdu){
+        byte[] b = apdu.getBuffer();
+        int apduLen = threeBytesToInt(b,4)+10;
+        for (int i = 0;i<apduLen;i++) {
+            b[i] = 0;
+        }
+        return b;
     }
 
 }

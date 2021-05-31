@@ -9,6 +9,7 @@ import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public abstract class CommunicatorExtended implements Communicator, Receivable {
     final int WAITING_TIMEOUT /* ms */ = 1000 * 10;
@@ -44,6 +45,9 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
             logger.info(String.format("Sent APDU %x %x with %d bytes of data", cla, ins, data.array().length), "sendAPDU", cardID);
             ResponseAPDU response = applet.transmit(commandAPDU);
             logger.info(String.format("Received APDU of length %d with %d bytes of data", response.getBytes().length, response.getData().length), "sendAPDU", cardID);
+            if(response.getBytes().length == 2){
+                logger.info("APDU has SW: " + Arrays.toString(intToByteArray(response.getSW())),"sendAPDU",cardID);
+            }
             return response;
         } catch (CardException e) {
             logger.fatal(e.getMessage(), "sendAPDU", cardID);

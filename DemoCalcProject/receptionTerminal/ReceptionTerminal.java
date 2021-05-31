@@ -27,13 +27,14 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.UUID;
 
+import static utility.Util.print;
+
 public class ReceptionTerminal extends CommunicatorExtended {
 
     private RTCrypto rtc;
     public PublicKey dbPubSK;
     private short termNonce; //Placeholder
     private short scNonce; //Placehoder
-    private PublicKey cardPubSK; //TEMP until better solution
     private byte[] cardID; //TEMP see above
     private Database database; //who knows at this point
     public PublicKey scPubSK;
@@ -254,7 +255,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         memCpy(cardPubSKEncoded,response,offset,KEY_LEN);
         //response.get(cardPubSKEncoded,offset,KEY_LEN);
         offset+=KEY_LEN;
-        cardPubSK = bytesToPubkey(cardPubSKEncoded);
+        scPubSK = bytesToPubkey(cardPubSKEncoded);
         cardID = new byte[5];
         memCpy(cardID,response,offset,5);
         //response.get(cardID,offset,5);
@@ -280,7 +281,9 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
         //Message 2
         termNonce = rtc.generateNonce();
-        msgBuf.putInt(rtc.getCertificate().length - 133).put(rtc.getCertificate()).putShort(termNonce);
+        msgBuf.put(rtc.getCertificate()).putShort(termNonce);
+        print(Arrays.toString(rtc.getCertificate()));
+        print(Arrays.toString(shortToByteArray(termNonce)));
         apdu = sendAPDU(CARD_CONT,AUTH_RECEPTION_M2,msgBuf);
         //send(sc, msgBuf);
         msgBuf.clear();

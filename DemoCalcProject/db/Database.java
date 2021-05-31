@@ -31,6 +31,8 @@ import db.convertKey;
 
 import javax.smartcardio.CommandAPDU;
 
+import static utility.Util.print;
+
 
 public class Database extends CommunicatorExtended {
 
@@ -131,6 +133,7 @@ public class Database extends CommunicatorExtended {
     }
 
     public void carAssign(ReceptionTerminal reception){
+        print("I'm assigning a car");
         ByteBuffer response;
         try {
             response = waitForInput();
