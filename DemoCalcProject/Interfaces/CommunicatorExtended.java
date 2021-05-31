@@ -39,7 +39,7 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     }
 
     protected ResponseAPDU sendAPDU(int cla, int ins, @NotNull ByteBuffer data) {
-        logger.info("a", "b", cardID);
+        //logger.info("a", "b", cardID);
         CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length,1024);
         try {
             logger.info(String.format("Sent APDU %x %x with %d bytes of data", cla, ins, data.array().length), "sendAPDU", cardID);

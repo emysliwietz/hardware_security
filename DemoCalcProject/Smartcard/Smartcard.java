@@ -65,7 +65,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         switch (buffer.get(ISO7816.OFFSET_CLA)) {
             case CARD_AUTH:
-                if (currentAwaited != ProtocolAwaited.AUTH) {
+                /*Deselect is not being called properly and kmmUpdate can't change the protocol state, so it might be
+                that the card thinks it is still authenticated to an auto terminal it's no longer connected to*/
+                if (currentAwaited != ProtocolAwaited.AUTH && currentAwaited != ProtocolAwaited.PROC) {
                     return;
                 }
                 switch (buffer.get(ISO7816.OFFSET_INS)) {
@@ -266,7 +268,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     //card is removed from reader and enters suspend state
     public void deselect() {
-
+        currentAwaited = ProtocolAwaited.AUTH;
     }
 
     //make a transient byte array with length len
@@ -737,8 +739,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] car_return = "Car Return".getBytes(StandardCharsets.UTF_8);
         byte[] msg1Hash = sc.sign(concatBytes(car_return, shortToByteArray(seqNum1), booleanToByteArray(manipulation)));
         apdu.setOutgoing();
-        ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
-        msgBuf.put(car_return).putShort(seqNum1).put(booleanToByteArray(manipulation)).putInt(msg1Hash.length).put(msg1Hash);
+        ByteBuffer msgBuf = ByteBuffer.wrap(clearBuf(apdu));
+        byte[] manByte = booleanToByteArray(manipulation);
+        msgBuf.put(car_return).putShort(seqNum1).put(manByte).putInt(msg1Hash.length).put(msg1Hash);
         //send(rt, (byte) 56, seqNum1, manipulation, msg1Hash);
         short msgLen = (short) (10 + 2 + 1 + 4 + msg1Hash.length);
         apdu.setOutgoingLength(msgLen);
@@ -821,8 +824,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }*/
 
-        byte success = succMsg[0];
-        offset += 1;
+        byte success = succMsg[offset];
+        offset ++;
         if(success != SUCCESS_BYTE){
             errorState("Wrong code, expected 0xFF");
             currentAwaited = ProtocolAwaited.PROC;

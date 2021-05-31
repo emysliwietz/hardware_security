@@ -228,7 +228,7 @@ public interface Communicator {
     }
 
     default byte[] booleanToByteArray(boolean b) {
-        return new byte[b ? Byte.MAX_VALUE : 0x00];
+        return new byte[]{b ? Byte.MAX_VALUE : 0x00};
     }
 
     default boolean booleanFromByte(byte b) {

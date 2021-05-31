@@ -131,6 +131,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
         //Message 2
         short kmmNonce = rtc.generateNonce();
+        msgBuf.clear();
+        msgBuf.rewind();
         msgBuf.putShort(kmmNonce);
         short seqNum2 = (short) (scNonce+1);
         msgBuf.putShort(seqNum2);
@@ -185,16 +187,17 @@ public class ReceptionTerminal extends CommunicatorExtended {
         }
 
         //Success Message
+        msgBuf.clear();
+        msgBuf.rewind();
         msgBuf.put(SUCCESS_BYTE).putShort((short) (scNonce + 2));
-        byte[] succHash = rtc.sign(prepareMessage(SUCCESS_BYTE, (short) (scNonce + 2)));
+        byte[] success = {SUCCESS_BYTE};
+        byte[] succHash = rtc.sign(concatBytes(success, shortToByteArray((short) (scNonce + 2))));
         msgBuf.putInt(succHash.length).put(succHash);
         sendAPDU(CARD_CONT,CAR_RETURN_MS,msgBuf);
         //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
         rtLogger.info("Car returned successfully", "carReturn", cardID);
-        cardAuthenticated = false;
-        cardID = null;
         //Notify database
         msgBuf.put(cardID);
         Thread t1 = new Thread(() -> send(database, msgBuf));
@@ -209,6 +212,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
         }
         msgBuf.clear();
         msgBuf.rewind();
+        cardAuthenticated = false;
+        cardID = null;
         return kilometerage;
     }
 
