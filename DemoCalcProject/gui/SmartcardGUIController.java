@@ -10,6 +10,9 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextArea;
 import receptionTerminal.ReceptionTerminal;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class SmartcardGUIController {
     @FXML
     Label insLab;
@@ -54,6 +57,8 @@ public class SmartcardGUIController {
     private Auto a;
     private ReceptionTerminal rt;
     private Database db;
+    boolean driving = false;
+    int kmm = 0;
 
     public void setVars(Auto a, ReceptionTerminal rt, Database db){
         //this.sc = sc;
@@ -134,7 +139,7 @@ public class SmartcardGUIController {
         } else {
             System.out.println("Car return");
             rt.carReturnInitiate();
-            display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: "+ 0.15*rt.kilometerage +"€");
+            display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: "+ String.format("%.2f€",0.30*rt.kilometerage));
             state = states.INIT;
             right2.setText("OK");
             r2.setCursor(Cursor.HAND);
@@ -143,6 +148,7 @@ public class SmartcardGUIController {
     }
 
     private void ok() {
+        a.deselect();
         inscard.setText("Insert Card");
         inscard.setCursor(Cursor.HAND);
         right2.setText("Report theft");
@@ -151,17 +157,20 @@ public class SmartcardGUIController {
         left2.setText("");
         l2.setCursor(Cursor.DEFAULT);
         l2.setOnMouseClicked(null);
+        left0.setText("");
+        l0.setCursor(Cursor.DEFAULT);
+        l0.setOnMouseClicked(null);
         display.setText("Welcome! Please insert your card.");
         insLab.setCursor(Cursor.HAND);
         insLab.setOnMouseClicked(event -> insert());
     }
 
     private void carStart() {
-        l0.setCursor(Cursor.DEFAULT);
+        driving = false;
+        l0.setCursor(Cursor.HAND);
         r0.setCursor(Cursor.DEFAULT);
-        left0.setText("");
+        left0.setText("Start Driving");
         right0.setText("");
-        l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
         a.authenticateSCInitiate();
         if(state != states.ASSIGNED){
@@ -172,12 +181,38 @@ public class SmartcardGUIController {
             return;
         }
         System.out.println("Car start");
-        //TODO: Looping
-        a.kilometerageUpdate();
-        a.deselect();
-        display.setText("Current mileage: 69");
+        l0.setOnMouseClicked(event -> drive());
         inscard.setText("Stop the car");
         insLab.setCursor(Cursor.HAND);
         insLab.setOnMouseClicked(event -> ok());
+    }
+
+    public void updateKmm(){
+        kmm = a.kilometerageUpdate();
+        display.setText("Current mileage: " + kmm + "km");
+    }
+
+    public void drive(){
+        driving = true;
+        left0.setText("Stop Driving");
+        l0.setOnMouseClicked(event -> carStart());
+        right0.setText("Drive 1km");
+        r0.setOnMouseClicked(event -> updateKmm());
+        r0.setCursor(Cursor.HAND);
+        inscard.setText("");
+        insLab.setCursor(Cursor.DEFAULT);
+        insLab.setOnMouseClicked(null);
+
+        /*Thread t1 = new Thread(() -> {
+            while(driving){
+                updateKmm();
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t1.start();*/
     }
 }

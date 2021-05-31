@@ -1,5 +1,6 @@
 package Interfaces;
 
+import javacard.framework.JCSystem;
 import org.jetbrains.annotations.NotNull;
 import utility.Logger;
 
@@ -36,6 +37,19 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         cardAuthenticated = false;
         cardID = null;
         return null;
+    }
+
+
+    //make a transient byte array with length len
+    @Override
+    public byte[] newB(int len) {
+        return new byte[len];
+    }
+
+    //make a byte buffer with length len
+    @Override
+    public ByteBuffer newBB(int len) {
+        return ByteBuffer.allocate(len);
     }
 
     protected ResponseAPDU sendAPDU(int cla, int ins, @NotNull ByteBuffer data) {

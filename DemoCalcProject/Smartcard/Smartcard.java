@@ -271,20 +271,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.AUTH;
     }
 
-    //make a transient byte array with length len
-    public byte[] newB(int len) {
-        return JCSystem.makeTransientByteArray((short) len, JCSystem.CLEAR_ON_RESET);
-    }
-
-    public byte[] newStaticB(int len) {
-        return new byte[len];
-        //return JCSystem.makeTransientByteArray((short) len, JCSystem.MEMORY_TYPE_PERSISTENT);
-    }
-
-    //make a byte buffer with length len
-    public ByteBuffer newBB(int len) {
-        return ByteBuffer.wrap(newB(len));
-    }
 
 
     public void insertStart(APDU apdu) {

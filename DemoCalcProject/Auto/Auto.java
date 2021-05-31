@@ -166,11 +166,11 @@ public class Auto extends CommunicatorExtended {
 
     }
 
-    public void kilometerageUpdate(){
+    public int kilometerageUpdate(){
         if(!cardAuthenticated){
             errorState("Card not authenticated in kilometerageUpdate");
             autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
-            return;
+            return -1;
         }
         //Message 1
         kilometerage+=1;
@@ -214,6 +214,7 @@ public class Auto extends CommunicatorExtended {
         } else {
             autoLogger.info("Kilometerage successfully updated", "kilometerageUpdate", cardID);
         }
+        return kilometerage;
     }
 
     private static class AutoCrypto extends CryptoImplementation {
