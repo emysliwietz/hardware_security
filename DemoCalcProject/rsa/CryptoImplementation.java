@@ -12,6 +12,10 @@ import javacard.security.RandomData;
 
 import java.util.UUID;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ */
 public abstract class CryptoImplementation {
     protected byte[] ID;
     protected byte[] certificate;

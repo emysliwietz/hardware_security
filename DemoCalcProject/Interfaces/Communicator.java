@@ -22,6 +22,10 @@ import java.util.Queue;
 
 import static utility.Util.print;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ */
 public interface Communicator {
 
     // CLA codes for APDU header

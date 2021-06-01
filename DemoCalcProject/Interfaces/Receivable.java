@@ -4,6 +4,10 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ */
 public interface Receivable {
     Queue<ByteBuffer> inputQueue = new LinkedList<>();
 

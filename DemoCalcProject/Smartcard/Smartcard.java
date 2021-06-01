@@ -18,6 +18,12 @@ import javacard.security.PublicKey;
 
 import static utility.Util.print;
 
+/**
+@author Matti Eisenlohr
+@author Egidius Mysliwietz
+@author Laura Philipse
+@author Alessandra van Veen
+ */
 public class Smartcard extends Applet implements Communicator, ISO7816, ExtendedLength {
     //Everything here is in EEPROM (persistent)
     private SmartcardCrypto sc;
@@ -257,7 +263,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf = ByteBuffer.wrap(msgBufRaw);
     }
 
-    // Wakes up smartcard from suspended state and returns whether it's ready to process requests.
+    /** Wakes up smartcard from suspended state and returns whether it's ready to process requests.*/
     public boolean select() {
         //reject activation if card is no longer alive
         print("Hi, I'm selecting");
@@ -266,7 +272,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         return state != States.END_OF_LIFE;
     }
 
-    //card is removed from reader and enters suspend state
+    /**card is removed from reader and enters suspend state*/
     public void deselect() {
         currentAwaited = ProtocolAwaited.AUTH;
     }
@@ -424,7 +430,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.PROC;
     }
 
-    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    /**Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void authReception(APDU apdu) {
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
@@ -447,7 +453,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
-    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    /**Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     private void authReceptionM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
         offset = EAPDU_CDATA_OFFSET;
@@ -508,7 +514,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
-    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    /**Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     private void authReceptionMS(APDU apdu) {
         //dataLen = (byte) apdu.setIncomingAndReceive();
         offset = EAPDU_CDATA_OFFSET;
@@ -561,7 +567,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //Maybe let the terminal know how it went
 
     }
-    /*Protocol 3 - Assignment of car to smartcard */
+    /**Protocol 3 - Assignment of car to smartcard */
     public void carAssignmentStart(APDU apdu) {
         if (!terminalAuthenticated) { //Step 1
             return; //TODO: Placeholder
@@ -583,7 +589,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //Step2
     }
 
-    /*Protocol 3 - Assignment of car to smartcard */
+    /**Protocol 3 - Assignment of car to smartcard */
     private void carAssignmentM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
         //ByteBuffer response = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
@@ -667,7 +673,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.clear().rewind();
     }
 
-    /*protocol 5  - Adding kilometerage to smartcard */
+    /**protocol 5  - Adding kilometerage to smartcard */
     public void kilometerageUpdate(APDU apdu){
         //ByteBuffer receivedKmm = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA,apdu.getBuffer()[ISO7816.OFFSET_LC]);
         byte[] receivedKmm = apdu.getBuffer();
@@ -719,7 +725,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.clear().reset();
     }
 
-    /* Protocol 4 - Car return and kilometerage check */
+    /** Protocol 4 - Car return and kilometerage check */
     private void carReturnStart(APDU apdu) {
         short seqNum1 = (short) (nonceReception + 1);
         byte[] car_return = "Car Return".getBytes(StandardCharsets.UTF_8);
@@ -738,7 +744,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
-    /* Protocol 4 - Car return and kilometerage check */
+    /** Protocol 4 - Car return and kilometerage check */
     private void carReturnM2(APDU apdu) {
         //byte dataLen = (byte) apdu.setIncomingAndReceive();
         //ByteBuffer msg2 = ByteBuffer.wrap(apdu.getBuffer()).slice(ISO7816.OFFSET_CDATA, apdu.getBuffer()[ISO7816.OFFSET_LC]);
@@ -795,7 +801,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
-    /* Protocol 4 - Car return and kilometerage check */
+    /** Protocol 4 - Car return and kilometerage check */
     private void carReturnMS(APDU apdu) {
         //dataLen = (byte) apdu.setIncomingAndReceive();
 

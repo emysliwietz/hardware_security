@@ -13,6 +13,10 @@ import receptionTerminal.ReceptionTerminal;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ */
 public class SmartcardGUIController {
     @FXML
     Label insLab;

@@ -24,6 +24,12 @@ import javax.smartcardio.*;
 import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ @author Laura Philipse
+ @author Alessandra van Veen
+ */
 public class Auto extends CommunicatorExtended {
 
 
@@ -50,6 +56,7 @@ public class Auto extends CommunicatorExtended {
 
     }
 
+    /** protocol 1 - mutual authentication between smartcard and car */
     public void authenticateSCInitiate(){
         select();
         CommandAPDU start = new CommandAPDU(CARD_AUTH,INSERT_START,0,0,256);
@@ -63,7 +70,7 @@ public class Auto extends CommunicatorExtended {
         authenticateSmartCard(apdu);
     }
 
-    //Protocol 1
+    /** protocol 1 - mutual authentication between smartcard and car */
     public void authenticateSmartCard(ResponseAPDU apdu){
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
@@ -166,6 +173,7 @@ public class Auto extends CommunicatorExtended {
 
     }
 
+    /** protocol 5 - adding kilometerage to smartcard **/
     public int kilometerageUpdate(){
         if(!cardAuthenticated){
             errorState("Card not authenticated in kilometerageUpdate");

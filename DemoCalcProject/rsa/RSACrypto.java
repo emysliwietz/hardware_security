@@ -14,6 +14,10 @@ import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import javacard.security.Signature;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ */
 public abstract class RSACrypto {
 
     protected PrivateKey privk;

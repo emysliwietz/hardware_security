@@ -12,6 +12,10 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ */
 public abstract class CommunicatorExtended implements Communicator, Receivable {
     final int WAITING_TIMEOUT /* ms */ = 10000 * 10;
     protected static final byte[] SC_APPLET_AID = {

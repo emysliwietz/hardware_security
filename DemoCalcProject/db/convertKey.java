@@ -11,6 +11,12 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ @author Laura Philipse
+ @author Alessandra van Veen
+ */
 public class convertKey implements Communicator {
     protected KeyFactory factory; short offset;
 

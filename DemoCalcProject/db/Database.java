@@ -34,7 +34,12 @@ import javax.smartcardio.CommandAPDU;
 
 import static utility.Util.print;
 
-
+/**
+@author Matti Eisenlohr
+@author Egidius Mysliwietz
+@author Laura Philipse
+@author Alessandra van Veen
+ */
 public class Database extends CommunicatorExtended {
 
     private Connection conn;
@@ -67,7 +72,7 @@ public class Database extends CommunicatorExtended {
         return keyPair;
     }
 
-    //Returns byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash
+    /**Returns byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash*/
     //TODO: Where is the end?
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
         byte[] toHash = concatBytes(pubkToBytes(pubk), id);
@@ -75,11 +80,12 @@ public class Database extends CommunicatorExtended {
         return concatBytes(toHash, intToByteArray(signedHash.length),signedHash);
     }
 
+    /**get public key of database*/
     public PublicKey getDbPubSK(){
         return dbPubSK;
     }
 
-    //Get and set the database keys and id
+    /**Get and set the database keys and id*/
     private void setKeys() {
         convertKey conv = new convertKey();
         String sqlGetKeys = "SELECT db.* FROM database db LIMIT 1";
@@ -185,7 +191,7 @@ public class Database extends CommunicatorExtended {
         send(reception, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
-        //Potentially get confirmation from terminal that they received it? or do we already ack stuff
+        //Potentially get confirmation from terminal that they received it? or do we already ack stuff TODO
     }
 
     public void carUnassign(ReceptionTerminal reception){
@@ -219,7 +225,7 @@ public class Database extends CommunicatorExtended {
         send(reception, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
-        //Terminal might need to receive this message. We'll fix later. :)
+        //Terminal might need to receive this message. We'll fix later. :) TODO
     }
 
     public void deleteCard(ReceptionTerminal reception){
@@ -234,9 +240,22 @@ public class Database extends CommunicatorExtended {
         byte[] cardID = new byte[5];
         response.get(cardID,0,5);
 
-        String sql = "DELETE FROM cards WHERE cardID = ?";
+        String sql = "DELETE FROM cards WHERE id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            // set the corresponding param
+            pstmt.setString(1, new String(cardID));
+            // execute the delete statement
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        String sql2 = "DELETE FROM rentrelations WHERE id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql2)) {
 
             // set the corresponding param
             pstmt.setString(1, new String(cardID));
@@ -358,7 +377,20 @@ public class Database extends CommunicatorExtended {
     }
 
     public boolean isBlocked(byte[] cardID){
-        //TODO: Check if cardID is listed or not (return true, if it is not)
+        String sql = "SELECT id FROM cards db WHERE id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)){
+                pstmt.setString(1, conv.toHexString(cardID));
+                ResultSet rs = pstmt.executeQuery(sql);
+                if(rs.next() == false){ //If the cardID is not listed
+                    return true;
+                }
+                else{
+                    return false;
+                }
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
         return false;
     }
 

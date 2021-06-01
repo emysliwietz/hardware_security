@@ -29,6 +29,12 @@ import java.util.UUID;
 
 import static utility.Util.print;
 
+/**
+ @author Matti Eisenlohr
+ @author Egidius Mysliwietz
+ @author Laura Philipse
+ @author Alessandra van Veen
+ */
 public class ReceptionTerminal extends CommunicatorExtended {
 
     private RTCrypto rtc;
@@ -61,6 +67,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         (new SimulatedCardThread()).start();
     }
 
+    /**protocol 4 - car return and kilometerage check */
     public int carReturnInitiate(){
         CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC,CAR_RETURN_START,0,0,256);
         ResponseAPDU apdu;
@@ -73,6 +80,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         return carReturn(apdu);
     }
 
+    /**protocol 4 - car return and kilometerage check */
     public int carReturn(ResponseAPDU apdu){
         if (!cardAuthenticated){
             errorState("Card is not authenticated");
@@ -217,7 +225,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         return kilometerage;
     }
 
-    /*Protocol 2 - Mutual Authentication between smartcard and reception terminal */
+    /**Protocol 2 - Mutual Authentication between smartcard and reception terminal */
     public void cardAuthenticationInitiate(){
         select();
         rtLogger.info("Started Card Authentication", "cardAuthenticationInitiate", cardID);
@@ -227,17 +235,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             initBuffer.rewind();
             initBuffer = null;
         }
-        if(database.isBlocked(cardID)){
-            CommandAPDU commandAPDU = new CommandAPDU(CARD_EOL,BLOCK,0,0,0);
-            ResponseAPDU apdu;
-            try {
-                apdu = applet.transmit(commandAPDU);
-            } catch (CardException e) {
-                e.printStackTrace();
-                return;
-            }
-            return;
-        }
+        //isBlocked MOVED TO cardAuthentication
         CommandAPDU commandAPDU = new CommandAPDU(CARD_AUTH,AUTH_RECEPTION_START,0,0,512);
         ResponseAPDU apdu;
         try {
@@ -249,6 +247,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         cardAuthentication(apdu);
     }
 
+    /** protocol 2 - mutual authentication between smartcard and reception terminal */
     public void cardAuthentication(ResponseAPDU apdu){
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
@@ -272,6 +271,19 @@ public class ReceptionTerminal extends CommunicatorExtended {
         memCpy(cardID,response,offset,5);
         //response.get(cardID,offset,5);
         offset += 5;
+
+        if(database.isBlocked(cardID)){ //Moved to down under otherwise no card ID exists yet.
+            //Issue, does not work. Not sure why yet. TODO
+            CommandAPDU commandAPDU = new CommandAPDU(CARD_EOL,BLOCK,0,0,0);
+            ResponseAPDU apduNew;
+            try {
+                apduNew = applet.transmit(commandAPDU);
+            } catch (CardException e) {
+                e.printStackTrace();
+                return;
+            }
+            return;
+        }
 
         //Signed hash of certificate
         int cardCertHashSignLen = getInt(response,offset);//response.getInt();
@@ -350,7 +362,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
     }
 
-    /*Protocol 3 - Assignment of car to smartcard */
+    /** Protocol 3 - Assignment of car to smartcard */
     public void carAssignmentInitiate(){
         select();
         CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC,CAR_ASSIGNMENT_START,0,0,256);
@@ -364,9 +376,11 @@ public class ReceptionTerminal extends CommunicatorExtended {
         carAssignment(apdu);
     }
 
+    /** protocol 3 - assignment of car to smartcard */
     public void carAssignment(ResponseAPDU apdu){
         if (!cardAuthenticated){ //Step 1
             rtLogger.warning("Aborting: Card not authenticated", "carAssignment", cardID);
+            //APDU RESPONSE BYTE:
             return; //TODO: Placeholder
         }
         offset=ERESPAPDU_CDATA_OFFSET;
@@ -503,9 +517,11 @@ public class ReceptionTerminal extends CommunicatorExtended {
         deselect();
     }
 
+    /**protocol 6 - card blocking */
     public void blockCard(){
         ByteBuffer blockBuf = ByteBuffer.allocate(5);
-        blockBuf.put(cardID);
+        System.out.println(cardID);
+        blockBuf.put(cardID); //cardID is null -> Which card will it even block?
         send(database,blockBuf);
         ByteBuffer resp;
         try {
