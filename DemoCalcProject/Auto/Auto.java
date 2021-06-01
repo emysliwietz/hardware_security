@@ -56,8 +56,9 @@ public class Auto extends CommunicatorExtended {
 
     }
 
-    /** protocol 1 - mutual authentication between smartcard and car */
-    public void authenticateSCInitiate(){
+    /** protocol 1 - mutual authentication between smartcard and car
+     * @return Empty String if no error, else error message */
+    public String authenticateSCInitiate(){
         select();
         CommandAPDU start = new CommandAPDU(CARD_AUTH,INSERT_START,0,0,256);
         ResponseAPDU apdu;
@@ -65,13 +66,16 @@ public class Auto extends CommunicatorExtended {
             apdu = applet.transmit(start);
         } catch (CardException e) {
             e.printStackTrace();
-            return;
+            return "Card Exception";
         }
-        authenticateSmartCard(apdu);
+        return authenticateSmartCard(apdu);
     }
 
     /** protocol 1 - mutual authentication between smartcard and car */
-    public void authenticateSmartCard(ResponseAPDU apdu){
+    public String authenticateSmartCard(ResponseAPDU apdu){
+        if (apdu.getSW() == CARD_NOT_INITIALIZED) {
+            return "Please initialize the card in the Reception Terminal first";
+        }
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
         //ByteBuffer msg1 = ByteBuffer.wrap(apdu.getData());
@@ -108,7 +112,7 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msg1Cmps,scCertHashSign,dbPubSK)){
             errorState("Invalid cerificate: hash does not match");
             autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
-            return;
+            return "Error";
         }
 
         //Nonces
@@ -171,7 +175,7 @@ public class Auto extends CommunicatorExtended {
             msgBuf.rewind();
             autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
         }
-
+        return "";
     }
 
     /** protocol 5 - adding kilometerage to smartcard */

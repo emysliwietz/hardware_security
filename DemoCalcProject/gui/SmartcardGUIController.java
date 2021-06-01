@@ -10,6 +10,7 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextArea;
 import receptionTerminal.ReceptionTerminal;
 
+import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -170,13 +171,17 @@ public class SmartcardGUIController {
     }
 
     private void carStart() {
+        String returnAuthString = a.authenticateSCInitiate();
+        if (!Objects.equals(returnAuthString, "")) {
+            display.setText(returnAuthString);
+            return;
+        }
         driving = false;
         l0.setCursor(Cursor.HAND);
         r0.setCursor(Cursor.DEFAULT);
         left0.setText("Start Driving");
         right0.setText("");
         r0.setOnMouseClicked(null);
-        a.authenticateSCInitiate();
         if(state != states.ASSIGNED){
             display.setText("You need to have a car assigned first!");
             right2.setText("OK");

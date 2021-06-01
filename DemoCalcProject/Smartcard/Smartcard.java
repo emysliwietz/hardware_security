@@ -36,15 +36,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     public PublicKey autoPubSK;
     short offset;
 
-    // SW APDU Response Codes
-    final static short AUTH_SUCCESS = 0x6100;
-    final static short AUTH_SUCCESS_MANIPULATION = 0x6101;
-    final static short AUTH_FAILED  = 0x5100;
-    final static short AUTH_FAILED_MANIPULATION = 0x5101;
-    final static short PROC_SUCCCESS = 0x6200;
-    final static short PROC_FAILED = 0x5200;
-    final static short WRONG_CONTINUATION = 0x5300;
-
     public enum ProtocolAwaited{
         AUTH,   //card waits for an authentication protocol (insert, authReception)
         PROC,   //card waits for a processing protocol (assignment, kmmUpdate, carReturn)
@@ -277,10 +268,29 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.AUTH;
     }
 
+    public void sendErrorAPDU(short status_word) {
+        ISOException.throwIt(status_word);
+        /* On the side of the terminal, you'd check this with
+        if (apdu.getSW() == status_word) {
+            _error_handling_
+        }
+        */
+        /* Bullshit below:
+        apdu.setOutgoing();
+        apdu.setOutgoingLength((short) 2);
+        putShort(apdu.getBuffer(), status_word, 0);
+        apdu.sendBytes((short) 0, (short) 2);*/
+    }
+
 
 
     public void insertStart(APDU apdu) {
         //Message 1
+        if (sc == null || sc.getID() == null) {
+            errorState("Trying to insert card into auto before card is initialized");
+            sendErrorAPDU(CARD_NOT_INITIALIZED);
+            return;
+        }
         nonceCard = sc.generateNonce();
         apdu.setOutgoing();
         ByteBuffer msgBuf = ByteBuffer.wrap(clearBuf(apdu));
