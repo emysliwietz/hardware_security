@@ -72,7 +72,7 @@ public class Database extends CommunicatorExtended {
         return keyPair;
     }
 
-    /**Returns byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash*/
+    /** @return byte array of shape: 0-127: Encoded public key; 128-132: id, 133-136: length of signed hash, 137-end: signed hash*/
     //TODO: Where is the end?
     public byte[] issueCertificate(PublicKey pubk, byte[] id, PrivateKey sk){
         byte[] toHash = concatBytes(pubkToBytes(pubk), id);
@@ -141,6 +141,7 @@ public class Database extends CommunicatorExtended {
         dc.setCertificate(dbCERT);
     }
 
+    /** assign a car to the cardID and send the car info to the terminal */
     public void carAssign(ReceptionTerminal reception){
         print("I'm assigning a car");
         ByteBuffer response;
@@ -194,6 +195,7 @@ public class Database extends CommunicatorExtended {
         //Potentially get confirmation from terminal that they received it? or do we already ack stuff TODO
     }
 
+    /** remove car assignment from rentrelations table */
     public void carUnassign(ReceptionTerminal reception){
         ByteBuffer response;
         try {
@@ -228,6 +230,7 @@ public class Database extends CommunicatorExtended {
         //Terminal might need to receive this message. We'll fix later. :) TODO
     }
 
+    /** delete card from database */
     public void deleteCard(ReceptionTerminal reception){
         ByteBuffer response;
         try {
@@ -274,6 +277,7 @@ public class Database extends CommunicatorExtended {
         msgBuf.rewind();
     }
 
+    /**generate a smartcard */
     public void generateCard(ReceptionTerminal reception){
 
         // Create simulator
@@ -326,6 +330,8 @@ public class Database extends CommunicatorExtended {
 
 
     }
+
+    /** generate a car */
     public Auto generateAuto(){
         Object [] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
@@ -350,6 +356,7 @@ public class Database extends CommunicatorExtended {
         //send(auto, message);
     }
 
+    /** generate a reception terminal */
     public ReceptionTerminal generateTerminal(){
         Object [] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
@@ -376,6 +383,7 @@ public class Database extends CommunicatorExtended {
 
     }
 
+    /**check if a card is blocked, e.g. it does not exist in the database */
     public boolean isBlocked(byte[] cardID){
         String sql = "SELECT id FROM cards db WHERE id = ?";
 
@@ -421,7 +429,6 @@ public class Database extends CommunicatorExtended {
         }
 
         private class DatabaseWallet extends RSACrypto implements KeyWallet {
-        //no idea what exactly should be happening in these functions
 
             @Override
             public void storePublicKey() {

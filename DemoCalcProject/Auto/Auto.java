@@ -86,7 +86,8 @@ public class Auto extends CommunicatorExtended {
 
         //scPubSK + cardID
         byte[] scPubSKEncoded = new byte[KEY_LEN];
-        memCpy(scPubSKEncoded,msg1, offset,KEY_LEN);
+        memCpy(scPubSKEncoded,msg1, offset,KEY_LEN); //TODO: error here if card is not assigned to auto
+        //potential fix: put error handling in memCpy
         offset += KEY_LEN;
         scPubSK = bytesToPubkey(scPubSKEncoded);
         cardID = new byte[5];
@@ -173,7 +174,7 @@ public class Auto extends CommunicatorExtended {
 
     }
 
-    /** protocol 5 - adding kilometerage to smartcard **/
+    /** protocol 5 - adding kilometerage to smartcard */
     public int kilometerageUpdate(){
         if(!cardAuthenticated){
             errorState("Card not authenticated in kilometerageUpdate");
