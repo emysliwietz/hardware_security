@@ -47,7 +47,6 @@ public class Database extends CommunicatorExtended {
     protected PrivateKey dbPrivSK;
     protected byte[] databaseID;
     protected DatabaseCrypto dc;
-    protected ByteBuffer msgBuf = ByteBuffer.allocate(512);
     convertKey conv = new convertKey();
     CardSimulator smartcard = new CardSimulator();
 
@@ -188,6 +187,8 @@ public class Database extends CommunicatorExtended {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+        msgBuf.clear().rewind();
+        clearBuf(msgBuf);
         msgBuf.put(autoCert);
         send(reception, msgBuf);
         msgBuf.clear();

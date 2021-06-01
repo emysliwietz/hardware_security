@@ -265,12 +265,13 @@ public interface Communicator {
     }
 
     default void memCpy(byte[] dest, byte[] src, short destOffset, short srcOffset, short n) {
-        //We don't use "if (n >= 0) System.arraycopy(src, offset + 0, dest, 0, n);"
-        //because we're not sure if a smartcard supports this library operation
-        //(ByteBuffer, although a library class as well, should be different, as
+        // We don't use "if (n >= 0) System.arraycopy(src, offset + 0, dest, 0, n);"
+        // because we're not sure if a smartcard supports this library operation
+        // (ByteBuffer, although a library class as well, should be different, as
         // it _should_ be translated directly into JVM bytecode without any class
         // overhead. The same _probably_ applies to System.arraycopy but we didn't
         // confirmed that, so we opted for this manual implementation.)
+        // We are aware that ByteBuffer uses arraycopy internally.
         for(short i=0;i<n;i++){
             dest[destOffset + i] = src[srcOffset + i];
         }
@@ -291,7 +292,11 @@ public interface Communicator {
     default byte[] clearBuf(APDU apdu){
         byte[] b = apdu.getBuffer();
         int apduLen = threeBytesToInt(b,4)+10;
-        for (int i = 0;i<apduLen;i++) {
+        return clearBuf(b, apduLen);
+    }
+
+    default byte[] clearBuf(byte[] b, int len){
+        for (int i = 0;i<len;i++) {
             b[i] = 0;
         }
         return b;

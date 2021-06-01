@@ -143,4 +143,8 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     protected void sendLegacy(Receivable receiver, Object... msgComponents){
         receiver.receive(prepareMessage(msgComponents));
     }
+
+    protected byte[] clearBuf(ByteBuffer b){
+        return clearBuf(b.array(), b.limit());
+    }
 }
