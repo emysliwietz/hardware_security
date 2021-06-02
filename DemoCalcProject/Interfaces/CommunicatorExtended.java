@@ -53,7 +53,6 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     }
 
     //make a byte buffer with length len
-    @Override
     public ByteBuffer newBB(int len) {
         return ByteBuffer.allocate(len);
     }

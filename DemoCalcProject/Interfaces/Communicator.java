@@ -1,26 +1,9 @@
 package Interfaces;
 
 import javacard.framework.ISO7816;
-
-import javax.smartcardio.CardException;
-import javax.smartcardio.CommandAPDU;
-import javax.smartcardio.ResponseAPDU;
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-
 import javacard.framework.JCSystem;
 import javacard.security.*;
 import javacard.framework.APDU;
-
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Queue;
-
-import static utility.Util.print;
 
 /**
  @author Matti Eisenlohr
@@ -89,89 +72,68 @@ public interface Communicator {
         //return JCSystem.makeTransientByteArray((short) len, JCSystem.MEMORY_TYPE_PERSISTENT);
     }
 
-    //make a byte buffer with length len
-    default ByteBuffer newBB(int len) {
-        return ByteBuffer.wrap(newB(len));
-    }
-
     default PublicKey bytesToPubkey(byte[] bytes) {
-        RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-        ByteBuffer b = ByteBuffer.wrap(bytes);
-        short expLength = getShort(bytes,0);//b.getShort();
+        RSAPublicKey pk = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC,
+                KeyBuilder.LENGTH_RSA_512, false);
+        short expLength = getShort(bytes,0);
         byte[] exp = newB(expLength);
         memCpy(exp,bytes,2,expLength);
-        //b.get(exp, 0, expLength);
-        short modLength = getShort(bytes,2+expLength);//b.getShort(2+expLength);
+        short modLength = getShort(bytes,2+expLength);
         byte[] mod = newB(modLength);
         memCpy(mod,bytes,expLength+4,modLength);
-        //b.get(mod,0, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
-        /*try {
-            return KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(bytes));
-        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return null;
-        }*/
     }
 
     default PrivateKey bytesToPrivkey(byte[] bytes) {
-        RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
-        ByteBuffer b = ByteBuffer.wrap(bytes);
-        short expLength = getShort(bytes,0);//b.getShort();
+        RSAPrivateKey pk = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE,
+                KeyBuilder.LENGTH_RSA_512, false);
+        short expLength = getShort(bytes,0);
         byte[] exp = newB(expLength);
         memCpy(exp,bytes,2,expLength);
-        //b.get(exp, 0, expLength);
-        short modLength = getShort(bytes,2+expLength);//b.getShort(2+expLength);
+        short modLength = getShort(bytes,2+expLength);
         byte[] mod = newB(modLength);
         memCpy(mod,bytes,expLength+4,modLength);
-        //b.get(mod, 0, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
-        /*try {
-            return KeyFactory.getInstance("RSA").generatePrivate(new X509EncodedKeySpec(bytes));
-        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return null;
-        }*/
     }
 
     default byte[] pubkToBytes(PublicKey pubk){
         //Crash if we reduce length. Actual lengths trimmed with memCpy
-        ByteBuffer b = newBB(KEY_LEN);
+        byte[] b = newB(KEY_LEN);
         RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
-        short expLength = rsaPublicKey.getExponent(b.array(),(short) 2);
-        b.putShort(0,expLength);
-        short modLength = rsaPublicKey.getModulus(b.array(),(short) (4+expLength));
-        b.putShort(2+expLength, modLength);
+        short expLength = rsaPublicKey.getExponent(b,(short) 2);
+        putShort(b,(short) 0, expLength);
+        short modLength = rsaPublicKey.getModulus(b, (short) (4+expLength));
+        putShort(b, (short) (2+expLength), modLength);
         //byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
         //System.out.println(Arrays.toString(b.array()));
         //memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
         //print(bb.length);
-        return b.array();
+        return b;
         //return bb;
     }
 
     default byte[] privkToBytes(PrivateKey privk){
         //Crash if we reduce length. Actual lengthz trimmed with memCpy
-        ByteBuffer b = newBB(KEY_LEN);
+        byte[] b = newB(KEY_LEN);
         RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
-        short expLength = rsaPrivateKey.getExponent(b.array(),(short) 2);
-        b.putShort(0,expLength);
-        short modLength = rsaPrivateKey.getModulus(b.array(),(short) (4+expLength));
-        b.putShort(2+expLength, modLength);
+        short expLength = rsaPrivateKey.getExponent(b,(short) 2);
+        putShort(b, (short) 0, expLength);
+        short modLength = rsaPrivateKey.getModulus(b,(short) (4+expLength));
+        putShort(b, (short) (2+expLength), modLength);
         //byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
         //System.out.println(Arrays.toString(b.array()));
         //memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
-        return b.array();
+        return b;
         //return bb;
     }
 
 
     default byte[] concatBytes(byte[] a, byte[] b){
-        byte[] c = new byte[a.length + b.length];
+        byte[] c = newB(a.length + b.length);
 
         //System.arraycopy(a,0,c,0,a.length);
         //System.arraycopy(b,0,c,a.length,b.length);
@@ -186,7 +148,7 @@ public interface Communicator {
         for (byte[] b : byteArrays) {
             total_length += b.length;
         }
-        byte[] c = new byte[total_length];
+        byte[] c = newB(total_length);
         for (byte[] b : byteArrays) {
             //System.arraycopy(b, 0, c, curr, b.length);
             memCpy(c, b, curr, 0, b.length);
@@ -197,11 +159,11 @@ public interface Communicator {
 
 
     default byte[] intToByteArray(int value) {
-        return new byte[] {
-                (byte)(value >>> 24),
-                (byte)(value >>> 16),
-                (byte)(value >>> 8),
-                (byte)value};
+        byte[] i = newB(4);
+        for (int offset = 0; offset < 4; offset++) {
+            i[offset] = (byte)(value >>> (8 * offset));
+        }
+        return i;
     }
 
     //Used to return reference to same byte[] so method is nestable,
@@ -227,38 +189,51 @@ public interface Communicator {
     }
 
     default int threeBytesToInt(byte[] b, int offset){
-        return intFromByteArray(new byte[]{0,b[offset],b[offset+1],b[offset+2]});
+        return (((b[offset] & 0xFF) << 16) |
+                ((b[offset + 1] & 0xFF) << 8 ) |
+                ((b[offset + 2] & 0xFF)));
     }
 
     default int getInt(byte[] b, int offset){
-        return intFromByteArray(new byte[]{b[offset],b[offset+1],b[offset+2],b[offset+3]});
+        return intFromByteArray(b, (short) offset);
+    }
+
+    default int intFromByteArray(byte[] bytes, short offset) {
+        return ((bytes[offset] & 0xFF) << 24) |
+                ((bytes[offset + 1] & 0xFF) << 16) |
+                ((bytes[offset + 2] & 0xFF) << 8 ) |
+                ((bytes[offset + 3] & 0xFF));
     }
 
     default int intFromByteArray(byte[] bytes) {
-        return ((bytes[0] & 0xFF) << 24) |
-                ((bytes[1] & 0xFF) << 16) |
-                ((bytes[2] & 0xFF) << 8 ) |
-                ((bytes[3] & 0xFF));
+        return intFromByteArray(bytes, (short) 0);
     }
 
     default byte[] shortToByteArray(short value) {
-        return new byte[] {
-                (byte)(value >>> 8),
-                (byte)value};
+        byte[] s = newB(2);
+        s[0] = (byte) (value >>> 8);
+        s[1] = (byte) value;
+        return s;
     }
 
     // Take first two bytes of b at the offset and turn them into a short
     default short getShort(byte[] b, int offset){
-        return shortFromByteArray(new byte[]{b[offset],b[offset+1]});
+        return shortFromByteArray(b, (short) offset);
     }
 
     default short shortFromByteArray(byte[] bytes) {
-        return (short) (((bytes[0] & 0xFF) << 8 ) |
-                ((bytes[1] & 0xFF)));
+        return shortFromByteArray(bytes, (short) 0);
+    }
+
+    default short shortFromByteArray(byte[] bytes, short offset) {
+        return (short) (((bytes[offset] & 0xFF) << 8 ) |
+                ((bytes[offset + 1] & 0xFF)));
     }
 
     default byte[] booleanToByteArray(boolean b) {
-        return new byte[]{b ? Byte.MAX_VALUE : 0x00};
+        byte[] bb = newB(1);
+        bb[0] = b ? Byte.MAX_VALUE : 0x00;
+        return bb;
     }
 
     default boolean booleanFromByte(byte b) {
