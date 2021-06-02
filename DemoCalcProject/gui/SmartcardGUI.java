@@ -14,6 +14,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.effect.Effect;
 import javafx.scene.effect.Glow;
+import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.media.Media;
@@ -93,6 +94,7 @@ public class SmartcardGUI extends Application {
         primaryStage.setScene(s);
         primaryStage.setTitle("test");
         primaryStage.setResizable(false);
+        primaryStage.getIcons().add(new Image(SmartcardGUI.class.getResourceAsStream("icon.png")));
         primaryStage.show();
     }
 

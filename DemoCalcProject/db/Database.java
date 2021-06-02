@@ -1,7 +1,6 @@
 package db;
 
 import Auto.Auto;
-import Interfaces.Communicator;
 import Interfaces.CommunicatorExtended;
 import Interfaces.KeyWallet;
 import Smartcard.Smartcard;
@@ -12,26 +11,18 @@ import gui.SmartcardGUI;
 import javacard.framework.AID;
 import javafx.application.Application;
 import receptionTerminal.ReceptionTerminal;
-import rsa.CryptoImplementation;
 import rsa.CryptoImplementationExtended;
 import rsa.RSACrypto;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-//import java.security.*;
 import javacard.security.RSAPrivateKey;
 import javacard.security.RSAPublicKey;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import javacard.security.KeyPair;
 import java.sql.*;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.UUID;
-
-import db.convertKey;
-
-import javax.smartcardio.CommandAPDU;
 
 import static utility.Util.print;
 

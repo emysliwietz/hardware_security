@@ -178,6 +178,7 @@ public class SmartcardGUIController {
             display.setText(e.getMessage());
             return;
         }
+        display.setText("Current kilometerage: " + kmm + "km");
         driving = false;
         l0.setCursor(Cursor.HAND);
         r0.setCursor(Cursor.DEFAULT);
@@ -200,7 +201,7 @@ public class SmartcardGUIController {
 
     public void updateKmm(){
         kmm = a.kilometerageUpdate();
-        display.setText("Current mileage: " + kmm + "km");
+        display.setText("Current kilometerage: " + kmm + "km");
     }
 
     public void drive(){
