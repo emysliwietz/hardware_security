@@ -9,6 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import receptionTerminal.ReceptionTerminal;
 
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.Objects;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ProtocolRunTest {
@@ -35,6 +39,14 @@ public class ProtocolRunTest {
 
     @AfterEach
     void tearDown() {
+        //Delete all log files
+        String path = Paths.get("").toAbsolutePath().toString();
+        for (File file : Objects.requireNonNull(new File(path).listFiles())) {
+            if (!file.isDirectory() && file.getName().endsWith(".log")) {
+                System.out.println("Deleting: " + file.getAbsolutePath());
+                file.delete();
+            }
+        }
     }
 
     @Test

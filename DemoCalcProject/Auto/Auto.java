@@ -46,7 +46,7 @@ public class Auto extends CommunicatorExtended {
 
     public Auto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey, PublicKey pubk, CardSimulator smartcard) {
         ac = new AutoCrypto(autoID, autoCertificate, privateKey);
-        File logFile = new File(Base64.getEncoder().encodeToString(autoID) +"_auto_log.txt");
+        File logFile = new File(Base64.getEncoder().encodeToString(autoID) +"_auto_log.log");
         autoLogger = new Logger(logFile);
         super.logger = autoLogger;
         this.smartcard = smartcard;

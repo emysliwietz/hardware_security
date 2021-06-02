@@ -56,7 +56,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey, CardSimulator smartcard) {
         rtc = new receptionTerminal.ReceptionTerminal.RTCrypto(rtID, rtCertificate, privateKey);
-        File logFile = new File(Base64.getEncoder().encodeToString(rtID)+"_reception_terminal_log.txt");
+        File logFile = new File(Base64.getEncoder().encodeToString(rtID)+"_reception_terminal_log.log");
         rtLogger = new Logger(logFile);
         super.logger = rtLogger;
         database = db;
