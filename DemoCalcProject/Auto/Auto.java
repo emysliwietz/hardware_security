@@ -102,8 +102,8 @@ public class Auto extends CommunicatorExtended {
         msg1Cmps.put(scPubSKEncoded).put(cardID);
 
         if (!ac.verify(msg1Cmps,scCertHashSign,dbPubSK)){
-            errorState("Invalid cerificate: hash does not match");
-            autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
+            errorState("Invalid certificate: hash does not match");
+            autoLogger.fatal("Invalid certificate: hash does not match", "authenticateSmartCard message 1", cardID);
             return;
         }
 
@@ -124,11 +124,12 @@ public class Auto extends CommunicatorExtended {
         msgBuf.rewind();
 
         //Message 3
-        offset=ERESPAPDU_CDATA_OFFSET;
         if (apdu.getSW() == AUTH_FAILED_MANIPULATION){
+            autoLogger.fatal("omething has been manipulated", "authenticateSmartCard message 3", cardID);
             throw new AuthenticationFailedException("Something has been manipulated, authentication between auto and card failed");
 
         }
+        offset=ERESPAPDU_CDATA_OFFSET;
 
         byte[] msg3 = apdu.getData();
         short autoNonceResp = getShort(msg3, offset);
@@ -139,14 +140,14 @@ public class Auto extends CommunicatorExtended {
         int autoNonceRespHashSignLen = intFromByteArray(autoNonceRespHashSignLenByte);
         byte[] autoNonceRespHashSign = new byte[autoNonceRespHashSignLen];
         memCpy(autoNonceRespHashSign,msg3, offset,autoNonceRespHashSignLen);
-        //byte[] autoNonceRespHash = ac.unsign(autoNonceRespHashSign, scPubSK);
-        //byte[] autoNonceHash = ac.createHash(shortToByteArray(autoNonce));
+
         ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
         msg3Cmps.putShort(autoNonceResp);
         if (!ac.verify(msg3Cmps,autoNonceRespHashSign,scPubSK)){
             //TODO: throw error or something (logs). Also stop further actions.
             errorState("Wrong nonce in P1 msg3 returned");
             autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
+            throw new AuthenticationFailedException("Wrong nonce returned, authentication between auto and card failed");
         }
         else{
             //Success message
@@ -159,7 +160,13 @@ public class Auto extends CommunicatorExtended {
             //send(sc, msgBuf);
             msgBuf.clear();
             msgBuf.rewind();
-            autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
+            if (apdu.getSW() == AUTH_FAILED || apdu.getSW() == AUTH_FAILED_MANIPULATION){
+                autoLogger.fatal("Something went wrong", "authenticateSmartCard", cardID);
+                throw new AuthenticationFailedException("Something has gone wrong, authentication between auto and card failed");
+            } else{
+                autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
+            }
+
         }
     }
 
@@ -174,22 +181,13 @@ public class Auto extends CommunicatorExtended {
         kilometerage+=1;
         msgBuf.putInt(kilometerage).putInt(ac.sign(intToByteArray(kilometerage)).length).put(ac.sign(intToByteArray(kilometerage)));
         ResponseAPDU apdu = sendAPDU(CARD_PROC,KMM_UPDATE,msgBuf);
-        //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
 
         //Message 2
         offset=ERESPAPDU_CDATA_OFFSET;
-        //ByteBuffer confirmation = ByteBuffer.wrap(apdu.getData());
         byte[] confirmation = apdu.getData();
-        /*try {
-            confirmation = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Timeout in waiting for update confirmation kilomerage Update");
-            autoLogger.warning("Aborting: Timeout", "kilometerageUpdate wait for update", cardID);
-            return;
-        }*/
+
         byte confBYTE = confirmation[offset];
         offset++;
         int curKmmCard = getInt(confirmation, offset);
@@ -202,8 +200,7 @@ public class Auto extends CommunicatorExtended {
         offset+=4;
         byte[] confHashSigned = new byte[confHashSignLen];
         memCpy(confHashSigned,confirmation, offset,confHashSignLen);
-        //byte[] confHash = ac.unsign(confHashSigned, scPubSK);
-        //byte[] hashValidation = ac.createHash(prepareMessage(confBYTE, curKmmCard));
+
         ByteBuffer msgCmps = ByteBuffer.wrap(new byte[5]);
         msgCmps.put(confBYTE).putInt(curKmmCard);
         if (!ac.verify(msgCmps,confHashSigned,scPubSK)){

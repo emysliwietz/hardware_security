@@ -1,6 +1,5 @@
 package receptionTerminal;
 
-import Auto.Auto;
 import Interfaces.Communicator;
 import Interfaces.CommunicatorExtended;
 import Interfaces.KeyWallet;
@@ -91,14 +90,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         offset = ERESPAPDU_CDATA_OFFSET;
         //Message 1
         byte[] msg1 = apdu.getData();
-        /*try {
-            msg1 = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Timeout message1 carReturn");
-            rtLogger.warning("Timeout while waiting for message", "CarReturn message 1", cardID);
-            return -1;
-        }*/
+
         byte[] carReturnBytes = new byte[10];
         memCpy(carReturnBytes,msg1,offset,10);
         //msg1.get(carReturnBytes,offset,10);
@@ -154,14 +146,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         //Message 3
         offset=ERESPAPDU_CDATA_OFFSET;
         byte[] msg3 = apdu.getData();
-        /*try {
-            msg3 = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Timeout in message3 carReturn response");
-            rtLogger.warning("Timeout while waiting for response", "message3 carReturn", cardID);
-            return -1;
-        }*/
         kilometerage = getInt(msg3,offset);//msg3.getInt();
         offset+=4;
         short kmmNonceResp = getShort(msg3,offset);//msg3.getShort();
@@ -253,19 +237,11 @@ public class ReceptionTerminal extends CommunicatorExtended {
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
         byte[] response = apdu.getData(); //Step 2
-        /*try {
-            response = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Timeout response cardAuthentication");
-            rtLogger.warning("Timeout while waiting for message", "cardAuthentication message 1", cardID);
-            return;
-        }*/
 
         //cardPubSK + cardID = Certificate
         byte[] cardPubSKEncoded = new byte[KEY_LEN];
         memCpy(cardPubSKEncoded,response,offset,KEY_LEN);
-        //response.get(cardPubSKEncoded,offset,KEY_LEN);
+
         offset+=KEY_LEN;
         scPubSK = bytesToPubkey(cardPubSKEncoded);
         cardID = new byte[5];
@@ -292,10 +268,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
         byte[] cardCertHashSign = new byte[cardCertHashSignLen];
         memCpy(cardCertHashSign,response,offset,cardCertHashSignLen);
         offset+=cardCertHashSignLen;
-        //response.get(cardCertHashSign,offset,cardCertHashSignLen);
         scNonce = getShort(response,offset);//response.getShort();
-        //byte[] cardCertHash = rtc.unsign(cardCertHashSign, dbPubSK);
-        //byte[] cardIDPubSKHash = rtc.createHash(prepareMessage(cardPubSK, cardID));
+
         ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[KEY_LEN+5]);
         msg1Cmps.put(cardPubSKEncoded).put(cardID);
         if (!rtc.verify(msg1Cmps,cardCertHashSign,dbPubSK)){ //Step 3
@@ -318,14 +292,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         //Message 3
         offset = ERESPAPDU_CDATA_OFFSET;
         byte[] response2 = apdu.getData(); //empty!
-        /*try {
-            response2 = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Timeout response 2 cardAuthentication");
-            rtLogger.warning("Aborting: Timeout", "cardAuthentication response 2", cardID);
-            return;
-        }*/
 
         short termNonceResp = getShort(response2,offset);//response2.getShort(); //ERROR HERE, RESPONSE2 EMPTY
         offset+=2;
@@ -339,10 +305,9 @@ public class ReceptionTerminal extends CommunicatorExtended {
         offset+=4;
         byte[] receptionNonceHashSign = new byte[receptionNonceHashSignLen];
         memCpy(receptionNonceHashSign,response2,offset,receptionNonceHashSignLen);
-        //response2.get(receptionNonceHashSign,offset,receptionNonceHashSignLen);
+
         offset+=receptionNonceHashSignLen;
-        //byte[] receptionNonceHash = rtc.unsign(receptionNonceHashSign, cardPubSK);
-        //byte[] nonceReceptionHashValid = rtc.createHash(shortToByteArray(termNonce));
+
         ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
         msg3Cmps.putShort(termNonceResp);
         if (!rtc.verify(msg3Cmps,receptionNonceHashSign,scPubSK)){ //Step 7
@@ -388,14 +353,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         offset=ERESPAPDU_CDATA_OFFSET;
         //ByteBuffer response = ByteBuffer.wrap(apdu.getData());
         byte[] response = apdu.getData();
-        /*try {
-            response = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Waiting for response carAssignment");
-            rtLogger.warning("Aborting: Timeout", "carAssignment message 1", cardID);
-            return;
-        }*/
         byte[] requestBytes = new byte[4];
         memCpy(requestBytes,response, offset,4);
         offset+=4;
@@ -428,8 +385,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
         }
         msgBuf.clear().rewind();
         msgBuf.put(cardID);
-        //send(database, message); //Step 4
-        //database.carAssign(this);
+
+        //Step 4
         Thread t1 = new Thread(() -> send(database, msgBuf));
         Thread t2 = new Thread(() -> database.carAssign(this));
         t1.start();
@@ -462,7 +419,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         byte[] autoCertHashSign = new byte[autoCertHashSignLen];
         response2.get(autoCertHashSign,0,autoCertHashSignLen);
 
-        //System.out.println(new String(autoID)); //Step 5 - Kinda filler, maybe later so process doesnt get aborted
+        //Step 5
         msgBuf.put(pubkToBytes(autoPubSK));
         msgBuf.put(autoID).putInt(autoCertHashSignLen).put(autoCertHashSign).putShort((short) (scNonce+1));
         byte[] msg2Sign = rtc.sign(concatBytes(pubkToBytes(autoPubSK), autoID, autoCertHashSign, shortToByteArray((short) (scNonce+1))));
@@ -474,16 +431,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
         // Success message?
         offset=ERESPAPDU_CDATA_OFFSET;
-        //ByteBuffer succMsg = ByteBuffer.wrap(apdu.getData());
+
         byte[] succMsg = apdu.getData();
-        /*try {
-            succMsg = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            errorState("Timeout response2 carAssignment");
-            rtLogger.warning("Aborting: timeout", "carAssignment message 3", cardID);
-            return;
-        }*/
 
         byte success = succMsg[0];
         offset++;
@@ -503,8 +452,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         offset+=4;
         byte[] succHashSign = new byte[succHashSignLen];
         memCpy(succHashSign,succMsg, offset,succHashSignLen);
-        //byte[] succHash = rtc.unsign(succHashSign, cardPubSK);
-        //byte[] succByte = {success};
+
         ByteBuffer succMsgCmps = ByteBuffer.wrap(new byte[3]);
         succMsgCmps.put(success).putShort(seqNum2);
         if(!rtc.verify(succMsgCmps,succHashSign,scPubSK)){
@@ -617,7 +565,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
     class SimulatedCardThread extends Thread {
         public void run(){
-            //CardSimulator smartcard = new CardSimulator();
             AID scAppletAID = AIDUtil.create(SC_APPLET_AID);
             smartcard.installApplet(scAppletAID,Smartcard.class);
             select();
