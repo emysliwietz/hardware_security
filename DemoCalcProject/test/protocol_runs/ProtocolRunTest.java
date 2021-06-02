@@ -64,6 +64,7 @@ public class ProtocolRunTest {
     @Test
     void successiveFullRuns() {
         for(int i = 0; i < 32; i++) {
+            System.out.println(" =======Run " + i + "========= ");
             fullRun();
         }
     }

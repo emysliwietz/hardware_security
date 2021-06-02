@@ -383,6 +383,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
             //APDU RESPONSE BYTE:
             return; //TODO: Placeholder
         }
+        inputQueue.clear();
+
         offset=ERESPAPDU_CDATA_OFFSET;
         //ByteBuffer response = ByteBuffer.wrap(apdu.getData());
         byte[] response = apdu.getData();
