@@ -84,14 +84,4 @@ class SmartcardTest {
         print("");
         print("Build-in is " + ((mpr.length + 0.0) / prke.length) + " times smaller than our garbage code");*/
     }
-
-    @Test
-    void testPubKeyBytes(){
-        Database db = new Database();
-        Object[] kp = db.generateKeyPair();
-        PublicKey pk = (PublicKey) kp[0];
-        RSAPublicKey rpk = (RSAPublicKey) pk;
-        print(Arrays.toString(db.pubkToBytes(pk)));
-        print(Arrays.toString(db.pubkToBytes(db.bytesToPubkey(db.pubkToBytes(pk)))));
-    }
 }
