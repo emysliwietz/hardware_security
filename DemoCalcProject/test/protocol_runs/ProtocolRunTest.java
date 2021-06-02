@@ -1,6 +1,7 @@
 package test.protocol_runs;
 
 import Auto.Auto;
+import Interfaces.CommunicatorExtended;
 import db.Database;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -8,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import receptionTerminal.ReceptionTerminal;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ProtocolRunTest {
     ReceptionTerminal rt;
@@ -40,8 +41,7 @@ public class ProtocolRunTest {
     void fullRun() {
         rt.cardAuthenticationInitiate();
         rt.carAssignmentInitiate();
-        String returnMsg = a.authenticateSCInitiate();
-        assertEquals("", returnMsg);
+        assertDoesNotThrow(() -> a.authenticateSCInitiate());
         for (int i = 0; i < 10; i++) {
             a.kilometerageUpdate();
         }
@@ -51,8 +51,9 @@ public class ProtocolRunTest {
 
     @Test
     void autoWithoutTerminalFirst() {
-        String returnMsg = a.authenticateSCInitiate();
-        assertEquals("Please initialize the card in the Reception Terminal first", returnMsg);
+        Throwable cardNotInitializedException = assertThrows(CommunicatorExtended.CardNotInitializedException.class,
+                () -> a.authenticateSCInitiate());
+        assertEquals("Please initialize the card in the Reception Terminal first", cardNotInitializedException.getMessage());
     }
 
     @Test

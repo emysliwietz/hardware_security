@@ -147,4 +147,10 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     protected byte[] clearBuf(ByteBuffer b){
         return clearBuf(b.array(), b.limit());
     }
+
+    public static class CardNotInitializedException extends Exception {
+        public CardNotInitializedException(String s) {
+            super(s);
+        }
+    }
 }

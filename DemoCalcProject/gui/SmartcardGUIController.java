@@ -1,6 +1,7 @@
 package gui;
 
 import Auto.Auto;
+import Interfaces.CommunicatorExtended;
 import Smartcard.Smartcard;
 import db.Database;
 import javafx.fxml.FXML;
@@ -171,9 +172,10 @@ public class SmartcardGUIController {
     }
 
     private void carStart() {
-        String returnAuthString = a.authenticateSCInitiate();
-        if (!Objects.equals(returnAuthString, "")) {
-            display.setText(returnAuthString);
+        try {
+            a.authenticateSCInitiate();
+        } catch (CommunicatorExtended.CardNotInitializedException e) {
+            display.setText(e.getMessage());
             return;
         }
         driving = false;

@@ -56,9 +56,8 @@ public class Auto extends CommunicatorExtended {
 
     }
 
-    /** protocol 1 - mutual authentication between smartcard and car
-     * @return Empty String if no error, else error message */
-    public String authenticateSCInitiate(){
+    /** protocol 1 - mutual authentication between smartcard and car */
+    public void authenticateSCInitiate() throws CardNotInitializedException{
         select();
         CommandAPDU start = new CommandAPDU(CARD_AUTH,INSERT_START,0,0,256);
         ResponseAPDU apdu;
@@ -66,15 +65,16 @@ public class Auto extends CommunicatorExtended {
             apdu = applet.transmit(start);
         } catch (CardException e) {
             e.printStackTrace();
-            return "Card Exception";
+            //TODO: Maybe handle error better?
+            return;
         }
-        return authenticateSmartCard(apdu);
+        authenticateSmartCard(apdu);
     }
 
     /** protocol 1 - mutual authentication between smartcard and car */
-    public String authenticateSmartCard(ResponseAPDU apdu){
+    public void authenticateSmartCard(ResponseAPDU apdu) throws CardNotInitializedException {
         if (apdu.getSW() == CARD_NOT_INITIALIZED) {
-            return "Please initialize the card in the Reception Terminal first";
+            throw new CardNotInitializedException("Please initialize the card in the Reception Terminal first");
         }
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
@@ -112,7 +112,7 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msg1Cmps,scCertHashSign,dbPubSK)){
             errorState("Invalid cerificate: hash does not match");
             autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
-            return "Error";
+            return;
         }
 
         //Nonces
@@ -175,7 +175,6 @@ public class Auto extends CommunicatorExtended {
             msgBuf.rewind();
             autoLogger.info("Card successfully authenticated", "authenticateSmartCard", cardID);
         }
-        return "";
     }
 
     /** protocol 5 - adding kilometerage to smartcard */
