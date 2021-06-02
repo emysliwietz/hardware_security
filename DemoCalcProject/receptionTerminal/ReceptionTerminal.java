@@ -40,7 +40,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
     private RTCrypto rtc;
     public PublicKey dbPubSK;
     private short termNonce; //Placeholder
-    private short scNonce; //Placehoder
+    private short scNonce; //Placeholder
     private byte[] cardID; //TEMP see above
     private Database database; //who knows at this point
     public PublicKey scPubSK;

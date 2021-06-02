@@ -52,15 +52,6 @@ public class Database extends CommunicatorExtended {
 
 
     public Object[] generateKeyPair(){
-        /* Generate keypair. */
-        /*KeyPairGenerator generator = null;
-        try {
-            generator = KeyPairGenerator.getInstance("RSA");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return null;
-        }
-        generator.initialize(1024);*/
         KeyPair kp = new KeyPair(KeyPair.ALG_RSA, (short) 512);
         kp.genKeyPair();
         RSAPublicKey publickey = (RSAPublicKey)kp.getPublic();
@@ -120,6 +111,17 @@ public class Database extends CommunicatorExtended {
         }
     }
 
+    private void clearAutos(){
+        String sql = "DELETE * FROM autos";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            // execute the delete statement
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
     public Database(){
         conn = null;
 
@@ -134,6 +136,7 @@ public class Database extends CommunicatorExtended {
         }
 
         setKeys();
+        clearAutos(); //Clear autos otherwise program may crash
 
         dc = new DatabaseCrypto(databaseID, null);
         byte[] dbCERT = issueCertificate(dbPubSK, databaseID, dbPrivSK); //rc = null
@@ -285,10 +288,8 @@ public class Database extends CommunicatorExtended {
         JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
 
         // Install applet
-        //AID scAID = new AID(SC_APPLET_AID,(byte)0,(byte)7);
         AID scAID = AIDUtil.create(SC_APPLET_AID);
         simulator.installApplet(scAID, Smartcard.class);
-        //simulator.installApplet(scAID, Smartcard.class, installBuf.array(), (short) installBuf.arrayOffset(), (byte) ibLen);
         simulator.transmitCommand(SELECT_APDU);
 
         Object [] scKeyPair = generateKeyPair();
