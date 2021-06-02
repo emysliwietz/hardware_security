@@ -58,7 +58,7 @@ public class Auto extends CommunicatorExtended {
     }
 
     /** protocol 1 - mutual authentication between smartcard and car */
-    public void authenticateSCInitiate() throws CardNotInitializedException{
+    public void authenticateSCInitiate() throws CardNotInitializedException, AuthenticationFailedException {
         select();
         CommandAPDU start = new CommandAPDU(CARD_AUTH,INSERT_START,0,0,256);
         ResponseAPDU apdu;
@@ -73,21 +73,13 @@ public class Auto extends CommunicatorExtended {
     }
 
     /** protocol 1 - mutual authentication between smartcard and car */
-    public void authenticateSmartCard(ResponseAPDU apdu) throws CardNotInitializedException {
+    public void authenticateSmartCard(ResponseAPDU apdu) throws CardNotInitializedException, AuthenticationFailedException {
         if (apdu.getSW() == CARD_NOT_INITIALIZED) {
             throw new CardNotInitializedException("Please initialize the card in the Reception Terminal first");
         }
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
-        //ByteBuffer msg1 = ByteBuffer.wrap(apdu.getData());
         byte[] msg1 = apdu.getData();
-        /*try {
-            msg1 = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            autoLogger.warning("Aborting: timeout", "authenticateSmartCard message 1", cardID);
-            return (PublicKey) errorState("Timeout in msg1 authenticate smartcard");
-        }*/
 
         //scPubSK + cardID
         byte[] scPubSKEncoded = new byte[KEY_LEN];
@@ -108,8 +100,7 @@ public class Auto extends CommunicatorExtended {
         offset += scCertHashSignLen;
         ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[KEY_LEN + 5]);
         msg1Cmps.put(scPubSKEncoded).put(cardID);
-        //byte[] scCertHash = ac.unsign(scCertHashSign, dbPubSK);
-        //byte[] cardIDPubSKHash = ac.createHash(concatBytes(scPubSK.getEncoded(), cardID));
+
         if (!ac.verify(msg1Cmps,scCertHashSign,dbPubSK)){
             errorState("Invalid cerificate: hash does not match");
             autoLogger.fatal("Invalid cerificate: hash does not match", "authenticateSmartCard message 1", cardID);
@@ -124,29 +115,22 @@ public class Auto extends CommunicatorExtended {
         short autoNonce = ac.generateNonce();
         System.out.println(Arrays.toString(shortToByteArray(cardNonce)));
         byte[] cardNonceHashSign = ac.sign(shortToByteArray(cardNonce));
-        //msgBuf.put(ac.getCertificate());
         msgBuf.putShort(cardNonce);
         msgBuf.putInt(cardNonceHashSign.length);
         msgBuf.put(cardNonceHashSign);
         msgBuf.putShort(autoNonce);
         apdu = sendAPDU(CARD_CONT,INSERT_M2,msgBuf);
-        //send(sc, msgBuf);
         msgBuf.clear();
         msgBuf.rewind();
 
         //Message 3
         offset=ERESPAPDU_CDATA_OFFSET;
-        //ByteBuffer msg3 = ByteBuffer.wrap(apdu.getData());
+        if (apdu.getSW() == AUTH_FAILED_MANIPULATION){
+            throw new AuthenticationFailedException("Something has been manipulated, authentication between auto and card failed");
+
+        }
+
         byte[] msg3 = apdu.getData();
-        /*try {
-            msg3 = waitForInput();
-        } catch (MessageTimeoutException e) {
-            e.printStackTrace();
-            autoLogger.warning("Aborting: Timeout", "authenticateSmartCard message 3", cardID);
-            errorState("Timeout in msg3 authenticate smartcard");
-            return;
-        }*/
-        //
         short autoNonceResp = getShort(msg3, offset);
         offset+=2;
         byte[] autoNonceRespHashSignLenByte = new byte[4];

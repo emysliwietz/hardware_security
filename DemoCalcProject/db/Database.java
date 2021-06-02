@@ -113,7 +113,7 @@ public class Database extends CommunicatorExtended {
     }
 
     private void clearAutos(){
-        String sql = "DELETE * FROM autos";
+        String sql = "DELETE FROM autos";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             // execute the delete statement
             pstmt.executeUpdate();
@@ -324,15 +324,6 @@ public class Database extends CommunicatorExtended {
         installBuf.put(pubkToBytes(dbPubSK));
         send(reception,installBuf);
 
-
-
-        // and send the info back
-        // Private key and certificate must be send to terminal which sends it to the card
-        //return new Smartcard(scID, scCERT, scPrivSK);
-        //byte[] message = prepareMessage(scPrivSK, scCERT);
-        //send(terminal, message);
-
-
     }
 
     /** generate a car */
@@ -354,10 +345,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        // Private key and certificate must be send to auto
-        //byte[] message = prepareMessage(autoPrivSK, autoCERT);
         return new Auto(autoID, autoCERT, autoPrivSK,dbPubSK,smartcard);
-        //send(auto, message);
     }
 
     /** generate a reception terminal */
@@ -379,11 +367,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        // and send the info back
-        //private key and certificate must be send to terminal
         return new ReceptionTerminal(rtID, rtCERT, this, rtPrivSK,smartcard);
-        //byte[] message = prepareMessage(rtPrivSK, rtCERT);
-        //send(terminal, message);
 
     }
 

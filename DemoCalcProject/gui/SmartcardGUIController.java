@@ -174,7 +174,7 @@ public class SmartcardGUIController {
     private void carStart() {
         try {
             a.authenticateSCInitiate();
-        } catch (CommunicatorExtended.CardNotInitializedException e) {
+        } catch (CommunicatorExtended.CardNotInitializedException | CommunicatorExtended.AuthenticationFailedException e) {
             display.setText(e.getMessage());
             return;
         }

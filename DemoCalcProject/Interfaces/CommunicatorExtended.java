@@ -15,6 +15,8 @@ import java.util.Arrays;
 /**
  @author Matti Eisenlohr
  @author Egidius Mysliwietz
+ @author Laura Philipse
+ @author Alessandra van Veen
  */
 public abstract class CommunicatorExtended implements Communicator, Receivable {
     final int WAITING_TIMEOUT /* ms */ = 10000 * 10;
@@ -108,21 +110,6 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         return (Object[]) o;
     }
 
-  /*  default byte[] waitForInputLegacy() throws MessageTimeoutException {
-        int totalwait = 0;
-        while (inputQueue.isEmpty()){
-            try {
-                Thread.sleep(100);
-                totalwait += 100;
-                if (totalwait > WAITING_TIMEOUT)
-                    throw new MessageTimeoutException();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        return inputQueue.remove();
-    }*/
-
     public static class MessageTimeoutException extends Exception {}
 
     protected synchronized ByteBuffer waitForInput() throws MessageTimeoutException {
@@ -155,6 +142,11 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
 
     public static class CardNotInitializedException extends Exception {
         public CardNotInitializedException(String s) {
+            super(s);
+        }
+    }
+    public static class AuthenticationFailedException extends Exception {
+        public AuthenticationFailedException(String s) {
             super(s);
         }
     }
