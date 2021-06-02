@@ -55,11 +55,12 @@ public interface Communicator {
     final static byte DEBUG = (byte) 0x90;
 
     // SW APDU Response Codes
-    final static short AUTH_SUCCESS = 0x6100;
-    final static short AUTH_SUCCESS_MANIPULATION = 0x6101;
+    // There are only negative SW Codes
+    //final static short AUTH_SUCCESS = 0x6100;
+    //final static short AUTH_SUCCESS_MANIPULATION = 0x6101;
     final static short AUTH_FAILED  = 0x5100;
     final static short AUTH_FAILED_MANIPULATION = 0x5101;
-    final static short PROC_SUCCCESS = 0x6200;
+    //final static short PROC_SUCCCESS = 0x6200;
     final static short PROC_FAILED = 0x5200;
     final static short WRONG_CONTINUATION = 0x5300;
     final static short CARD_NOT_INITIALIZED = 0x4000;

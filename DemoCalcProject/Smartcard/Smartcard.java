@@ -39,13 +39,13 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     public enum ProtocolAwaited{
         AUTH,   //card waits for an authentication protocol (insert, authReception)
         PROC,   //card waits for a processing protocol (assignment, kmmUpdate, carReturn)
-        INS2,   //card has started Insert Protocol and is waiting for message 2
-        INSS,   //card has started Insert Protocol and is waiting for success message
+        INS2,   //card has started Insert        Protocol and is waiting for message 2
+        INSS,   //card has started Insert        Protocol and is waiting for success message
         AUTHR2, //card has started authReception Protocol and is waiting for message 2
-        AUTHRS, //TODO: finish these comments...
-        CASS2,
-        CRET2,
-        CRETS,
+        AUTHRS, //card has started authReception Protocol and is waiting for success message
+        CASS2,  //card has started carAssignment Protocol and is waiting for message 2
+        CRET2,  //card has started carReturn     Protocol and is waiting for message 2
+        CRETS,  //card has started carReturn     Protocol and is waiting for success message
     }
 
     ProtocolAwaited currentAwaited = ProtocolAwaited.AUTH;
@@ -54,20 +54,20 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     @Override
     public void process(APDU apdu) throws ISOException {
-        ByteBuffer buffer = ByteBuffer.wrap(apdu.getBuffer());
+        byte[] buffer = apdu.getBuffer();
         // check SELECT APDU command
-        if ((buffer.get(ISO7816.OFFSET_CLA) == CARD_SELECT) &&
-                (buffer.get(ISO7816.OFFSET_INS) == (byte)
+        if ((buffer[ISO7816.OFFSET_CLA] == CARD_SELECT) &&
+                (buffer[ISO7816.OFFSET_INS] == (byte)
                         (0xA4)) )
             return;
-        switch (buffer.get(ISO7816.OFFSET_CLA)) {
+        switch (buffer[ISO7816.OFFSET_CLA]) {
             case CARD_AUTH:
                 /*Deselect is not being called properly and kmmUpdate can't change the protocol state, so it might be
                 that the card thinks it is still authenticated to an auto terminal it's no longer connected to*/
                 if (currentAwaited != ProtocolAwaited.AUTH && currentAwaited != ProtocolAwaited.PROC) {
                     return;
                 }
-                switch (buffer.get(ISO7816.OFFSET_INS)) {
+                switch (buffer[ISO7816.OFFSET_INS]) {
                     case INSERT_START:
                         insertStart(apdu);
                         return;
@@ -82,7 +82,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
                 if (currentAwaited != ProtocolAwaited.PROC) {
                     return;
                 }
-                switch(buffer.get(ISO7816.OFFSET_INS)) {
+                switch(buffer[ISO7816.OFFSET_INS]) {
                     case CAR_ASSIGNMENT_START:
                         carAssignmentStart(apdu);
                         return;
@@ -97,7 +97,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
                         return;
                 }
             case CARD_CONT:
-                switch(buffer.get(ISO7816.OFFSET_INS)){
+                switch(buffer[ISO7816.OFFSET_INS]){
                     case INSERT_M2:
                         if (currentAwaited != ProtocolAwaited.INS2) {
                             return;
@@ -145,21 +145,21 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
                         return;
                 }
             case CARD_EOL:
-                if(buffer.get(ISO7816.OFFSET_INS) == BLOCK){
+                if(buffer[ISO7816.OFFSET_INS] == BLOCK){
                     state = States.END_OF_LIFE;
                 } else {
                     ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
                 }
                 return;
             case CARD_INIT:
-                if(buffer.get(ISO7816.OFFSET_INS) == INIT){
+                if(buffer[ISO7816.OFFSET_INS] == INIT){
                     init(apdu);
                 } else {
                     ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
                 }
                 return;
             case CARD_DEBUG:
-                if(buffer.get(ISO7816.OFFSET_INS) == DEBUG){
+                if(buffer[ISO7816.OFFSET_INS] == DEBUG){
                     apdu.setOutgoing();
                     ByteBuffer msgBuf = ByteBuffer.wrap(apdu.getBuffer());
                     msgBuf.clear();
@@ -255,6 +255,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     /** Wakes up smartcard from suspended state and returns whether it's ready to process requests.*/
+    @Override
     public boolean select() {
         //reject activation if card is no longer alive
         print("Hi, I'm selecting");
@@ -264,6 +265,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     /**card is removed from reader and enters suspend state*/
+    @Override
     public void deselect() {
         currentAwaited = ProtocolAwaited.AUTH;
     }
