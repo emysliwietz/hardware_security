@@ -9,6 +9,7 @@ import com.licel.jcardsim.utils.AIDUtil;
 import db.Database;
 import javacard.framework.AID;
 import rsa.CryptoImplementation;
+import rsa.CryptoImplementationExtended;
 import rsa.RSACrypto;
 import utility.Logger;
 
@@ -121,8 +122,9 @@ public class Auto extends CommunicatorExtended {
 
         //Message 2
         short autoNonce = ac.generateNonce();
+        System.out.println(Arrays.toString(shortToByteArray(cardNonce)));
         byte[] cardNonceHashSign = ac.sign(shortToByteArray(cardNonce));
-        msgBuf.put(ac.getCertificate());
+        //msgBuf.put(ac.getCertificate());
         msgBuf.putShort(cardNonce);
         msgBuf.putInt(cardNonceHashSign.length);
         msgBuf.put(cardNonceHashSign);
@@ -229,7 +231,7 @@ public class Auto extends CommunicatorExtended {
         return kilometerage;
     }
 
-    private static class AutoCrypto extends CryptoImplementation {
+    private static class AutoCrypto extends CryptoImplementationExtended {
 
         public AutoCrypto(byte[] autoID, byte[] autoCertificate, PrivateKey privateKey) {
             super.ID = autoID;

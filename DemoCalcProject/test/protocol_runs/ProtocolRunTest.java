@@ -58,13 +58,22 @@ public class ProtocolRunTest {
 
     @Test
     void blockCard() {
-        rt.blockCard();
+        rt.blockCard(new byte[]{81, 55, 62, -117, 111});
     }
 
     @Test
     void successiveFullRuns() {
         for(int i = 0; i < 32; i++) {
             System.out.println(" =======Run " + i + "========= ");
+            fullRun();
+        }
+    }
+
+    /* We need this test because we use threads, which are inherently unpredictable in their behaviour */
+    @Test
+    void fourTwentySuccessiveFullRuns() {
+        for(int i = 0; i < 420; i++) {
+            System.out.println(" ========= Run " + i + " ========= ");
             fullRun();
         }
     }
