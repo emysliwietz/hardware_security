@@ -7,9 +7,7 @@ import javacardx.apdu.ExtendedLength;
 import rsa.CryptoImplementation;
 import rsa.RSACrypto;
 
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.nio.ReadOnlyBufferException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -342,9 +340,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += 4;
         byte[] succMHashSign = newB(nonceSuccSignLen);
         memCpy(succMHashSign, succMb, offset, nonceSuccSignLen);
-        ByteBuffer succMsgCmps = newBB(3);
-        succMsgCmps.put(success);
-        succMsgCmps.putShort(nonceSucc);
+        byte[] succMsgCmps = newB(3);
+        succMsgCmps[0] = success;
+        putShort(succMsgCmps, nonceSucc, 1);
         if(!sc.verify(succMsgCmps,succMHashSign,autoPubSK)){
             errorState("Invalid hash in success message (P1)");
             manipulation = true;
@@ -396,8 +394,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += receptionCertHSLength;
 
         nonceReception = getShort(response,offset);
-        ByteBuffer msg2Cmps = newBB(KEY_LEN+5);
-        msg2Cmps.put(rtPubSkb).put(receptionID);
+        byte[] msg2Cmps = newB(KEY_LEN+5);
+        put(msg2Cmps, rtPubSkb, 0);
+        put(msg2Cmps, receptionID, KEY_LEN);
 
         if (!sc.verify(msg2Cmps,receptionCertHashSign,dbPubSK)) { //Step 5 //ERROR HERE. CRYPTO EXCEPTION
             manipulation = true;
@@ -444,12 +443,13 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
 
-        int responseData2Length = getInt(response2,offset);
+        int responseData2Length = getInt(response2, offset);
         offset+=4;
         byte[] responseData2 = newB(responseData2Length);
-        memCpy(responseData2,response2,offset,responseData2Length);
-        ByteBuffer succMsgCmps = newBB(3);
-        succMsgCmps.put(success).putShort(nonceCard);
+        memCpy(responseData2, response2, offset, responseData2Length);
+        byte[] succMsgCmps = newB(3);
+        succMsgCmps[0] = success;
+        putShort(succMsgCmps, nonceCard, 1);
         if (!sc.verify(succMsgCmps,responseData2,rtPubSK)){ //Step 9
             errorState("Invalid hash in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
@@ -499,8 +499,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(autoCertHashSign,response,offset,autoCertHSLength);
         offset+=autoCertHSLength;
 
-        ByteBuffer autoCertCmps = newBB(KEY_LEN + 5);
-        autoCertCmps.put(autoPubSkb).put(autoID);
+        byte[] autoCertCmps = newB(KEY_LEN + 5);
+        put(autoCertCmps, autoPubSkb, 0);
+        put(autoCertCmps, autoID, KEY_LEN);
         if (!sc.verify(autoCertCmps,autoCertHashSign,dbPubSK)){ //Step 7 - certificate
             //manipulation = true;
             errorState("Invalid car certificate received");
@@ -520,8 +521,15 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset+=4;
         byte[] msg2HashSign = newB(msg2SignLen);
         memCpy(msg2HashSign,response,offset,msg2SignLen);
-        ByteBuffer msg2Cmps = newBB(KEY_LEN+5+64+2);
-        msg2Cmps.put(autoPubSkb).put(autoID).put(autoCertHashSign).putShort(nonceCard2);
+        byte[] msg2Cmps = newB(KEY_LEN+5+64+2);
+        offset = 0;
+        put(msg2Cmps, autoPubSkb, offset);
+        offset += KEY_LEN;
+        put(msg2Cmps, autoID, offset);
+        offset += autoID.length;
+        put(msg2Cmps, autoCertHashSign, offset);
+        offset += autoCertHashSign.length;
+        putShort(msg2Cmps, nonceCard2, offset);
         if (!sc.verify(msg2Cmps,msg2HashSign,rtPubSK)){
             //manipulation = true;
             errorState("Wrong signature in msg2 of P3");
@@ -613,8 +621,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        ByteBuffer msgCmps = newBB(4);
-        msgCmps.putShort(kmmNonce).putShort(seqNum2);
+        byte[] msgCmps = newB(4);
+        putShort(msgCmps, kmmNonce, 0);
+        putShort(msgCmps, seqNum2, 2);
         if (!sc.verify(msgCmps,hash,rtPubSK)) {
             //TODO: Error; also check sequence number (not in this if clause (obviously))
             errorState("Message hashes do not match in msg2 carReturn");
@@ -661,8 +670,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += 4;
         byte[] signedSuccHash = newB(hashLength);
         memCpy(signedSuccHash, succMsg, offset, hashLength);
-        ByteBuffer msgCmps = newBB(3);
-        msgCmps.put(success).putShort(succNonce);
+        byte[] msgCmps = newB(3);
+        msgCmps[0] = success;
+        putShort(msgCmps, succNonce, 1);
         if(!sc.verify(msgCmps,signedSuccHash,rtPubSK)){
             errorState("Invalid hash in success message of Protocol 4");
             currentAwaited = ProtocolAwaited.PROC;

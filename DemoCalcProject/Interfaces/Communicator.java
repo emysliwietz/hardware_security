@@ -77,10 +77,10 @@ public interface Communicator {
                 KeyBuilder.LENGTH_RSA_512, false);
         short expLength = getShort(bytes,0);
         byte[] exp = newB(expLength);
-        memCpy(exp,bytes,2,expLength);
+        memCpy(exp, bytes,2, expLength);
         short modLength = getShort(bytes,2+expLength);
         byte[] mod = newB(modLength);
-        memCpy(mod,bytes,expLength+4,modLength);
+        memCpy(mod, bytes,expLength+4, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -91,10 +91,10 @@ public interface Communicator {
                 KeyBuilder.LENGTH_RSA_512, false);
         short expLength = getShort(bytes,0);
         byte[] exp = newB(expLength);
-        memCpy(exp,bytes,2,expLength);
+        memCpy(exp, bytes,2, expLength);
         short modLength = getShort(bytes,2+expLength);
         byte[] mod = newB(modLength);
-        memCpy(mod,bytes,expLength+4,modLength);
+        memCpy(mod, bytes,expLength+4, modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -105,9 +105,9 @@ public interface Communicator {
         byte[] b = newB(KEY_LEN);
         RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
         short expLength = rsaPublicKey.getExponent(b,(short) 2);
-        putShort(b,(short) 0, expLength);
+        putShort(b, expLength, (short) 0);
         short modLength = rsaPublicKey.getModulus(b, (short) (4+expLength));
-        putShort(b, (short) (2+expLength), modLength);
+        putShort(b, modLength, (short) (2+expLength));
         //byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
         //System.out.println(Arrays.toString(b.array()));
         //memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
@@ -121,9 +121,9 @@ public interface Communicator {
         byte[] b = newB(KEY_LEN);
         RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
         short expLength = rsaPrivateKey.getExponent(b,(short) 2);
-        putShort(b, (short) 0, expLength);
+        putShort(b, expLength, (short) 0);
         short modLength = rsaPrivateKey.getModulus(b,(short) (4+expLength));
-        putShort(b, (short) (2+expLength), modLength);
+        putShort(b, modLength, (short) (2+expLength));
         //byte[] bb = JCSystem.makeTransientByteArray((short) (expLength+modLength+4),JCSystem.CLEAR_ON_RESET);
         //System.out.println(Arrays.toString(b.array()));
         //memCpy(bb,b.array(),b.arrayOffset(),expLength+modLength+4);
@@ -161,15 +161,15 @@ public interface Communicator {
     default byte[] intToByteArray(int value) {
         byte[] i = newB(4);
         for (int offset = 0; offset < 4; offset++) {
-            i[offset] = (byte)(value >>> (8 * offset));
+            i[offset] = (byte)(value >>> (8 * (3 - offset)));
         }
         return i;
     }
 
     //Used to return reference to same byte[] so method is nestable,
     //but resulting code is ugly, so returns length of toPut
-    default short put(byte[] b, byte[] toPut, int offset) {
-        memCpy(b, toPut, offset, toPut.length);
+    default short put(byte[] b, byte[] toPut, int dest_offset) {
+        memCpy(b, toPut, dest_offset, 0, toPut.length);
         return (short) toPut.length;
     }
 
