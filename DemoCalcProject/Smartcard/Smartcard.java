@@ -13,8 +13,6 @@ import java.util.Arrays;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 
-import static utility.Util.print;
-
 /**
 @author Matti Eisenlohr
 @author Egidius Mysliwietz
@@ -223,8 +221,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     @Override
     public boolean select() {
         //reject activation if card is no longer alive
-        print("Hi, I'm selecting");
-        print(Arrays.toString(cardID));
         sc = new SmartcardCrypto(cardID, cardCertificate, privateKey);
         return state != States.END_OF_LIFE;
     }
@@ -431,8 +427,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         short nonceCardResp = getShort(response2,offset);
         offset+=2;
-        print(Arrays.toString(shortToByteArray(nonceCard)));
-        print(Arrays.toString(shortToByteArray(nonceCardResp)));
         if(nonceCardResp != nonceCard){
             errorState("Wrong nonce returned in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;

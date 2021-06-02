@@ -113,7 +113,6 @@ public class Auto extends CommunicatorExtended {
 
         //Message 2
         short autoNonce = ac.generateNonce();
-        System.out.println(Arrays.toString(shortToByteArray(cardNonce)));
         byte[] cardNonceHashSign = ac.sign(shortToByteArray(cardNonce));
         msgBuf.putShort(cardNonce);
         msgBuf.putInt(cardNonceHashSign.length);

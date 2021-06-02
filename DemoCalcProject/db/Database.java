@@ -137,7 +137,6 @@ public class Database extends CommunicatorExtended {
 
     /** assign a car to the cardID and send the car info to the terminal */
     public void carAssign(ReceptionTerminal reception){
-        print("I'm assigning a car");
         ByteBuffer response;
         try {
             response = waitForInput();

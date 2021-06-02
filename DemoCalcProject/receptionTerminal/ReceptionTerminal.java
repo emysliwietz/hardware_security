@@ -281,8 +281,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         //Message 2
         termNonce = rtc.generateNonce();
         msgBuf.put(rtc.getCertificate()).putShort(termNonce);
-        print(Arrays.toString(rtc.getCertificate()));
-        print(Arrays.toString(shortToByteArray(termNonce)));
         apdu = sendAPDU(CARD_CONT,AUTH_RECEPTION_M2,msgBuf);
         //send(sc, msgBuf);
         msgBuf.clear();
@@ -468,8 +466,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
 
     /**protocol 6 - card blocking */
     public void blockCard(byte[] cardID){
-        ByteBuffer blockBuf = ByteBuffer.allocate(5);
-        System.out.println(cardID);
+        ByteBuffer blockBuf = newBB(5);
         blockBuf.put(cardID); //cardID is null -> Which card will it even block?
         send(database,blockBuf);
         database.deleteCard(this);
