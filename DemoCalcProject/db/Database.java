@@ -13,6 +13,7 @@ import javacard.framework.AID;
 import javafx.application.Application;
 import receptionTerminal.ReceptionTerminal;
 import rsa.CryptoImplementation;
+import rsa.CryptoImplementationExtended;
 import rsa.RSACrypto;
 
 import java.io.File;
@@ -102,7 +103,7 @@ public class Database extends CommunicatorExtended {
                 String sqlSetKeys = "INSERT INTO database(id, publickey, privatekey) VALUES(?,?,?)";
 
                 try (PreparedStatement pstmt = conn.prepareStatement((sqlSetKeys))) {
-                    pstmt.setString(1, new String(databaseID));
+                    pstmt.setString(1, conv.toHexString(databaseID));
                     pstmt.setString(2, conv.publicToString(dbPubSK));
                     pstmt.setString(3, conv.privateToString(dbPrivSK));
                     pstmt.executeUpdate();
@@ -151,6 +152,7 @@ public class Database extends CommunicatorExtended {
             errorState("Waiting for response carAssign");
             return;
         }
+
 
         byte[] cardID = new byte[5];
         response.get(cardID,0,5);//Get card ID so DB knows which car is assigned to which card
@@ -214,7 +216,7 @@ public class Database extends CommunicatorExtended {
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             // set the corresponding param
-            pstmt.setString(1, new String(cardID));
+            pstmt.setString(1, conv.toHexString(cardID));
             // execute the delete statement
             pstmt.executeUpdate();
 
@@ -222,7 +224,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String confirmation = new String(cardID) + " has been removed from Rent Relations.";
+        String confirmation = conv.toHexString(cardID) + " has been removed from Rent Relations.";
         byte[] message = prepareMessage(confirmation);
         msgBuf.put(message);
         send(reception, msgBuf);
@@ -249,7 +251,7 @@ public class Database extends CommunicatorExtended {
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             // set the corresponding param
-            pstmt.setString(1, new String(cardID));
+            pstmt.setString(1, conv.toHexString(cardID));
             // execute the delete statement
             pstmt.executeUpdate();
 
@@ -262,7 +264,7 @@ public class Database extends CommunicatorExtended {
         try (PreparedStatement pstmt = conn.prepareStatement(sql2)) {
 
             // set the corresponding param
-            pstmt.setString(1, new String(cardID));
+            pstmt.setString(1, conv.toHexString(cardID));
             // execute the delete statement
             pstmt.executeUpdate();
 
@@ -270,7 +272,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String confirmation = new String(cardID) + " has been removed from cards.";
+        String confirmation = conv.toHexString(cardID) + " has been removed from cards.";
         byte[] message = prepareMessage(confirmation);
         msgBuf.put(message);
         send(reception, msgBuf);
@@ -415,7 +417,7 @@ public class Database extends CommunicatorExtended {
         t1.start();
     }
 
-    private class DatabaseCrypto extends CryptoImplementation {
+    private class DatabaseCrypto extends CryptoImplementationExtended {
 
         public DatabaseCrypto(byte[] databaseID, byte[] databaseCertificate) {
             super.ID = databaseID;

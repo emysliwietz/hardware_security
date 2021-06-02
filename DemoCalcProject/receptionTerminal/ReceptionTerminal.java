@@ -12,6 +12,7 @@ import com.licel.jcardsim.utils.AIDUtil;
 import db.Database;
 import javacard.framework.AID;
 import rsa.CryptoImplementation;
+import rsa.CryptoImplementationExtended;
 import rsa.RSACrypto;
 import utility.Logger;
 
@@ -383,7 +384,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
             //APDU RESPONSE BYTE:
             return; //TODO: Placeholder
         }
-        inputQueue.clear();
 
         offset=ERESPAPDU_CDATA_OFFSET;
         //ByteBuffer response = ByteBuffer.wrap(apdu.getData());
@@ -430,7 +430,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         msgBuf.put(cardID);
         //send(database, message); //Step 4
         //database.carAssign(this);
-
         Thread t1 = new Thread(() -> send(database, msgBuf));
         Thread t2 = new Thread(() -> database.carAssign(this));
         t1.start();
@@ -520,11 +519,12 @@ public class ReceptionTerminal extends CommunicatorExtended {
     }
 
     /**protocol 6 - card blocking */
-    public void blockCard(){
+    public void blockCard(byte[] cardID){
         ByteBuffer blockBuf = ByteBuffer.allocate(5);
         System.out.println(cardID);
         blockBuf.put(cardID); //cardID is null -> Which card will it even block?
         send(database,blockBuf);
+        database.deleteCard(this);
         ByteBuffer resp;
         try {
             resp = waitForInput();
@@ -532,6 +532,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             e.printStackTrace();
             return;
         }
+
         int msgLen = new String(cardID).length() + 29;
         byte[] msg = new byte[msgLen];
         resp.get(msg,0,msgLen);
@@ -544,7 +545,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         rtLogger.info("Card blocked successfully", "blockCard",cardID);
     }
 
-    private static class RTCrypto extends CryptoImplementation {
+    private static class RTCrypto extends CryptoImplementationExtended {
 
         public RTCrypto(byte[] rtID, byte[] rtCertificate, PrivateKey privateKey) {
             super.ID = rtID;

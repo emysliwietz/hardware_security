@@ -125,7 +125,8 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
 
     public static class MessageTimeoutException extends Exception {}
 
-    protected ByteBuffer waitForInput() throws MessageTimeoutException {
+    protected synchronized ByteBuffer waitForInput() throws MessageTimeoutException {
+        //lock.readLock().lock();
         int totalwait = 0;
         while (inputQueue.isEmpty()){
             try {
@@ -137,7 +138,11 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
                 e.printStackTrace();
             }
         }
-        return inputQueue.remove();
+        lock.writeLock().lock();
+        ByteBuffer input = inputQueue.pop();
+        lock.writeLock().unlock();
+        //lock.readLock().unlock();
+        return input;
     }
 
     protected void sendLegacy(Receivable receiver, Object... msgComponents){

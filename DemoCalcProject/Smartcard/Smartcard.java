@@ -32,7 +32,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private int kilometerage = 0; //TODO: Change to less storage intensive type (short)
     public PublicKey rtPubSK;
 
-    private byte[] autoIDStored;
+    private byte[] autoID;
     public PublicKey autoPubSK;
     short offset;
 
@@ -320,6 +320,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return (PublicKey) errorState("Timeout in insert");
         }*/
 
+        /*
         //autoPubSK
         byte[] autoPubSKEncoded = newB(KEY_LEN);
         memCpy(autoPubSKEncoded,msg2,offset,KEY_LEN);
@@ -351,7 +352,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             manipulation = true;
             currentAwaited = ProtocolAwaited.AUTH;
             return;
-        }
+        }*/
 
         //Response of nonceCard
         short nonceCardResponse = getShort(msg2,offset);//msg2.getShort(73 + certSignLen);
@@ -621,7 +622,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //response.get(autoPubSkb, 0, 64);
         autoPubSK = bytesToPubkey(autoPubSkb);
 
-        byte[] autoID = newB(5); //To do: new byte -> Transient byte array
+        //byte[] autoID = newB(5); //To do: new byte -> Transient byte array
+        autoID = newB(5);
         memCpy(autoID,response,offset,5);
         offset+=5;
         //response.get(autoID, 69, 5);
@@ -667,7 +669,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
 
-        autoIDStored = autoID;
+        //autoIDStored = autoID;
         //State transition????
         state = States.ASSIGNED;
         //Success message!
@@ -807,7 +809,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         //TODO: Remove certificate of car (e.g. by setting it to null)
         state = States.ASSIGNED_NONE;
-        autoIDStored = null; //Placeholder
+        autoID = null; //Placeholder
         autoPubSK = null; //Placeholder
         currentAwaited = ProtocolAwaited.CRETS;
 
