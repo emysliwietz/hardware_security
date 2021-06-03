@@ -15,35 +15,6 @@ class SmartcardTest {
     }
 
     @Test
-    void send() {
-    }
-
-    @Test
-    void waitForInput() {
-    }
-
-    @Test
-    void insert() {
-    }
-
-    @Test
-    void prepareMessage() {
-    }
-
-    @Test
-    void processMessage() {
-    }
-
-    @Test
-    void receive() {
-    }
-
-    @Test
-    void sign() {
-
-    }
-
-    @Test
     void publicKeySize() {
         /* Database db = new Database();
         Object[] kp = db.generateKeyPair();
