@@ -1,5 +1,6 @@
 package rsa;
 
+import Interfaces.ProtocolComponentLengths;
 import db.Database;
 
 //import java.math.BigInteger;
@@ -16,15 +17,15 @@ import java.util.UUID;
  @author Matti Eisenlohr
  @author Egidius Mysliwietz
  */
-public abstract class CryptoImplementation {
+public abstract class CryptoImplementation implements ProtocolComponentLengths {
     protected byte[] ID;
     protected byte[] certificate;
     protected RSACrypto rc;
     protected RandomData rd = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM); //DEPRECATED: Change to KEYGENERATION?
 
     public short generateNonce(){
-        byte[] bytes = new byte[2];
-        rd.generateData(bytes, (short) 0, (short) 2); //CHANGE TO nextBytes in next version
+        byte[] bytes = new byte[NONCE_LEN];
+        rd.generateData(bytes, (short) 0, NONCE_LEN); //CHANGE TO nextBytes in next version
         return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
 
     }
@@ -32,8 +33,8 @@ public abstract class CryptoImplementation {
     public byte[] generateID(){
         //Could technically also use ALG_FAST, but performance improvement isn't worth having another
         //RandomData instance
-        byte[] bytes = new byte[5];
-        rd.generateData(bytes, (short) 0, (short) 5); //CHANGE TO nextBytes in next version
+        byte[] bytes = new byte[ID_LEN];
+        rd.generateData(bytes, (short) 0, ID_LEN); //CHANGE TO nextBytes in next version
         return bytes;
     }
 

@@ -9,7 +9,7 @@ import javacard.framework.APDU;
  @author Matti Eisenlohr
  @author Egidius Mysliwietz
  */
-public interface Communicator {
+public interface Communicator extends ProtocolComponentLengths {
 
     // CLA codes for APDU header
     final static byte CARD_SELECT = ISO7816.CLA_ISO7816;
@@ -50,7 +50,6 @@ public interface Communicator {
 
     public static final byte SUCCESS_BYTE = (byte) 0xFF;
 
-    final static int KEY_LEN = 2+64+2+64; //132
     final static int EAPDU_CDATA_OFFSET = 7;
     final static int ERESPAPDU_CDATA_OFFSET = 0;
 
@@ -77,10 +76,10 @@ public interface Communicator {
                 KeyBuilder.LENGTH_RSA_512, false);
         short expLength = getShort(bytes,0);
         byte[] exp = newB(expLength);
-        memCpy(exp, bytes,2, expLength);
-        short modLength = getShort(bytes,2+expLength);
+        memCpy(exp, bytes, SHORT_LEN, expLength);
+        short modLength = getShort(bytes,SHORT_LEN + expLength);
         byte[] mod = newB(modLength);
-        memCpy(mod, bytes,expLength+4, modLength);
+        memCpy(mod, bytes,expLength + (2 * SHORT_LEN), modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -91,10 +90,10 @@ public interface Communicator {
                 KeyBuilder.LENGTH_RSA_512, false);
         short expLength = getShort(bytes,0);
         byte[] exp = newB(expLength);
-        memCpy(exp, bytes,2, expLength);
-        short modLength = getShort(bytes,2+expLength);
+        memCpy(exp, bytes, SHORT_LEN, expLength);
+        short modLength = getShort(bytes,SHORT_LEN + expLength);
         byte[] mod = newB(modLength);
-        memCpy(mod, bytes,expLength+4, modLength);
+        memCpy(mod, bytes,expLength + (2 * SHORT_LEN), modLength);
         pk.setExponent(exp, (short) 0, expLength);
         pk.setModulus(mod, (short) 0, modLength);
         return pk;
@@ -103,20 +102,20 @@ public interface Communicator {
     default byte[] pubkToBytes(PublicKey pubk){
         byte[] b = newB(KEY_LEN);
         RSAPublicKey rsaPublicKey = (RSAPublicKey) pubk;
-        short expLength = rsaPublicKey.getExponent(b,(short) 2);
+        short expLength = rsaPublicKey.getExponent(b, SHORT_LEN);
         putShort(b, expLength, (short) 0);
-        short modLength = rsaPublicKey.getModulus(b, (short) (4+expLength));
-        putShort(b, modLength, (short) (2+expLength));
+        short modLength = rsaPublicKey.getModulus(b, (short) ((2 * SHORT_LEN) + expLength));
+        putShort(b, modLength, (short) (SHORT_LEN + expLength));
         return b;
     }
 
     default byte[] privkToBytes(PrivateKey privk){
         byte[] b = newB(KEY_LEN);
         RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) privk;
-        short expLength = rsaPrivateKey.getExponent(b,(short) 2);
+        short expLength = rsaPrivateKey.getExponent(b, SHORT_LEN);
         putShort(b, expLength, (short) 0);
-        short modLength = rsaPrivateKey.getModulus(b,(short) (4+expLength));
-        putShort(b, modLength, (short) (2+expLength));
+        short modLength = rsaPrivateKey.getModulus(b,(short) ((2 * SHORT_LEN) + expLength));
+        putShort(b, modLength, (short) (SHORT_LEN + expLength));
         return b;
     }
 
@@ -148,9 +147,9 @@ public interface Communicator {
 
 
     default byte[] intToByteArray(int value) {
-        byte[] i = newB(4);
-        for (int offset = 0; offset < 4; offset++) {
-            i[offset] = (byte)(value >>> (8 * (3 - offset)));
+        byte[] i = newB(INT_LEN);
+        for (int offset = 0; offset < INT_LEN; offset++) {
+            i[offset] = (byte)(value >>> (BYTE_BIT_LEN * (INT_LEN - 1 - offset)));
         }
         return i;
     }
@@ -165,7 +164,7 @@ public interface Communicator {
     default short putShort(byte[] b, short s, int offset) {
         byte[] a = shortToByteArray(s);
         memCpy(b, a, (short) offset, (short) 0, (short) a.length);
-        return (short) a.length; //2
+        return (short) a.length; //SHORT_LEN: 2
     }
 
     default short putInt(byte[] b, int i, int offset){
@@ -174,12 +173,12 @@ public interface Communicator {
             b[j+offset] = a[j];
         }*/
         memCpy(b, a, (short) offset, (short) 0, (short) a.length);
-        return (short) a.length; //4
+        return (short) a.length; //INT_LEN: 4
     }
 
     default int threeBytesToInt(byte[] b, int offset){
-        return (((b[offset] & 0xFF) << 16) |
-                ((b[offset + 1] & 0xFF) << 8 ) |
+        return (((b[offset] & 0xFF) << (2 * BYTE_BIT_LEN)) |
+                ((b[offset + 1] & 0xFF) << BYTE_BIT_LEN ) |
                 ((b[offset + 2] & 0xFF)));
     }
 
@@ -188,9 +187,9 @@ public interface Communicator {
     }
 
     default int intFromByteArray(byte[] bytes, short offset) {
-        return ((bytes[offset] & 0xFF) << 24) |
-                ((bytes[offset + 1] & 0xFF) << 16) |
-                ((bytes[offset + 2] & 0xFF) << 8 ) |
+        return ((bytes[offset] & 0xFF) << (3 * BYTE_BIT_LEN)) |
+                ((bytes[offset + 1] & 0xFF) << (2 * BYTE_BIT_LEN)) |
+                ((bytes[offset + 2] & 0xFF) << BYTE_BIT_LEN ) |
                 ((bytes[offset + 3] & 0xFF));
     }
 
@@ -199,8 +198,8 @@ public interface Communicator {
     }
 
     default byte[] shortToByteArray(short value) {
-        byte[] s = newB(2);
-        s[0] = (byte) (value >>> 8);
+        byte[] s = newB(SHORT_LEN);
+        s[0] = (byte) (value >>> BYTE_BIT_LEN);
         s[1] = (byte) value;
         return s;
     }
@@ -215,12 +214,12 @@ public interface Communicator {
     }
 
     default short shortFromByteArray(byte[] bytes, short offset) {
-        return (short) (((bytes[offset] & 0xFF) << 8 ) |
+        return (short) (((bytes[offset] & 0xFF) << BYTE_BIT_LEN) |
                 ((bytes[offset + 1] & 0xFF)));
     }
 
     default byte[] booleanToByteArray(boolean b) {
-        byte[] bb = newB(1);
+        byte[] bb = newB(BOOL_LEN);
         bb[0] = b ? Byte.MAX_VALUE : 0x00;
         return bb;
     }
@@ -256,7 +255,7 @@ public interface Communicator {
 
     default byte[] clearBuf(APDU apdu){
         byte[] b = apdu.getBuffer();
-        int apduLen = threeBytesToInt(b,4)+10;
+        int apduLen = threeBytesToInt(b,4) + 10;
         return clearBuf(b, apduLen);
     }
 
