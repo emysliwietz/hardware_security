@@ -147,8 +147,8 @@ public class Database extends CommunicatorExtended {
         }
 
 
-        byte[] cardID = new byte[5];
-        response.get(cardID,0,5);//Get card ID so DB knows which car is assigned to which card
+        byte[] cardID = new byte[ID_LEN];
+        response.get(cardID,0,ID_LEN);//Get card ID so DB knows which car is assigned to which card
 
         String autoID = null;
 
@@ -201,8 +201,8 @@ public class Database extends CommunicatorExtended {
             errorState("Waiting for response carUnassign");
             return;
         }
-        byte[] cardID = new byte[5];
-        response.get(cardID,0,5);
+        byte[] cardID = new byte[ID_LEN];
+        response.get(cardID,0,ID_LEN);
 
         String sql = "DELETE FROM rentRelations WHERE cardID = ?";
 
@@ -236,8 +236,8 @@ public class Database extends CommunicatorExtended {
             errorState("Waiting for response carUnassign");
             return;
         }
-        byte[] cardID = new byte[5];
-        response.get(cardID,0,5);
+        byte[] cardID = new byte[ID_LEN];
+        response.get(cardID,0,ID_LEN);
 
         String sql = "DELETE FROM cards WHERE id = ?";
 
@@ -308,7 +308,7 @@ public class Database extends CommunicatorExtended {
         installBuf.put(scID);
         installBuf.putInt(scCERT.length);
         System.out.println(scCERT.length);
-        System.out.println(getInt(installBuf.array(),5));
+        System.out.println(getInt(installBuf.array(), ID_LEN));
         installBuf.put(scCERT);
         installBuf.put(privkToBytes(scPrivSK));
         installBuf.put(pubkToBytes(dbPubSK));

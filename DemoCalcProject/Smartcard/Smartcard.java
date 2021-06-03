@@ -256,7 +256,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.put(scCert).putShort(nonceCard);
         put(msgBuf, scCert, 0);
         putShort(msgBuf, nonceCard, scCert.length);
-        short msgLen = (short) (SHORT_LEN + scCert.length);
+        short msgLen = (short) (NONCE_LEN + scCert.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.INS2;
@@ -301,9 +301,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] msgBuf = clearBuf(apdu);
         byte[] msg3HashSign = sc.sign(shortToByteArray(nonceAuto));
         putShort(msgBuf, nonceAuto, 0);
-        putInt(msgBuf, msg3HashSign.length, SHORT_LEN);
-        put(msgBuf, msg3HashSign, SHORT_LEN + INT_LEN);
-        short msgLen = (short) (SHORT_LEN + INT_LEN + msg3HashSign.length);
+        putInt(msgBuf, msg3HashSign.length, NONCE_LEN);
+        put(msgBuf, msg3HashSign, NONCE_LEN + INT_LEN);
+        short msgLen = (short) (NONCE_LEN + INT_LEN + msg3HashSign.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.INSS;
@@ -324,7 +324,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
         short nonceSucc = getShort(succMb, offset);
-        offset += SHORT_LEN;
+        offset += NONCE_LEN;
         if (!sc.areSubsequentNonces(nonceCard, nonceSucc)){
             errorState("Wrong nonce in success message of P1");
             manipulation = true;
@@ -336,7 +336,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += INT_LEN;
         byte[] succMHashSign = newB(nonceSuccSignLen);
         memCpy(succMHashSign, succMb, offset, nonceSuccSignLen);
-        byte[] succMsgCmps = newB(BOOL_LEN + SHORT_LEN);
+        byte[] succMsgCmps = newB(BOOL_LEN + NONCE_LEN);
         succMsgCmps[0] = success;
         putShort(succMsgCmps, nonceSucc, BOOL_LEN);
         if(!sc.verify(succMsgCmps,succMHashSign,autoPubSK)){
@@ -357,7 +357,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         put(msgBuf, scCert, 0);
         nonceCard = sc.generateNonce();
         putShort(msgBuf, nonceCard, scCert.length);
-        short msgLen = (short) (SHORT_LEN + INT_LEN + sc.getCertificate().length);
+        short msgLen = (short) (NONCE_LEN + INT_LEN + scCert.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.AUTHR2;
