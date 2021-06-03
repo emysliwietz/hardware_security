@@ -55,7 +55,7 @@ public class Auto extends CommunicatorExtended {
     /**
      * protocol 1 - mutual authentication between smartcard and car
      */
-    public void authenticateSCInitiate() throws CardNotInitializedException, AuthenticationFailedException {
+    public int authenticateSCInitiate() throws CardNotInitializedException, AuthenticationFailedException {
         select();
         CommandAPDU start = new CommandAPDU(CARD_AUTH, INSERT_START, 0, 0, 256);
         ResponseAPDU apdu;
@@ -63,15 +63,15 @@ public class Auto extends CommunicatorExtended {
             apdu = applet.transmit(start);
         } catch (CardException e) {
             e.printStackTrace();
-            return;
+            return -1;
         }
-        authenticateSmartCard(apdu);
+        return authenticateSmartCard(apdu);
     }
 
     /**
      * protocol 1 - mutual authentication between smartcard and car
      */
-    public void authenticateSmartCard(ResponseAPDU apdu) throws CardNotInitializedException, AuthenticationFailedException {
+    public int authenticateSmartCard(ResponseAPDU apdu) throws CardNotInitializedException, AuthenticationFailedException {
         if (apdu.getSW() == CARD_NOT_INITIALIZED) {
             throw new CardNotInitializedException("Please initialize the card in the Reception Terminal first");
         }
@@ -102,7 +102,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Invalid certificate: hash does not match");
             autoLogger.fatal("Invalid certificate: hash does not match", "authenticateSmartCard message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return;
+            return -1;
         }
 
         //Nonces
@@ -162,6 +162,7 @@ public class Auto extends CommunicatorExtended {
             }
 
         }
+        return 0;
     }
 
     /**
@@ -198,7 +199,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -1;
+            return -3;
         }
         int confHashSignLen = getInt(confirmation, offset);
         offset += INT_LEN;
@@ -211,7 +212,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Invalid Hash in kilometerageUpdate");
             autoLogger.fatal("Invalid Hash", "kilometerageUpdate", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -1;
+            return -2;
         } else {
             autoLogger.info("Kilometerage successfully updated", "kilometerageUpdate", cardID);
         }
@@ -286,21 +287,8 @@ public class Auto extends CommunicatorExtended {
             CardTerminals cardTerminals = CardTerminalSimulator.terminals(
                     Arrays.toString(ac.getID()));
             CardTerminal autoTerminal = cardTerminals.getTerminal(Arrays.toString(ac.getID()));
-            //CardSimulator smartcard = new CardSimulator();
             AID scAppletAID = AIDUtil.create(SC_APPLET_AID);
             select();
-            //smartcard.installApplet(scAppletAID,Smartcard.class);
-            /*smartcard.assignToTerminal(autoTerminal);
-            try{
-                Card card = autoTerminal.connect("*");
-                applet = card.getBasicChannel();
-                ResponseAPDU resp = applet.transmit(SELECT_APDU);
-                if(resp.getSW() != 0x9000){
-                    throw new Exception("Select failed");
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }*/
         }
     }
 }
