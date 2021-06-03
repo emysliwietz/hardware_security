@@ -179,7 +179,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private void init(APDU apdu) {
         offset = EAPDU_CDATA_OFFSET;
         byte[] tmp = apdu.getBuffer();
-        int dataLen = threeBytesToInt(tmp, ISO7816.OFFSET_LC); //Is this one necessary?????
+        int dataLen = threeBytesToInt(tmp, ISO7816.OFFSET_LC); //Is this one necessary????? TODO
         cardID = newStaticB(ID_LEN);
         memCpy(cardID, tmp, offset, ID_LEN);
         offset += ID_LEN;
@@ -261,7 +261,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += 2;
         if (nonceCard != nonceCardResponse) {
             errorState("Wrong nonce returned in message 2 of P1");
-            manipulation = true;
             currentAwaited = ProtocolAwaited.AUTH;
             sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
@@ -276,7 +275,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         if (!sc.verify(shortToByteArray(nonceCardResponse), nonceCardResponseHashSign, autoPubSK)) {
             errorState("Invalid hash of nonce returned in message 2 of P1");
-            manipulation = true;
             currentAwaited = ProtocolAwaited.AUTH;
             sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
@@ -318,7 +316,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += NONCE_LEN;
         if (!sc.areSubsequentNonces(nonceCard, nonceSucc)) {
             errorState("Wrong nonce in success message of P1");
-            manipulation = true;
             currentAwaited = ProtocolAwaited.AUTH;
             sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
@@ -332,7 +329,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         putShort(succMsgCmps, nonceSucc, BOOL_LEN);
         if (!sc.verify(succMsgCmps, succMHashSign, autoPubSK)) {
             errorState("Invalid hash in success message (P1)");
-            manipulation = true;
             currentAwaited = ProtocolAwaited.AUTH;
             sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
@@ -386,9 +382,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         put(msg2Cmps, receptionID, KEY_LEN);
 
         if (!sc.verify(msg2Cmps, receptionCertHashSign, dbPubSK)) { //Step 5 //ERROR HERE. CRYPTO EXCEPTION
-            manipulation = true;
             errorState("ReceptionCertHash does not match expected value, check for manipulation.");
-            //TODO: Send message to terminal that process is stopped
             currentAwaited = ProtocolAwaited.AUTH;
             sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
@@ -419,6 +413,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (success != SUCCESS_BYTE) {
             errorState("Wrong byte code, expected 0xFF");
             currentAwaited = ProtocolAwaited.AUTH;
+            sendErrorAPDU(AUTH_FAILED);
             return;
         }
 
@@ -427,6 +422,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (nonceCardResp != nonceCard) {
             errorState("Wrong nonce returned in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
+            sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
         }
 
@@ -440,6 +436,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (!sc.verify(succMsgCmps, responseData2, rtPubSK)) { //Step 9
             errorState("Invalid hash in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
+            sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
         }
 
@@ -454,7 +451,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
      */
     public void carAssignmentStart(APDU apdu) {
         if (!terminalAuthenticated) { //Step 1
-            return; //TODO: Placeholder
+            errorState("Terminal is not authenticated");
+            currentAwaited = ProtocolAwaited.AUTH;
+            sendErrorAPDU(PROC_FAILED);
+            return;
         }
         byte[] value = "Car?".getBytes(StandardCharsets.UTF_8);
         short nonceReceptionCount = ((short) (nonceReception + 1));
@@ -500,10 +500,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         put(autoCertCmps, autoPubSkb, 0);
         put(autoCertCmps, autoID, KEY_LEN);
         if (!sc.verify(autoCertCmps, autoCertHashSign, dbPubSK)) { //Step 7 - certificate
-            //manipulation = true;
             errorState("Invalid car certificate received");
             currentAwaited = ProtocolAwaited.PROC;
-            //TODO: Send message to terminal that process is stopped
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
 
@@ -512,6 +511,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (nonceCard2 != ((short) (nonceCard + 1))) {
             errorState("Wrong sequence number in message 2 of P3");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
         int msg2SignLen = getInt(response, offset);
@@ -528,13 +528,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += autoCertHashSign.length;
         putShort(msg2Cmps, nonceCard2, offset);
         if (!sc.verify(msg2Cmps, msg2HashSign, rtPubSK)) {
-            //manipulation = true;
             errorState("Wrong signature in msg2 of P3");
             currentAwaited = ProtocolAwaited.PROC;
-            //TODO: Send message to terminal that process is stopped
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
-
         state = States.ASSIGNED;
         byte[] successByteArray = {SUCCESS_BYTE};
         byte[] successHash = sc.sign(concatBytes(successByteArray, shortToByteArray((short) (nonceReception + 2))));
@@ -569,15 +567,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(recKmmHashSign, receivedKmm, offset, recKmmHashSignLength);
 
         if (!sc.verify(intToByteArray(kilometerage), recKmmHashSign, autoPubSK)) {
+            manipulation = true;
             errorState("Hashes do not match in kilometerage update! Potential manipulation!");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
             //TODO: throw error or something (tamper bit). Also stop further actions.
         }
         if (oldKMM >= kilometerage) {
             manipulation = true;
             kilometerage = oldKMM; //TODO: Is this a security problem? race condition?
+            errorState("Old kilometerage is higher than the new kilometerage. Potential manipulation!");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
         }
         byte confirmation = (byte) 1;
         byte[] confirmationArray = {confirmation};
@@ -636,15 +638,16 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (!sc.areSubsequentNonces(nonceCard, seqNum2)) {
             errorState("Wrong sequence number in carReturn message 2");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
         byte[] msgCmps = newB(2 * NONCE_LEN);
         putShort(msgCmps, kmmNonce, 0);
         putShort(msgCmps, seqNum2, NONCE_LEN);
         if (!sc.verify(msgCmps, hash, rtPubSK)) {
-            //TODO: Error; also check sequence number (not in this if clause (obviously))
             errorState("Message hashes do not match in msg2 carReturn");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
         byte[] msg3Hash = sc.sign(concatBytes(intToByteArray(kilometerage), shortToByteArray(kmmNonce), shortToByteArray((short) (seqNum1 + 1))));
@@ -661,10 +664,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         apdu.sendBytes((short) 0, msgLen);
         kilometerage = 0;
 
-        //TODO: Remove certificate of car (e.g. by setting it to null)
         state = States.ASSIGNED_NONE;
-        autoID = null; //Placeholder
-        autoPubSK = null; //Placeholder
+        autoID = null;
+        autoPubSK = null;
         currentAwaited = ProtocolAwaited.CRETS;
 
     }
@@ -681,6 +683,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (success != SUCCESS_BYTE) {
             errorState("Wrong code, expected 0xFF");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
         short succNonce = getShort(succMsg, offset);
@@ -688,6 +691,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (!sc.areSubsequentNonces(nonceCard, succNonce, 2)) {
             errorState("Wrong sequence number in success message of P4");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
         int hashLength = getInt(succMsg, offset);
@@ -700,6 +704,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         if (!sc.verify(msgCmps, signedSuccHash, rtPubSK)) {
             errorState("Invalid hash in success message of Protocol 4");
             currentAwaited = ProtocolAwaited.PROC;
+            sendErrorAPDU(PROC_FAILED);
             return;
         }
         currentAwaited = ProtocolAwaited.AUTH;

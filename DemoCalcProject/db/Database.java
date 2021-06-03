@@ -388,11 +388,11 @@ public class Database extends CommunicatorExtended {
      * check if a card is blocked, e.g. it does not exist in the database
      */
     public boolean isBlocked(byte[] cardID) {
-        String sql = "SELECT id FROM cards db WHERE id = ?";
+        String sql = "SELECT id FROM cards WHERE id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, conv.toHexString(cardID));
-            ResultSet rs = pstmt.executeQuery(sql);
+            ResultSet rs = pstmt.executeQuery();
             //If the cardID is not listed
             return !rs.next();
         } catch (SQLException e) {
