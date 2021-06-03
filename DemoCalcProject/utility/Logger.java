@@ -17,6 +17,8 @@ public class Logger {
             FileWriter fw = new FileWriter(logFile, true);
             BufferedWriter bw = new BufferedWriter(fw);
             pw = new PrintWriter(bw);
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -28,7 +30,11 @@ public class Logger {
         ).toString();
         String lvls = " ".repeat(1+level.WARNING.toString().length() - lvl.toString().length()) + lvl.toString()+ " ";
         String toFile = timestamp + lvls + "(" + Arrays.toString(cardID) + ") " + message + " (Source: " + msgSrc + ")";
-        pw.println(toFile);
+        try {
+            pw.println(toFile);
+        } catch (NullPointerException e) {
+            System.err.println("Printer not initialized");
+        }
         System.out.println(toFile);
     }
 

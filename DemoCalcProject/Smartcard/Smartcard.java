@@ -198,11 +198,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset = EAPDU_CDATA_OFFSET;
         byte[] tmp = apdu.getBuffer();
         int dataLen = threeBytesToInt(tmp,ISO7816.OFFSET_LC); //Is this one necessary?????
-        cardID = newStaticB(5);
-        memCpy(cardID, tmp, offset,(short) 5);
-        offset += 5;
-        int certLength = getInt(tmp,offset);
-        offset += 4;
+        cardID = newStaticB(ID_LEN);
+        memCpy(cardID, tmp, offset, ID_LEN);
+        offset += ID_LEN;
+        int certLength = getInt(tmp, offset);
+        offset += INT_LEN;
         cardCertificate = newStaticB(certLength);
         memCpy(cardCertificate,tmp,offset,certLength);
         offset += certLength;
@@ -256,7 +256,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         //msgBuf.put(scCert).putShort(nonceCard);
         put(msgBuf, scCert, 0);
         putShort(msgBuf, nonceCard, scCert.length);
-        short msgLen = (short) (2 + scCert.length);
+        short msgLen = (short) (SHORT_LEN + scCert.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.INS2;
@@ -280,7 +280,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         //signed hash of nonceCard
         int msg2NonceSignLen = getInt(msg2,offset);//msg2.getInt(curBufIndex);
-        offset += 4;
+        offset += INT_LEN;
         byte[] nonceCardResponseHashSign = newB(msg2NonceSignLen);
         memCpy(nonceCardResponseHashSign,msg2,offset,msg2NonceSignLen);
         offset += msg2NonceSignLen;
@@ -301,9 +301,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] msgBuf = clearBuf(apdu);
         byte[] msg3HashSign = sc.sign(shortToByteArray(nonceAuto));
         putShort(msgBuf, nonceAuto, 0);
-        putInt(msgBuf, msg3HashSign.length, 2);
-        put(msgBuf, msg3HashSign, 6);
-        short msgLen = (short) (2 + 4 + msg3HashSign.length);
+        putInt(msgBuf, msg3HashSign.length, SHORT_LEN);
+        put(msgBuf, msg3HashSign, SHORT_LEN + INT_LEN);
+        short msgLen = (short) (SHORT_LEN + INT_LEN + msg3HashSign.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.INSS;
@@ -316,7 +316,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] succMb = apdu.getBuffer();
 
         byte success = succMb[offset];
-        offset += 1;
+        offset += BOOL_LEN;
         if(success != SUCCESS_BYTE){
             errorState("Wrong code, expected 0xFF");
             currentAwaited = ProtocolAwaited.AUTH;
@@ -324,7 +324,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
         short nonceSucc = getShort(succMb, offset);
-        offset += 2;
+        offset += SHORT_LEN;
         if (!sc.areSubsequentNonces(nonceCard, nonceSucc)){
             errorState("Wrong nonce in success message of P1");
             manipulation = true;
@@ -333,12 +333,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
         int nonceSuccSignLen = getInt(succMb, offset);
-        offset += 4;
+        offset += INT_LEN;
         byte[] succMHashSign = newB(nonceSuccSignLen);
         memCpy(succMHashSign, succMb, offset, nonceSuccSignLen);
-        byte[] succMsgCmps = newB(3);
+        byte[] succMsgCmps = newB(BOOL_LEN + SHORT_LEN);
         succMsgCmps[0] = success;
-        putShort(succMsgCmps, nonceSucc, 1);
+        putShort(succMsgCmps, nonceSucc, BOOL_LEN);
         if(!sc.verify(succMsgCmps,succMHashSign,autoPubSK)){
             errorState("Invalid hash in success message (P1)");
             manipulation = true;
@@ -357,7 +357,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         put(msgBuf, scCert, 0);
         nonceCard = sc.generateNonce();
         putShort(msgBuf, nonceCard, scCert.length);
-        short msgLen = (short) (2 + 4 + sc.getCertificate().length);
+        short msgLen = (short) (SHORT_LEN + INT_LEN + sc.getCertificate().length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.AUTHR2;
@@ -374,19 +374,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += KEY_LEN;
         rtPubSK = bytesToPubkey(rtPubSkb);
 
-        byte[] receptionID = newB(5);
-        memCpy(receptionID,response,offset,5);
-        offset += 5;
+        byte[] receptionID = newB(ID_LEN);
+        memCpy(receptionID,response,offset,ID_LEN);
+        offset += ID_LEN;
 
         int receptionCertHSLength = getInt(response,offset);
-        offset += 4;
+        offset += INT_LEN;
 
         byte[] receptionCertHashSign = newB(receptionCertHSLength);
         memCpy(receptionCertHashSign,response,offset,receptionCertHSLength);
         offset += receptionCertHSLength;
 
         nonceReception = getShort(response,offset);
-        byte[] msg2Cmps = newB(KEY_LEN+5);
+        byte[] msg2Cmps = newB(KEY_LEN+ID_LEN);
         put(msg2Cmps, rtPubSkb, 0);
         put(msg2Cmps, receptionID, KEY_LEN);
 
@@ -403,9 +403,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         apdu.setOutgoing();
         byte[] msgBuf = clearBuf(apdu);
         putShort(msgBuf, nonceReception, 0);
-        putInt(msgBuf, nonceReceptionHashSign.length, 2);
-        put(msgBuf, nonceReceptionHashSign, 6);
-        short msgLen = (short) (2 + 4 + nonceReceptionHashSign.length);
+        putInt(msgBuf, nonceReceptionHashSign.length, NONCE_LEN);
+        put(msgBuf, nonceReceptionHashSign, NONCE_LEN + INT_LEN);
+        short msgLen = (short) (NONCE_LEN + INT_LEN + nonceReceptionHashSign.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.AUTHRS;
@@ -426,7 +426,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }
 
         short nonceCardResp = getShort(response2,offset);
-        offset+=2;
+        offset+=NONCE_LEN;
         if(nonceCardResp != nonceCard){
             errorState("Wrong nonce returned in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
@@ -437,9 +437,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset+=4;
         byte[] responseData2 = newB(responseData2Length);
         memCpy(responseData2, response2, offset, responseData2Length);
-        byte[] succMsgCmps = newB(3);
+        byte[] succMsgCmps = newB(BOOL_LEN + NONCE_LEN);
         succMsgCmps[0] = success;
-        putShort(succMsgCmps, nonceCard, 1);
+        putShort(succMsgCmps, nonceCard, BOOL_LEN);
         if (!sc.verify(succMsgCmps,responseData2,rtPubSK)){ //Step 9
             errorState("Invalid hash in message 4 of P2");
             currentAwaited = ProtocolAwaited.AUTH;
@@ -465,12 +465,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset = 0;
         put(msgBuf, value, offset);
         offset += value.length;
-        putShort(msgBuf, nonceReceptionCount, offset);
-        offset += 2;
-        putInt(msgBuf, giveCarSigned.length, offset);
-        offset += 4;
+        offset += putShort(msgBuf, nonceReceptionCount, offset);
+        offset += putInt(msgBuf, giveCarSigned.length, offset);
         put(msgBuf, giveCarSigned, offset);
-        short msgLen = (short) (4 + 2 + 4 + giveCarSigned.length);
+        short msgLen = (short) (INT_LEN + SHORT_LEN + INT_LEN + giveCarSigned.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.CASS2;
@@ -486,8 +484,8 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset+=KEY_LEN;
         autoPubSK = bytesToPubkey(autoPubSkb);
 
-        autoID = newB(5);
-        memCpy(autoID,response,offset,5);
+        autoID = newB(ID_LEN);
+        memCpy(autoID,response,offset,ID_LEN);
         offset+=5;
 
         int autoCertHSLength = getInt(response,offset);
@@ -496,7 +494,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(autoCertHashSign,response,offset,autoCertHSLength);
         offset+=autoCertHSLength;
 
-        byte[] autoCertCmps = newB(KEY_LEN + 5);
+        byte[] autoCertCmps = newB(KEY_LEN + ID_LEN);
         put(autoCertCmps, autoPubSkb, 0);
         put(autoCertCmps, autoID, KEY_LEN);
         if (!sc.verify(autoCertCmps,autoCertHashSign,dbPubSK)){ //Step 7 - certificate
@@ -508,17 +506,17 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }
 
         short nonceCard2 = getShort(response,offset);
-        offset+=2;
+        offset+=NONCE_LEN;
         if (nonceCard2 != ((short) (nonceCard+1))){
             errorState("Wrong sequence number in message 2 of P3");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
         int msg2SignLen = getInt(response,offset);
-        offset+=4;
+        offset+=INT_LEN;
         byte[] msg2HashSign = newB(msg2SignLen);
         memCpy(msg2HashSign,response,offset,msg2SignLen);
-        byte[] msg2Cmps = newB(KEY_LEN+5+64+2);
+        byte[] msg2Cmps = newB(KEY_LEN+ID_LEN+SIGNED_HASH_LEN+NONCE_LEN);
         offset = 0;
         put(msg2Cmps, autoPubSkb, offset);
         offset += KEY_LEN;
@@ -542,13 +540,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         byte[] msgBuf = clearBuf(apdu);
         offset = 0;
         msgBuf[offset] = SUCCESS_BYTE;
-        offset += 1;
-        putShort(msgBuf, (short) (nonceReception+2), offset);
-        offset += 2;
-        putInt(msgBuf, successHash.length, offset);
-        offset += 4;
+        offset += BOOL_LEN;
+        offset += putShort(msgBuf, (short) (nonceReception+2), offset);
+        offset += putInt(msgBuf, successHash.length, offset);
         put(msgBuf, successHash, offset);
-        short msgLen = (short) (1+2+4+successHash.length);
+        short msgLen = (short) (BOOL_LEN+NONCE_LEN+INT_LEN+successHash.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.AUTH;
@@ -562,9 +558,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         int oldKMM = kilometerage;
 
         kilometerage = getInt(receivedKmm, offset);
-        offset += 4;
+        offset += INT_LEN;
         int recKmmHashSignLength = getInt(receivedKmm, offset);
-        offset += 4;
+        offset += INT_LEN;
         byte[] recKmmHashSign = newB(recKmmHashSignLength);
         memCpy(recKmmHashSign, receivedKmm, offset, recKmmHashSignLength);
 
@@ -580,17 +576,17 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             currentAwaited = ProtocolAwaited.PROC;
         }
         byte confirmation = (byte) 1;
-        byte[] confirmationArray = {1};
+        byte[] confirmationArray = {confirmation};
         byte[] confirmationHash = sc.sign(concatBytes(confirmationArray, intToByteArray(kilometerage)));
         apdu.setOutgoing();
         byte[] msgBuf = clearBuf(apdu);
         offset = 0;
         msgBuf[0] = confirmation;
-        offset += 1;
+        offset += BYTE_LEN;
         offset += putInt(msgBuf, kilometerage, offset);
         offset += putInt(msgBuf, confirmationHash.length, offset);
         put(msgBuf, confirmationHash, offset);
-        short msgLen = (short) (1+4+4+confirmationHash.length);
+        short msgLen = (short) (BYTE_LEN+INT_LEN+INT_LEN+confirmationHash.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.PROC;
@@ -610,7 +606,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += put(msgBuf, manByte, offset);
         offset += putInt(msgBuf, msg1Hash.length, offset);
         put(msgBuf, msg1Hash, offset);
-        short msgLen = (short) (10 + 2 + 1 + 4 + msg1Hash.length);
+        short msgLen = (short) (car_return.length + NONCE_LEN + BYTE_LEN + INT_LEN + msg1Hash.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.CRET2;
@@ -634,9 +630,9 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
-        byte[] msgCmps = newB(4);
+        byte[] msgCmps = newB(2 * NONCE_LEN);
         putShort(msgCmps, kmmNonce, 0);
-        putShort(msgCmps, seqNum2, 2);
+        putShort(msgCmps, seqNum2, NONCE_LEN);
         if (!sc.verify(msgCmps,hash,rtPubSK)) {
             //TODO: Error; also check sequence number (not in this if clause (obviously))
             errorState("Message hashes do not match in msg2 carReturn");
@@ -652,7 +648,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset += putShort(msgBuf, ((short) (seqNum1 + 1)), offset);
         offset += putInt(msgBuf, msg3Hash.length, offset);
         put(msgBuf, msg3Hash, offset);
-        short msgLen = (short) (4 + 2 + 2 + 4 + msg3Hash.length);
+        short msgLen = (short) (INT_LEN + NONCE_LEN + NONCE_LEN + INT_LEN + msg3Hash.length);
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         kilometerage = 0;
@@ -678,19 +674,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
         short succNonce = getShort(succMsg, offset);
-        offset += 2;
+        offset += NONCE_LEN;
         if (!sc.areSubsequentNonces(nonceCard, succNonce, 2)){
             errorState("Wrong sequence number in success message of P4");
             currentAwaited = ProtocolAwaited.PROC;
             return;
         }
         int hashLength = getInt(succMsg, offset);
-        offset += 4;
+        offset += INT_LEN;
         byte[] signedSuccHash = newB(hashLength);
         memCpy(signedSuccHash, succMsg, offset, hashLength);
-        byte[] msgCmps = newB(3);
+        byte[] msgCmps = newB(BYTE_LEN + NONCE_LEN);
         msgCmps[0] = success;
-        putShort(msgCmps, succNonce, 1);
+        putShort(msgCmps, succNonce, BYTE_LEN);
         if(!sc.verify(msgCmps,signedSuccHash,rtPubSK)){
             errorState("Invalid hash in success message of Protocol 4");
             currentAwaited = ProtocolAwaited.PROC;
