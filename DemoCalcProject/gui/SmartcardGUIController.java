@@ -111,10 +111,18 @@ public class SmartcardGUIController {
         l0.setCursor(Cursor.HAND);
         r0.setCursor(Cursor.HAND);
         l0.setOnMouseClicked(event -> carStart());
-        r0.setOnMouseClicked(event -> receptionAuth());
+        r0.setOnMouseClicked(event -> {
+            try {
+                receptionAuth();
+            } catch (CommunicatorExtended.ProcessFailedException e) {
+                e.printStackTrace();
+            } catch (CommunicatorExtended.AuthenticationFailedException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
-    private void receptionAuth() {
+    private void receptionAuth() throws CommunicatorExtended.ProcessFailedException, CommunicatorExtended.AuthenticationFailedException {
         l0.setCursor(Cursor.DEFAULT);
         r0.setCursor(Cursor.DEFAULT);
         left0.setText("");
@@ -190,7 +198,11 @@ public class SmartcardGUIController {
     }
 
     public void updateKmm() {
-        kmm = a.kilometerageUpdate();
+        try {
+            kmm = a.kilometerageUpdate();
+        } catch (CommunicatorExtended.ProcessFailedException e) {
+            e.printStackTrace();
+        }
         display.setText("Current kilometerage: " + kmm + "km");
     }
 

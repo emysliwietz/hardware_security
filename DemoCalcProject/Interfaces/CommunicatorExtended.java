@@ -149,4 +149,9 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
             super(s);
         }
     }
+    public static class ProcessFailedException extends Exception {
+        public ProcessFailedException(String s) {
+            super(s);
+        }
+    }
 }

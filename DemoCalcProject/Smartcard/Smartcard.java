@@ -572,7 +572,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             currentAwaited = ProtocolAwaited.PROC;
             sendErrorAPDU(PROC_FAILED);
             return;
-            //TODO: throw error or something (tamper bit). Also stop further actions.
         }
         if (oldKMM >= kilometerage) {
             manipulation = true;

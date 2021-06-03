@@ -49,7 +49,7 @@ public class ProtocolRunTest {
     }
 
     @Test
-    void fullRun() {
+    void fullRun() throws CommunicatorExtended.AuthenticationFailedException, CommunicatorExtended.ProcessFailedException {
         rt.cardAuthenticationInitiate();
         rt.carAssignmentInitiate();
         assertDoesNotThrow(() -> a.authenticateSCInitiate());
@@ -73,7 +73,7 @@ public class ProtocolRunTest {
     }
 
     @Test
-    void successiveFullRuns() {
+    void successiveFullRuns() throws CommunicatorExtended.AuthenticationFailedException, CommunicatorExtended.ProcessFailedException {
         for (int i = 0; i < 32; i++) {
             System.out.println(" =======Run " + i + "========= ");
             fullRun();
@@ -82,7 +82,7 @@ public class ProtocolRunTest {
 
     /* We need this test because we use threads, which are inherently unpredictable in their behaviour */
     @Test
-    void fourTwentySuccessiveFullRuns() {
+    void fourTwentySuccessiveFullRuns() throws CommunicatorExtended.AuthenticationFailedException, CommunicatorExtended.ProcessFailedException {
         for (int i = 0; i < 420; i++) {
             System.out.println(" ========= Run " + i + " ========= ");
             fullRun();
