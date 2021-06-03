@@ -431,7 +431,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         }
 
         int responseData2Length = getInt(response2, offset);
-        offset += 4;
+        offset += INT_LEN;
         byte[] responseData2 = newB(responseData2Length);
         memCpy(responseData2, response2, offset, responseData2Length);
         byte[] succMsgCmps = newB(BOOL_LEN + NONCE_LEN);
@@ -488,10 +488,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         autoID = newB(ID_LEN);
         memCpy(autoID, response, offset, ID_LEN);
-        offset += 5;
+        offset += ID_LEN;
 
         int autoCertHSLength = getInt(response, offset);
-        offset += 4;
+        offset += INT_LEN;
         byte[] autoCertHashSign = newB(autoCertHSLength);
         memCpy(autoCertHashSign, response, offset, autoCertHSLength);
         offset += autoCertHSLength;
@@ -626,11 +626,11 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         offset = EAPDU_CDATA_OFFSET;
         short seqNum1 = (short) (nonceReception + 1);
         short kmmNonce = getShort(msg2, offset);
-        offset += 2;
+        offset += NONCE_LEN;
         short seqNum2 = getShort(msg2, offset);
-        offset += 2;
+        offset += NONCE_LEN;
         int lengthHash = getInt(msg2, offset);
-        offset += 4;
+        offset += INT_LEN;
         byte[] hash = newB(lengthHash);
         memCpy(hash, msg2, offset, lengthHash);
         if (!sc.areSubsequentNonces(nonceCard, seqNum2)) {
