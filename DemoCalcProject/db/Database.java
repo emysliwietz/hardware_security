@@ -269,7 +269,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String sql2 = "DELETE FROM rentrelations WHERE id = ?";
+        String sql2 = "DELETE FROM rentrelations WHERE cardID = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql2)) {
 
@@ -282,7 +282,7 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String confirmation = conv.toHexString(cardID) + " has been removed from cards.";
+        String confirmation = conv.toHexString(cardID) + "has been removed from cards.";
         byte[] message = prepareMessage(confirmation);
         msgBuf.put(message);
         send(reception, msgBuf);

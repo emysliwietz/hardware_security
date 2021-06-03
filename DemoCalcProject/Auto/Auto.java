@@ -6,6 +6,7 @@ import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import javacard.framework.AID;
+import javacard.framework.ISOException;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import rsa.CryptoImplementationExtended;
@@ -50,6 +51,15 @@ public class Auto extends CommunicatorExtended {
 
     }
 
+    public void sendErrorAPDU(short status_word) {
+        ISOException.throwIt(status_word);
+        /* On the side of the terminal, you'd check this with
+        if (apdu.getSW() == status_word) {
+            _error_handling_
+        }
+        */
+    }
+
     /**
      * protocol 1 - mutual authentication between smartcard and car
      */
@@ -61,7 +71,6 @@ public class Auto extends CommunicatorExtended {
             apdu = applet.transmit(start);
         } catch (CardException e) {
             e.printStackTrace();
-            //TODO: Maybe handle error better?
             return;
         }
         authenticateSmartCard(apdu);
@@ -80,8 +89,7 @@ public class Auto extends CommunicatorExtended {
 
         //scPubSK + cardID
         byte[] scPubSKEncoded = new byte[KEY_LEN];
-        memCpy(scPubSKEncoded, msg1, offset, KEY_LEN); //TODO: error here if card is not assigned to auto
-        //potential fix: put error handling in memCpy
+        memCpy(scPubSKEncoded, msg1, offset, KEY_LEN);
         offset += KEY_LEN;
         scPubSK = bytesToPubkey(scPubSKEncoded);
         cardID = new byte[ID_LEN];
@@ -101,6 +109,7 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msg1Cmps, scCertHashSign, dbPubSK)) {
             errorState("Invalid certificate: hash does not match");
             autoLogger.fatal("Invalid certificate: hash does not match", "authenticateSmartCard message 1", cardID);
+            sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             return;
         }
 
@@ -123,7 +132,6 @@ public class Auto extends CommunicatorExtended {
         if (apdu.getSW() == AUTH_FAILED_MANIPULATION) {
             autoLogger.fatal("Something has been manipulated", "authenticateSmartCard message 3", cardID);
             throw new AuthenticationFailedException("Something has been manipulated, authentication between auto and card failed");
-
         }
         offset = ERESPAPDU_CDATA_OFFSET;
 
@@ -140,9 +148,9 @@ public class Auto extends CommunicatorExtended {
         ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[NONCE_LEN]);
         msg3Cmps.putShort(autoNonceResp);
         if (!ac.verify(msg3Cmps, autoNonceRespHashSign, scPubSK)) {
-            //TODO: throw error or something (logs). Also stop further actions.
             errorState("Wrong nonce in P1 msg3 returned");
             autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
+            sendErrorAPDU(AUTH_FAILED_MANIPULATION);
             throw new AuthenticationFailedException("Wrong nonce returned, authentication between auto and card failed");
         } else {
             //Success message
@@ -152,7 +160,6 @@ public class Auto extends CommunicatorExtended {
             byte[] succByte = {SUCCESS_BYTE};
             msgBuf.putInt(ac.sign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))).length).put(ac.sign(concatBytes(succByte, shortToByteArray((short) (cardNonce + 1)))));
             sendAPDU(CARD_CONT, INSERT_MS, msgBuf);
-            //send(sc, msgBuf);
             msgBuf.clear();
             msgBuf.rewind();
             if (apdu.getSW() == AUTH_FAILED || apdu.getSW() == AUTH_FAILED_MANIPULATION) {
@@ -172,6 +179,7 @@ public class Auto extends CommunicatorExtended {
         if (!cardAuthenticated) {
             errorState("Card not authenticated in kilometerageUpdate");
             autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
+            sendErrorAPDU(PROC_FAILED );
             return -1;
         }
         //Message 1
@@ -192,6 +200,8 @@ public class Auto extends CommunicatorExtended {
         if (kilometerage != curKmmCard) {
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
+            sendErrorAPDU(PROC_FAILED);
+            return -1;
         }
         int confHashSignLen = getInt(confirmation, offset);
         offset += INT_LEN;
@@ -203,6 +213,8 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msgCmps, confHashSigned, scPubSK)) {
             errorState("Invalid Hash in kilometerageUpdate");
             autoLogger.fatal("Invalid Hash", "kilometerageUpdate", cardID);
+            sendErrorAPDU(PROC_FAILED);
+            return -1;
         } else {
             autoLogger.info("Kilometerage successfully updated", "kilometerageUpdate", cardID);
         }

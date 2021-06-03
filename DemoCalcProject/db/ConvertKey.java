@@ -66,7 +66,7 @@ public class ConvertKey implements Communicator {
     public String toHexString(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
-            sb.append(String.format("%02X ", b));
+            sb.append(String.format("%02X ", b)); //Do not remove the space.
         }
         return sb.toString();
     }
