@@ -170,7 +170,52 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
                     ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
                 }
                 return;
-
+            case CARD_ERROR:
+                short sw = getShort(apdu.getBuffer(), EAPDU_CDATA_OFFSET);
+                switch (buffer[ISO7816.OFFSET_INS]) {
+                    case INSERT_START:
+                        insertStartOnError(sw);
+                        return;
+                    case INSERT_M2:
+                        insertM2OnError(sw);
+                        return;
+                    case INSERT_MS:
+                        insertMSOnError(sw);
+                        return;
+                    case AUTH_RECEPTION_START:
+                        authReceptionOnError(sw);
+                        return;
+                    case AUTH_RECEPTION_M2:
+                        authReceptionM2OnError(sw);
+                        return;
+                    case AUTH_RECEPTION_MS:
+                        authReceptionMSOnError(sw);
+                        return;
+                    case CAR_ASSIGNMENT_START:
+                        carAssignmentStartOnError(sw);
+                        return;
+                    case CAR_ASSIGNMENT_M2:
+                        carAssignmentM2OnError(sw);
+                        return;
+                    case KMM_UPDATE:
+                        kilometerageUpdateOnError(sw);
+                        return;
+                    case CAR_RETURN_START:
+                        carReturnStartOnError(sw);
+                        return;
+                    case CAR_RETURN_M2:
+                        carReturnM2OnError(sw);
+                        return;
+                    case CAR_RETURN_MS:
+                        carReturnMSOnError(sw);
+                        return;
+                    case INIT:
+                        initOnError(sw);
+                        return;
+                    default:
+                        ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+                }
+                return;
             default:
                 ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
         }
@@ -179,7 +224,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private void init(APDU apdu) {
         offset = EAPDU_CDATA_OFFSET;
         byte[] tmp = apdu.getBuffer();
-        int dataLen = threeBytesToInt(tmp, ISO7816.OFFSET_LC); //Is this one necessary????? TODO
+        int dataLen = threeBytesToInt(tmp, ISO7816.OFFSET_LC); //Is this one necessary????? No, it's not necessary, but we wrote a full nice method just for this one use case... TODO
         cardID = newStaticB(ID_LEN);
         memCpy(cardID, tmp, offset, ID_LEN);
         offset += ID_LEN;
@@ -197,6 +242,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         memCpy(dbPubkB, tmp, offset, KEY_LEN);
         dbPubSK = bytesToPubkey(dbPubkB);
         state = States.ASSIGNED_NONE;
+    }
+
+    private void initOnError(short sw) {
+        switch (sw) {
+            case INVALID_NONCE:
+                //I failed math...
+                return;
+            case INVALID_HASH:
+                //Back in my day, we used MD5...
+                return;
+            default:
+                //*throws hands in air* Oh, I don't know why it's crashing either!!! :'(
+        }
     }
 
     /**
@@ -249,6 +307,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.INS2;
     }
 
+    private void insertStartOnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 1 - mutual authentication between smartcard and car
      */
@@ -296,6 +358,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.INSS;
     }
 
+    private void insertM2OnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 1 - mutual authentication between smartcard and car
      */
@@ -336,6 +402,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.PROC;
     }
 
+    private void insertMSOnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 2 - Mutual Authentication between smartcard and reception terminal
      */
@@ -351,6 +421,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.AUTHR2;
 
+    }
+
+    private void authReceptionOnError(short sw) {
+        //TODO: Handle errors
     }
 
     /**
@@ -401,6 +475,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
+    private void authReceptionM2OnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 2 - Mutual Authentication between smartcard and reception terminal
      */
@@ -446,6 +524,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
+    private void authReceptionMSOnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 3 - Assignment of car to smartcard
      */
@@ -472,6 +554,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.CASS2;
+    }
+
+    private void carAssignmentStartOnError(short sw) {
+        //TODO: Handle errors
     }
 
     /**
@@ -550,6 +636,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.AUTH;
     }
 
+    private void carAssignmentM2OnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * protocol 5  - Adding kilometerage to smartcard
      */
@@ -597,6 +687,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         currentAwaited = ProtocolAwaited.PROC;
     }
 
+    private void kilometerageUpdateOnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 4 - Car return and kilometerage check
      */
@@ -617,6 +711,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         apdu.setOutgoingLength(msgLen);
         apdu.sendBytes((short) 0, msgLen);
         currentAwaited = ProtocolAwaited.CRET2;
+    }
+
+    private void carReturnStartOnError(short sw) {
+        //TODO: Handle errors
     }
 
     /**
@@ -670,6 +768,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
     }
 
+    private void carReturnM2OnError(short sw) {
+        //TODO: Handle errors
+    }
+
     /**
      * Protocol 4 - Car return and kilometerage check
      */
@@ -707,6 +809,10 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
             return;
         }
         currentAwaited = ProtocolAwaited.AUTH;
+    }
+
+    private void carReturnMSOnError(short sw) {
+        //TODO: Handle errors
     }
 
     public enum ProtocolAwaited {

@@ -8,7 +8,6 @@ import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import db.Database;
 import javacard.framework.AID;
-import javacard.framework.ISOException;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import rsa.CryptoImplementationExtended;
@@ -96,6 +95,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong command, expected Car Return, got " + carReturn);
             rtLogger.warning("Wrong command, expected Car Return, got " + carReturn, "CarReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            //TODO: Like this. Not handled on smartcard side, though
+            sendErrorAPDU(CAR_RETURN_M2, INVALID_CODE);
             return -2;
         }
         short seqNum = getShort(msg1, offset);//msg1.getShort();
@@ -104,6 +105,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong sequence number in carReturn message 1");
             rtLogger.fatal("Wrong sequence number", "carReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(CAR_RETURN_M2, INVALID_SEQ_NUM);
             return -2;
         }
         boolean manipulation = booleanFromByte(msg1[offset]);
@@ -118,12 +120,14 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Hashes don't match in carReturn message 1");
             rtLogger.fatal("Hashes don't match", "carReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(CAR_RETURN_M2, INVALID_HASH);
             return -2;
         }
         if (manipulation) {
             errorState("Kilometerage on card " + Arrays.toString(cardID) + " might have been manipulated. Please verify");
             rtLogger.warning("Kilometerage on card " + Arrays.toString(cardID) + " might have been manipulated. Please verify", "carReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(CAR_RETURN_M2, POSSIBLE_MANIPULATION);
             return -3;
         }
 
@@ -157,6 +161,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong kilometerage nonce returned");
             rtLogger.fatal("Wrong kilometerage nonce returned", "message 3 carReturn", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(CAR_RETURN_M2, INVALID_NONCE);
             return -1;
         }
         short seqNum3 = getShort(msg3, offset);
@@ -165,6 +170,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong sequence number in carReturn message 3");
             rtLogger.fatal("Wrong sequence number", "carReturn message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(CAR_RETURN_M2, INVALID_SEQ_NUM);
             return -1;
         }
         int msg3HashSignLen = getInt(msg3, offset);//msg3.getInt();
@@ -178,6 +184,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Hash in carReturn message 3 invalid");
             rtLogger.fatal("Invalid hash", "carReturn message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(CAR_RETURN_M2, INVALID_HASH);
             return -1;
         }
 

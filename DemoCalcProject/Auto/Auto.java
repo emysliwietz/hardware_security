@@ -102,6 +102,8 @@ public class Auto extends CommunicatorExtended {
             errorState("Invalid certificate: hash does not match");
             autoLogger.fatal("Invalid certificate: hash does not match", "authenticateSmartCard message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            //TODO: Like this. Look for corresponding method in smartcard, no handling implemented.
+            sendErrorAPDU(INSERT_START, INVALID_HASH);
             return -1;
         }
 
@@ -143,6 +145,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Wrong nonce in P1 msg3 returned");
             autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(INSERT_M2, INVALID_NONCE);
             throw new AuthenticationFailedException("Wrong nonce returned, authentication between auto and card failed");
         } else {
             //Success message

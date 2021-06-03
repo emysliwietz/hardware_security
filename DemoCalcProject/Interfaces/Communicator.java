@@ -13,40 +13,60 @@ public interface Communicator extends ProtocolComponentLengths {
 
     // CLA codes for APDU header
     byte CARD_SELECT = ISO7816.CLA_ISO7816;
-    byte CARD_AUTH = (byte) 0xB0; //authentication protocols
-    byte CARD_PROC = (byte) 0xC0; //processing protocols
-    byte CARD_CONT = (byte) 0xD0; //protocol continuation messages
-    byte CARD_EOL = (byte) 0xE0;
-    byte CARD_INIT = (byte) 0xF0;
-    byte CARD_DEBUG = (byte) 0xA0;
+    byte CARD_AUTH   = (byte) 0xB0;  //authentication protocols
+    byte CARD_PROC   = (byte) 0xC0;  //processing protocols
+    byte CARD_CONT   = (byte) 0xD0;  //protocol continuation messages
+    byte CARD_EOL    = (byte) 0xE0;  //card has reached end of life
+    byte CARD_INIT   = (byte) 0xF0;  //initialize card with data (done by car rental agency)
+    byte CARD_DEBUG  = (byte) 0xA0;  //debug message to see if card works at all
+    byte CARD_ERROR  = (byte) 0xAA;  //terminal has encountered an error state of some sort
 
     // INS codes for APDU header
-    byte INSERT_START = (byte) 0x20;
-    byte INSERT_M2 = (byte) 0x21;
-    byte INSERT_MS = (byte) 0x22;
+    byte INSERT_START         = (byte) 0x20;
+    byte INSERT_M2            = (byte) 0x21;
+    byte INSERT_MS            = (byte) 0x22;
     byte AUTH_RECEPTION_START = (byte) 0x30;
-    byte AUTH_RECEPTION_M2 = (byte) 0x31;
-    byte AUTH_RECEPTION_MS = (byte) 0x32;
+    byte AUTH_RECEPTION_M2    = (byte) 0x31;
+    byte AUTH_RECEPTION_MS    = (byte) 0x32;
     byte CAR_ASSIGNMENT_START = (byte) 0x40;
-    byte CAR_ASSIGNMENT_M2 = (byte) 0x41;
-    byte KMM_UPDATE = (byte) 0x50;
-    byte CAR_RETURN_START = (byte) 0x60;
-    byte CAR_RETURN_M2 = (byte) 0x62;
-    byte CAR_RETURN_MS = (byte) 0x63;
-    byte BLOCK = (byte) 0x70;
-    byte INIT = (byte) 0x80;
-    byte DEBUG = (byte) 0x90;
+    byte CAR_ASSIGNMENT_M2    = (byte) 0x41;
+    byte KMM_UPDATE           = (byte) 0x50;
+    byte CAR_RETURN_START     = (byte) 0x60;
+    byte CAR_RETURN_M2        = (byte) 0x62;
+    byte CAR_RETURN_MS        = (byte) 0x63;
+    byte BLOCK                = (byte) 0x70;
+    byte INIT                 = (byte) 0x80;
+    byte DEBUG                = (byte) 0x90;
 
     // SW APDU Response Codes
     // There are only negative SW Codes
     //final static short AUTH_SUCCESS = 0x6100;
     //final static short AUTH_SUCCESS_MANIPULATION = 0x6101;
-    short AUTH_FAILED = 0x5100;
-    short AUTH_FAILED_MANIPULATION = 0x5101;
     //final static short PROC_SUCCCESS = 0x6200;
-    short PROC_FAILED = 0x5200;
-    short WRONG_CONTINUATION = 0x5300;
-    short CARD_NOT_INITIALIZED = 0x4000;
+
+    // there is little reason to have to distinct
+    // sets for these error codes, it just comes
+    // down to our implementation and the terminals
+    // more graceful error handling capabilities
+
+    // Smartcard -> Terminal Error codes
+    short AUTH_FAILED                       = 0x5100;
+    short AUTH_FAILED_MANIPULATION          = 0x5101;
+    short PROC_FAILED                       = 0x5200;
+    short WRONG_CONTINUATION                = 0x5300;
+    short CARD_NOT_INITIALIZED              = 0x4000;
+
+    // Terminal -> Smartcard Error codes
+    short GENERIC_ERROR                     = 0x2000;
+    short SMARTCARD_SIDE_ERROR              = 0x2100;
+    short INVALID_HASH                      = 0x2101;
+    short INVALID_NONCE                     = 0x2102;
+    short INVALID_SEQ_NUM                   = 0x2103;
+    short INVALID_CODE                      = 0x2105;
+    short TERMINAL_SIDE_ERROR               = 0x2200;
+    short DATABASE_SIDE_COMMUNICATION_ERROR = 0x2001;
+    short POSSIBLE_MANIPULATION             = 0x2300;
+
 
     byte SUCCESS_BYTE = (byte) 0xFF;
 

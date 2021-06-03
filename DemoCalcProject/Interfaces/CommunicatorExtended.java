@@ -1,5 +1,6 @@
 package Interfaces;
 
+import javacard.framework.ISOException;
 import org.jetbrains.annotations.NotNull;
 import utility.Logger;
 
@@ -44,6 +45,9 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         return null;
     }
 
+    public ResponseAPDU sendErrorAPDU(byte currentMethodINS, short status_word) {
+        return sendAPDU(CARD_ERROR, currentMethodINS, shortToByteArray(status_word), (short) 0, SHORT_LEN);
+    }
 
     //make a transient byte array with length len
     @Override
@@ -57,10 +61,14 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     }
 
     protected ResponseAPDU sendAPDU(int cla, int ins, @NotNull ByteBuffer data) {
+       return sendAPDU((byte) cla, (byte) ins, data.array(), (short) data.arrayOffset(), (short) data.array().length);
+    }
+
+    protected ResponseAPDU sendAPDU(byte cla, byte ins, @NotNull byte[] data, short dataOffset, short dataLength) {
         //logger.info("a", "b", cardID);
-        CommandAPDU commandAPDU = new CommandAPDU(cla, ins, 0, 0, data.array(), data.arrayOffset(), data.array().length, 1024);
+        CommandAPDU commandAPDU = new CommandAPDU(cla, ins, 0, 0, data, dataOffset, dataLength, 1024);
         try {
-            logger.info(String.format("Sent APDU %x %x with %d bytes of data", cla, ins, data.array().length), "sendAPDU", cardID);
+            logger.info(String.format("Sent APDU %x %x with %d bytes of data", cla, ins, dataLength), "sendAPDU", cardID);
             ResponseAPDU response = applet.transmit(commandAPDU);
             logger.info(String.format("Received APDU of length %d with %d bytes of data", response.getBytes().length, response.getData().length), "sendAPDU", cardID);
             if (response.getBytes().length == 2) {
