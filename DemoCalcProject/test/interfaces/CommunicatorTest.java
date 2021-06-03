@@ -2,18 +2,15 @@ package test.interfaces;
 
 import Interfaces.Communicator;
 import db.Database;
-import javacard.security.PrivateKey;
-import javacard.security.PublicKey;
 import javacard.security.RSAPrivateKey;
 import javacard.security.RSAPublicKey;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 
 public class CommunicatorTest {
-
-    private static class CommunicatorTester implements Communicator {}
 
     Database db;
     CommunicatorTester cm;
@@ -131,36 +128,36 @@ public class CommunicatorTest {
         byte[] f_b = cm.booleanToByteArray(false);
         assertEquals(1, t_b.length);
         assertEquals(1, f_b.length);
-        assertTrue( cm.booleanFromByte(t_b[0]));
+        assertTrue(cm.booleanFromByte(t_b[0]));
         assertFalse(cm.booleanFromByte(f_b[0]));
     }
 
     @Test
     void threeBytesToIntTest() {
-        byte[] i_b = new byte[] {0, 0, 0};
-        byte[] j_b = new byte[] {0, 0, 1};
-        byte[] k_b = new byte[] {-128, -128, -128};
-        byte[] l_b = new byte[] {127, 127, 127};
-        byte[] m_b = new byte[] {6, 0, 93};
-        byte[] m_offset_front_b = new byte[] {23, 124, 6, 0, 93};
-        byte[] m_offset_back_b = new byte[] {6, 0, 93, 93, 12, 4, 0};
-        byte[] m_offset_both_b = new byte[] {23, 44, 124, 7, 6, 0, 93, 93, 12, 4, 0};
-        assertEquals(0,       cm.threeBytesToInt(i_b, 0));
-        assertEquals(1,       cm.threeBytesToInt(j_b, 0));
+        byte[] i_b = new byte[]{0, 0, 0};
+        byte[] j_b = new byte[]{0, 0, 1};
+        byte[] k_b = new byte[]{-128, -128, -128};
+        byte[] l_b = new byte[]{127, 127, 127};
+        byte[] m_b = new byte[]{6, 0, 93};
+        byte[] m_offset_front_b = new byte[]{23, 124, 6, 0, 93};
+        byte[] m_offset_back_b = new byte[]{6, 0, 93, 93, 12, 4, 0};
+        byte[] m_offset_both_b = new byte[]{23, 44, 124, 7, 6, 0, 93, 93, 12, 4, 0};
+        assertEquals(0, cm.threeBytesToInt(i_b, 0));
+        assertEquals(1, cm.threeBytesToInt(j_b, 0));
         assertEquals(8421504, cm.threeBytesToInt(k_b, 0));
         assertEquals(8355711, cm.threeBytesToInt(l_b, 0));
-        assertEquals(393309,  cm.threeBytesToInt(m_b, 0));
-        assertEquals(393309,  cm.threeBytesToInt(m_offset_front_b, 2));
-        assertEquals(393309,  cm.threeBytesToInt(m_offset_back_b, 0));
-        assertEquals(393309,  cm.threeBytesToInt(m_offset_both_b, 4));
+        assertEquals(393309, cm.threeBytesToInt(m_b, 0));
+        assertEquals(393309, cm.threeBytesToInt(m_offset_front_b, 2));
+        assertEquals(393309, cm.threeBytesToInt(m_offset_back_b, 0));
+        assertEquals(393309, cm.threeBytesToInt(m_offset_both_b, 4));
     }
 
     @Test
     void memCpyOneByteTest() {
-        byte[] src  = new byte[] {3, 5, 1, -8, 0, 3};
-        byte[] dest = new byte[] {5, 6, 4, 3, 3, 0};
-        for(int dest_offset = 0; dest_offset < dest.length; dest_offset++) {
-            for(int src_offset = 0; src_offset < src.length; src_offset++) {
+        byte[] src = new byte[]{3, 5, 1, -8, 0, 3};
+        byte[] dest = new byte[]{5, 6, 4, 3, 3, 0};
+        for (int dest_offset = 0; dest_offset < dest.length; dest_offset++) {
+            for (int src_offset = 0; src_offset < src.length; src_offset++) {
                 cm.memCpy(dest, src, (short) dest_offset, (short) src_offset, (short) 1);
                 assertEquals(dest[dest_offset], src[src_offset]);
             }
@@ -169,14 +166,14 @@ public class CommunicatorTest {
 
     @Test
     void memCpyAllLengthsTest() {
-        byte[] src  = new byte[] {3, 5, 1, -8, 0, 3};
-        byte[] dest = new byte[] {5, 6, 4, 3, 3, 0};
+        byte[] src = new byte[]{3, 5, 1, -8, 0, 3};
+        byte[] dest = new byte[]{5, 6, 4, 3, 3, 0};
         for (int length = 0; length < src.length; length++) {
-            for(int dest_offset = 0; dest_offset < (dest.length - length); dest_offset++) {
-                for(int src_offset = 0; src_offset < (src.length - length); src_offset++) {
+            for (int dest_offset = 0; dest_offset < (dest.length - length); dest_offset++) {
+                for (int src_offset = 0; src_offset < (src.length - length); src_offset++) {
                     cm.memCpy(dest, src, (short) dest_offset, (short) src_offset, (short) length);
                     for (int i = 0; i < length; i++) {
-                        assertEquals(dest[dest_offset+i], src[src_offset+i]);
+                        assertEquals(dest[dest_offset + i], src[src_offset + i]);
                     }
                 }
             }
@@ -185,8 +182,8 @@ public class CommunicatorTest {
 
     @Test
     void clearBufTest() {
-        byte[] b_orig  = new byte[] {3, 5, 1, -8, 0, 3, Byte.MAX_VALUE, Byte.MIN_VALUE};
-        byte[] b  = new byte[] {3, 5, 1, -8, 0, 3, Byte.MAX_VALUE, Byte.MIN_VALUE};
+        byte[] b_orig = new byte[]{3, 5, 1, -8, 0, 3, Byte.MAX_VALUE, Byte.MIN_VALUE};
+        byte[] b = new byte[]{3, 5, 1, -8, 0, 3, Byte.MAX_VALUE, Byte.MIN_VALUE};
         cm.clearBuf(b, 0);
         assertArrayEquals(b_orig, b);
         for (int i = 0; i < b_orig.length; i++) {
@@ -199,7 +196,7 @@ public class CommunicatorTest {
 
     @Test
     void putAndGetShortTest() {
-        byte[] b  = new byte[8];
+        byte[] b = new byte[8];
         cm.putShort(b, Short.MIN_VALUE, 0);
         cm.putShort(b, (short) 0, 2);
         cm.putShort(b, Short.MAX_VALUE, 6);
@@ -218,13 +215,13 @@ public class CommunicatorTest {
         for (int i = 0; i < 7; i++) {
             shorts[i] = cm.getShort(b, i);
         }
-        short[] exp = new short[] {Short.MIN_VALUE, 42, 10752, 0, 0, 66, 17151};
+        short[] exp = new short[]{Short.MIN_VALUE, 42, 10752, 0, 0, 66, 17151};
         assertArrayEquals(exp, shorts);
     }
 
     @Test
     void putAndGetIntTest() {
-        byte[] b  = new byte[16];
+        byte[] b = new byte[16];
         cm.putInt(b, Integer.MIN_VALUE, 0);
         cm.putInt(b, 0, 4);
         cm.putInt(b, Integer.MAX_VALUE, 8);
@@ -243,5 +240,8 @@ public class CommunicatorTest {
         int j = cm.getInt(b, 7);
         assertEquals(2, i);
         assertEquals(-666666666, j);
+    }
+
+    private static class CommunicatorTester implements Communicator {
     }
 }

@@ -1,6 +1,5 @@
 package Interfaces;
 
-import javacard.framework.JCSystem;
 import org.jetbrains.annotations.NotNull;
 import utility.Logger;
 
@@ -13,13 +12,12 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- @author Matti Eisenlohr
- @author Egidius Mysliwietz
- @author Laura Philipse
- @author Alessandra van Veen
+ * @author Matti Eisenlohr
+ * @author Egidius Mysliwietz
+ * @author Laura Philipse
+ * @author Alessandra van Veen
  */
 public abstract class CommunicatorExtended implements Communicator, Receivable {
-    final int WAITING_TIMEOUT /* ms */ = 10000 * 10;
     protected static final byte[] SC_APPLET_AID = {
             (byte) 0x3B,
             (byte) 0x29,
@@ -29,10 +27,11 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
             (byte) 0x63,
             (byte) 0x01
     };
+    protected final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
+    final int WAITING_TIMEOUT /* ms */ = 10000 * 10;
     protected byte[] cardID;
     protected CardChannel applet;
     protected boolean cardAuthenticated = false;
-    protected final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, SC_APPLET_AID);
     protected ByteBuffer msgBuf = ByteBuffer.allocate(512);
     protected Logger logger;
 
@@ -59,13 +58,13 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
 
     protected ResponseAPDU sendAPDU(int cla, int ins, @NotNull ByteBuffer data) {
         //logger.info("a", "b", cardID);
-        CommandAPDU commandAPDU = new CommandAPDU(cla,ins,0,0,data.array(),data.arrayOffset(),data.array().length,1024);
+        CommandAPDU commandAPDU = new CommandAPDU(cla, ins, 0, 0, data.array(), data.arrayOffset(), data.array().length, 1024);
         try {
             logger.info(String.format("Sent APDU %x %x with %d bytes of data", cla, ins, data.array().length), "sendAPDU", cardID);
             ResponseAPDU response = applet.transmit(commandAPDU);
             logger.info(String.format("Received APDU of length %d with %d bytes of data", response.getBytes().length, response.getData().length), "sendAPDU", cardID);
-            if(response.getBytes().length == 2){
-                logger.info("APDU has SW: " + Arrays.toString(intToByteArray(response.getSW())),"sendAPDU",cardID);
+            if (response.getBytes().length == 2) {
+                logger.info("APDU has SW: " + Arrays.toString(intToByteArray(response.getSW())), "sendAPDU", cardID);
             }
             return response;
         } catch (CardException e) {
@@ -75,7 +74,7 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         }
     }
 
-    protected byte[] prepareMessage(Object ... objects){
+    protected byte[] prepareMessage(Object... objects) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = null;
         try {
@@ -90,12 +89,11 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     }
 
 
-
-    protected void send(Receivable receiver, ByteBuffer msgBuf){
+    protected void send(Receivable receiver, ByteBuffer msgBuf) {
         receiver.receive(msgBuf.array());
     }
 
-    protected Object[] processMessage(byte[] message){
+    protected Object[] processMessage(byte[] message) {
         ByteArrayInputStream bis = new ByteArrayInputStream(message);
         Object o = null;
         try {
@@ -109,12 +107,10 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         return (Object[]) o;
     }
 
-    public static class MessageTimeoutException extends Exception {}
-
     protected synchronized ByteBuffer waitForInput() throws MessageTimeoutException {
         //lock.readLock().lock();
         int totalwait = 0;
-        while (inputQueue.isEmpty()){
+        while (inputQueue.isEmpty()) {
             try {
                 Thread.sleep(100);
                 totalwait += 100;
@@ -131,12 +127,15 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         return input;
     }
 
-    protected void sendLegacy(Receivable receiver, Object... msgComponents){
+    protected void sendLegacy(Receivable receiver, Object... msgComponents) {
         receiver.receive(prepareMessage(msgComponents));
     }
 
-    protected byte[] clearBuf(ByteBuffer b){
+    protected byte[] clearBuf(ByteBuffer b) {
         return clearBuf(b.array(), b.limit());
+    }
+
+    public static class MessageTimeoutException extends Exception {
     }
 
     public static class CardNotInitializedException extends Exception {
@@ -144,6 +143,7 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
             super(s);
         }
     }
+
     public static class AuthenticationFailedException extends Exception {
         public AuthenticationFailedException(String s) {
             super(s);

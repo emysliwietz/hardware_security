@@ -2,7 +2,6 @@ package gui;
 
 import Auto.Auto;
 import Interfaces.CommunicatorExtended;
-import Smartcard.Smartcard;
 import db.Database;
 import javafx.fxml.FXML;
 import javafx.scene.Cursor;
@@ -11,13 +10,9 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextArea;
 import receptionTerminal.ReceptionTerminal;
 
-import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
-
 /**
- @author Matti Eisenlohr
- @author Egidius Mysliwietz
+ * @author Matti Eisenlohr
+ * @author Egidius Mysliwietz
  */
 public class SmartcardGUIController {
     @FXML
@@ -54,28 +49,23 @@ public class SmartcardGUIController {
     Label r3;
     @FXML
     Label inscard;
-
-
-    //TODO: When sensible input available: replace states with states of sc
-    private enum states{INIT,ASSIGNED}
+    boolean driving = false;
+    int kmm = 0;
     private states state = states.INIT;
     //private Smartcard sc;
     private Auto a;
     private ReceptionTerminal rt;
     private Database db;
-    boolean driving = false;
-    int kmm = 0;
 
-    public void setVars(Auto a, ReceptionTerminal rt, Database db){
+    public void setVars(Auto a, ReceptionTerminal rt, Database db) {
         //this.sc = sc;
         this.a = a;
         this.rt = rt;
         this.db = db;
     }
 
-
     @FXML
-    private void blockCard(){
+    private void blockCard() {
         display.setWrapText(true);
         display.setText("Do you wish to report the theft of your card?");
         right2.setText("Confirm");
@@ -85,7 +75,7 @@ public class SmartcardGUIController {
         l2.setOnMouseClicked(event -> ok());
     }
 
-    private void block(){
+    private void block() {
         //TODO: Create codes and APDU for this stuff
         Thread t1 = new Thread(() -> rt.blockCard(new byte[]{81, 55, 62, -117, 111}));
         Thread t2 = new Thread(() -> db.deleteCard(rt));
@@ -105,7 +95,7 @@ public class SmartcardGUIController {
     }
 
     @FXML
-    private void insert(){
+    private void insert() {
         right2.setText("");
         r2.setCursor(Cursor.DEFAULT);
         insLab.setOnMouseClicked(null);
@@ -113,7 +103,7 @@ public class SmartcardGUIController {
         inscard.setText("");
         inscard.setCursor(Cursor.DEFAULT);
         display.setWrapText(true);
-        ScrollBar scrollBarv = (ScrollBar)display.lookup(".scroll-bar:vertical");
+        ScrollBar scrollBarv = (ScrollBar) display.lookup(".scroll-bar:vertical");
         scrollBarv.setDisable(true);
         display.setText("Please specify which device you want to insert your card into.");
         left0.setText("Car");
@@ -134,7 +124,7 @@ public class SmartcardGUIController {
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
         rt.cardAuthenticationInitiate();
-        if (state == states.INIT){
+        if (state == states.INIT) {
             System.out.println("Car assignment");
             rt.carAssignmentInitiate();
             display.setText("Your car is: Fiat Multipla with plate HN J 5099");
@@ -145,7 +135,7 @@ public class SmartcardGUIController {
         } else {
             System.out.println("Car return");
             rt.carReturnInitiate();
-            display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: "+ String.format("%.2f€",0.30*rt.kilometerage));
+            display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: " + String.format("%.2f€", 0.30 * rt.kilometerage));
             state = states.INIT;
             right2.setText("OK");
             r2.setCursor(Cursor.HAND);
@@ -185,7 +175,7 @@ public class SmartcardGUIController {
         left0.setText("Start Driving");
         right0.setText("");
         r0.setOnMouseClicked(null);
-        if(state != states.ASSIGNED){
+        if (state != states.ASSIGNED) {
             display.setText("You need to have a car assigned first!");
             right2.setText("OK");
             r2.setCursor(Cursor.HAND);
@@ -199,12 +189,12 @@ public class SmartcardGUIController {
         insLab.setOnMouseClicked(event -> ok());
     }
 
-    public void updateKmm(){
+    public void updateKmm() {
         kmm = a.kilometerageUpdate();
         display.setText("Current kilometerage: " + kmm + "km");
     }
 
-    public void drive(){
+    public void drive() {
         driving = true;
         left0.setText("Stop Driving");
         l0.setOnMouseClicked(event -> carStart());
@@ -227,4 +217,7 @@ public class SmartcardGUIController {
         });
         t1.start();*/
     }
+
+    //TODO: When sensible input available: replace states with states of sc
+    private enum states {INIT, ASSIGNED}
 }

@@ -6,8 +6,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- @author Matti Eisenlohr
- @author Egidius Mysliwietz
+ * @author Matti Eisenlohr
+ * @author Egidius Mysliwietz
  */
 public interface Receivable {
     Stack<ByteBuffer> inputQueue = new Stack<>();
@@ -18,7 +18,7 @@ public interface Receivable {
         //possible TOCTOU here in combination with waitingForInput
         lock.readLock().lock();
         //lock.writeLock().lock();
-        if(!inputQueue.isEmpty()){
+        if (!inputQueue.isEmpty()) {
             inputQueue.clear();
         }
         inputQueue.add(ByteBuffer.wrap(message));

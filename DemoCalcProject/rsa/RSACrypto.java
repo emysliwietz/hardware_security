@@ -1,32 +1,23 @@
 package rsa;
 
-import Interfaces.KeyWallet;
-
-//import javacard.crypto.BadPaddingException;
-//import javacard.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-
+import Interfaces.ProtocolComponentLengths;
 import javacard.framework.JCSystem;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import javacard.security.Signature;
 
 /**
- @author Matti Eisenlohr
- @author Egidius Mysliwietz
+ * @author Matti Eisenlohr
+ * @author Egidius Mysliwietz
  */
-public abstract class RSACrypto {
+public abstract class RSACrypto implements ProtocolComponentLengths {
 
+    private final Signature sig = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
     protected PrivateKey privk;
-    private Signature sig = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
 
-
-    public byte[] sign(byte[] msg){
+    public byte[] sign(byte[] msg) {
         sig.init(privk, Signature.MODE_SIGN);
-        byte[] sigBuf = JCSystem.makeTransientByteArray((short) 64, JCSystem.CLEAR_ON_RESET);
+        byte[] sigBuf = JCSystem.makeTransientByteArray(SIGNED_HASH_LEN, JCSystem.CLEAR_ON_RESET);
         short tmps = sig.sign(msg, (short) 0, (short) msg.length, sigBuf, (short) 0);
         //System.out.println(tmps);
         return sigBuf;

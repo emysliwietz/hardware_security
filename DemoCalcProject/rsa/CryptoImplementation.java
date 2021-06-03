@@ -1,21 +1,14 @@
 package rsa;
 
 import Interfaces.ProtocolComponentLengths;
-import db.Database;
-
-//import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-//import java.security.MessageDigest;
-//import java.security.NoSuchAlgorithmException;
 import javacard.security.PublicKey;
 import javacard.security.RandomData;
 
-import java.util.UUID;
+import java.nio.ByteBuffer;
 
 /**
- @author Matti Eisenlohr
- @author Egidius Mysliwietz
+ * @author Matti Eisenlohr
+ * @author Egidius Mysliwietz
  */
 public abstract class CryptoImplementation implements ProtocolComponentLengths {
     protected byte[] ID;
@@ -23,14 +16,14 @@ public abstract class CryptoImplementation implements ProtocolComponentLengths {
     protected RSACrypto rc;
     protected RandomData rd = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM); //DEPRECATED: Change to KEYGENERATION?
 
-    public short generateNonce(){
+    public short generateNonce() {
         byte[] bytes = new byte[NONCE_LEN];
         rd.generateData(bytes, (short) 0, NONCE_LEN); //CHANGE TO nextBytes in next version
-        return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
+        return (short) (((bytes[0] & 0xFF) << BYTE_BIT_LEN) | (bytes[1] & 0xFF));
 
     }
 
-    public byte[] generateID(){
+    public byte[] generateID() {
         //Could technically also use ALG_FAST, but performance improvement isn't worth having another
         //RandomData instance
         byte[] bytes = new byte[ID_LEN];
@@ -47,12 +40,12 @@ public abstract class CryptoImplementation implements ProtocolComponentLengths {
         return (short)(((bytes[0] & 0xFF) << 8) | (bytes[1] & 0xFF));
     }*/
 
-    public boolean areSubsequentNonces(short a, short aPlus1){
-        return (aPlus1 == (short) (a+1));
+    public boolean areSubsequentNonces(short a, short aPlus1) {
+        return (aPlus1 == (short) (a + 1));
     }
 
-    public boolean areSubsequentNonces(short a, short aPlusX, int x){
-        return (aPlusX == (short) (a+((short) x)));
+    public boolean areSubsequentNonces(short a, short aPlusX, int x) {
+        return (aPlusX == (short) (a + ((short) x)));
     }
 
     /*
@@ -85,15 +78,15 @@ public abstract class CryptoImplementation implements ProtocolComponentLengths {
         return sign(createHash(message));
     }*/
 
-    public byte[] sign(byte[] message){
+    public byte[] sign(byte[] message) {
         return rc.sign(message);
     }
 
-    public boolean verify(ByteBuffer msgComponents, byte[] signature, PublicKey pubSK){
+    public boolean verify(ByteBuffer msgComponents, byte[] signature, PublicKey pubSK) {
         return rc.verify(msgComponents.array(), signature, pubSK);
     }
 
-    public boolean verify(byte[] msgComponents, byte[] signature, PublicKey pubSK){
+    public boolean verify(byte[] msgComponents, byte[] signature, PublicKey pubSK) {
         return rc.verify(msgComponents, signature, pubSK);
     }
 

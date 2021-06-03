@@ -1,18 +1,8 @@
 package test.Smartcard;
 
-import db.Database;
-import javacard.security.PublicKey;
-import javacard.security.RSAPublicKey;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import javacard.security.KeyPair;
-import java.security.interfaces.RSAPrivateKey;
-import java.util.Arrays;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static utility.Util.print;
 
 class SmartcardTest {
 

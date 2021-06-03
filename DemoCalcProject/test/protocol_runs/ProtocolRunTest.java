@@ -4,7 +4,6 @@ import Auto.Auto;
 import Interfaces.CommunicatorExtended;
 import db.Database;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import receptionTerminal.ReceptionTerminal;
@@ -75,7 +74,7 @@ public class ProtocolRunTest {
 
     @Test
     void successiveFullRuns() {
-        for(int i = 0; i < 32; i++) {
+        for (int i = 0; i < 32; i++) {
             System.out.println(" =======Run " + i + "========= ");
             fullRun();
         }
@@ -84,7 +83,7 @@ public class ProtocolRunTest {
     /* We need this test because we use threads, which are inherently unpredictable in their behaviour */
     @Test
     void fourTwentySuccessiveFullRuns() {
-        for(int i = 0; i < 420; i++) {
+        for (int i = 0; i < 420; i++) {
             System.out.println(" ========= Run " + i + " ========= ");
             fullRun();
         }
