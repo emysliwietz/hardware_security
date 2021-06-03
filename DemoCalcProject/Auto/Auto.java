@@ -87,18 +87,18 @@ public class Auto extends CommunicatorExtended {
         //potential fix: put error handling in memCpy
         offset += KEY_LEN;
         scPubSK = bytesToPubkey(scPubSKEncoded);
-        cardID = new byte[5];
-        memCpy(cardID,msg1, offset,5);
-        offset += 5;
+        cardID = new byte[ID_LEN];
+        memCpy(cardID,msg1, offset,ID_LEN);
+        offset += ID_LEN;
 
         int scCertHashSignLen = getInt(msg1, offset);
-        offset += 4;
+        offset += INT_LEN;
 
         //scCertHash signature
         byte[] scCertHashSign = new byte[scCertHashSignLen];
         memCpy(scCertHashSign,msg1, offset,scCertHashSignLen);
         offset += scCertHashSignLen;
-        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[KEY_LEN + 5]);
+        ByteBuffer msg1Cmps = ByteBuffer.wrap(new byte[KEY_LEN + ID_LEN]);
         msg1Cmps.put(scPubSKEncoded).put(cardID);
 
         if (!ac.verify(msg1Cmps,scCertHashSign,dbPubSK)){
@@ -109,7 +109,7 @@ public class Auto extends CommunicatorExtended {
 
         //Nonces
         short cardNonce = getShort(msg1, offset);
-        offset += 2;
+        offset += NONCE_LEN;
 
         //Message 2
         short autoNonce = ac.generateNonce();
@@ -124,7 +124,7 @@ public class Auto extends CommunicatorExtended {
 
         //Message 3
         if (apdu.getSW() == AUTH_FAILED_MANIPULATION){
-            autoLogger.fatal("omething has been manipulated", "authenticateSmartCard message 3", cardID);
+            autoLogger.fatal("Something has been manipulated", "authenticateSmartCard message 3", cardID);
             throw new AuthenticationFailedException("Something has been manipulated, authentication between auto and card failed");
 
         }
@@ -133,14 +133,14 @@ public class Auto extends CommunicatorExtended {
         byte[] msg3 = apdu.getData();
         short autoNonceResp = getShort(msg3, offset);
         offset+=2;
-        byte[] autoNonceRespHashSignLenByte = new byte[4];
-        memCpy(autoNonceRespHashSignLenByte,msg3, offset,4);
-        offset+=4;
+        byte[] autoNonceRespHashSignLenByte = new byte[INT_LEN];
+        memCpy(autoNonceRespHashSignLenByte,msg3, offset,INT_LEN);
+        offset+=INT_LEN;
         int autoNonceRespHashSignLen = intFromByteArray(autoNonceRespHashSignLenByte);
         byte[] autoNonceRespHashSign = new byte[autoNonceRespHashSignLen];
         memCpy(autoNonceRespHashSign,msg3, offset,autoNonceRespHashSignLen);
 
-        ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[2]);
+        ByteBuffer msg3Cmps = ByteBuffer.wrap(new byte[NONCE_LEN]);
         msg3Cmps.putShort(autoNonceResp);
         if (!ac.verify(msg3Cmps,autoNonceRespHashSign,scPubSK)){
             //TODO: throw error or something (logs). Also stop further actions.
@@ -188,19 +188,19 @@ public class Auto extends CommunicatorExtended {
         byte[] confirmation = apdu.getData();
 
         byte confBYTE = confirmation[offset];
-        offset++;
+        offset+= BYTE_LEN;
         int curKmmCard = getInt(confirmation, offset);
-        offset+=4;
+        offset+=INT_LEN;
         if (kilometerage != curKmmCard){
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
         }
         int confHashSignLen = getInt(confirmation, offset);
-        offset+=4;
+        offset+=INT_LEN;
         byte[] confHashSigned = new byte[confHashSignLen];
         memCpy(confHashSigned,confirmation, offset,confHashSignLen);
 
-        ByteBuffer msgCmps = ByteBuffer.wrap(new byte[5]);
+        ByteBuffer msgCmps = ByteBuffer.wrap(new byte[ID_LEN]);
         msgCmps.put(confBYTE).putInt(curKmmCard);
         if (!ac.verify(msgCmps,confHashSigned,scPubSK)){
             errorState("Invalid Hash in kilometerageUpdate");
