@@ -176,6 +176,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Card not authenticated in kilometerageUpdate");
             autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(KMM_UPDATE, CARD_NOT_INITIALIZED);
             throw new ProcessFailedException("Aborting: Card not authenticated");
         }
         //Message 1
@@ -202,6 +203,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(KMM_UPDATE, POSSIBLE_MANIPULATION);
             throw new ProcessFailedException("Kilometerage does not match. We detected possible tampering");
         }
         int confHashSignLen = getInt(confirmation, offset);
@@ -215,6 +217,7 @@ public class Auto extends CommunicatorExtended {
             errorState("Invalid Hash in kilometerageUpdate");
             autoLogger.fatal("Invalid Hash", "kilometerageUpdate", cardID);
             //TODO: send something back to smartcard. How? Who knows.
+            sendErrorAPDU(KMM_UPDATE, INVALID_HASH);
             throw new ProcessFailedException("Something has gone wrong. Please try again");
         } else {
             autoLogger.info("Kilometerage successfully updated", "kilometerageUpdate", cardID);

@@ -80,6 +80,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         if (!cardAuthenticated) {
             errorState("Card is not authenticated");
             rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
+            sendErrorAPDU(CAR_RETURN_START, CARD_NOT_INITIALIZED);
             throw new ProcessFailedException("Card is not authenticated. Please try again");
         }
         offset = ERESPAPDU_CDATA_OFFSET;

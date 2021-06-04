@@ -40,17 +40,18 @@ public class Database extends CommunicatorExtended {
 
     public Database() {
         conn = null;
-
         try {
             Class.forName("org.sqlite.JDBC");
             File currentDir = new File("");
-            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\", "\\\\") + "/DemoCalcProject/db/CarCompany.db";
+            String url = "jdbc:sqlite:" + currentDir.getAbsolutePath().replace("\\", "\\\\") +
+                    "/DemoCalcProject/db/CarCompany.db";
             conn = DriverManager.getConnection(url);
         } catch (Exception e) {
             System.err.println(e.getClass().getName() + ": " + e.getMessage());
             System.exit(0);
         }
 
+        createDatabase();
         setKeys();
         clearAutos(); //Clear autos otherwise program may crash
 
@@ -69,6 +70,52 @@ public class Database extends CommunicatorExtended {
         //gui.launch();
         Thread t1 = new Thread(() -> Application.launch(SmartcardGUI.class, args));
         t1.start();
+    }
+
+    /**Creates the necessary tables for the database if they are not present */
+    public void createDatabase(){
+        String tableAutos = "CREATE TABLE IF NOT EXISTS autos(\n" +
+                "\t\"id\"\ttext UNIQUE,\n" +
+                "\t\"publickey\"\ttext NOT NULL,\n" +
+                "\t\"certificate\"\ttext NOT NULL,\n" +
+                "\tPRIMARY KEY(\"id\")\n" +
+                ");";
+        String tableCards = "CREATE TABLE IF NOT EXISTS \"cards\" (\n" +
+                "\t\"id\"\ttext UNIQUE,\n" +
+                "\t\"publickey\"\ttext NOT NULL,\n" +
+                "\t\"certificate\"\ttext NOT NULL,\n" +
+                "\tPRIMARY KEY(\"id\")\n" +
+                ");";
+        String tabledatabase = "CREATE TABLE IF NOT EXISTS \"database\" (\n" +
+                "\t\"publickey\"\tTEXT,\n" +
+                "\t\"privatekey\"\tTEXT,\n" +
+                "\t\"id\"\tTEXT UNIQUE,\n" +
+                "\tPRIMARY KEY(\"id\")\n" +
+                ");";
+        String tableRelations = "CREATE TABLE IF NOT EXISTS \"rentRelations\" (\n" +
+                "\t\"cardID\"\ttext,\n" +
+                "\t\"autoID\"\ttext NOT NULL,\n" +
+                "\tPRIMARY KEY(\"cardID\")\n" +
+                ");";
+        String tableTerminals = "CREATE TABLE IF NOT EXISTS \"terminals\" (\n" +
+                "\t\"id\"\ttext UNIQUE,\n" +
+                "\t\"publickey\"\ttext NOT NULL,\n" +
+                "\t\"certificate\"\ttext NOT NULL,\n" +
+                "\tPRIMARY KEY(\"id\")\n" +
+                ");";
+        Statement s = null;
+        try {
+            s = conn.createStatement();
+            s.addBatch(tableAutos);
+            s.addBatch(tableCards);
+            s.addBatch(tabledatabase);
+            s.addBatch(tableRelations);
+            s.addBatch(tableTerminals);
+            s.executeBatch();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+
     }
 
     public Object[] generateKeyPair() {
