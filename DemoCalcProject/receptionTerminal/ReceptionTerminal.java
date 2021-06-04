@@ -34,15 +34,15 @@ public class ReceptionTerminal extends CommunicatorExtended {
     public int kilometerage;
     protected ByteBuffer initBuffer;
     private final RTCrypto rtc;
-    private short termNonce; //Placeholder
-    private short scNonce; //Placeholder
-    private byte[] cardID; //TEMP see above
-    private final Database database; //who knows at this point
+    private short termNonce;
+    private short scNonce;
+    private byte[] cardID;
+    private final Database database;
     private final Logger rtLogger;
     private int offset;
     private final CardSimulator smartcard;
-    private final CardTerminals cardTerminals; //= CardTerminalSimulator.terminals(Arrays.toString(rtc.getID()));
-    private final CardTerminal rtTerminal; //= cardTerminals.getTerminal(Arrays.toString(rtc.getID()));
+    private final CardTerminals cardTerminals;
+    private final CardTerminal rtTerminal;
 
 
     public ReceptionTerminal(byte[] rtID, byte[] rtCertificate, Database db, PrivateKey privateKey, CardSimulator smartcard) {
@@ -200,7 +200,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         t2.start();
         try {
             t1.join();
-            //TODO: t2.join();?????
+            t2.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -228,7 +228,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             apdu = applet.transmit(commandAPDU);
         } catch (CardException e) {
             e.printStackTrace();
-            throw new AuthenticationFailedException(""); //TODO
+            throw new AuthenticationFailedException("");
         }
         cardAuthentication(apdu);
     }
@@ -406,7 +406,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         try {
             t1.join();
             t2.join();
-            //TODO: t2.join();?????
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -493,7 +492,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
      */
     public void blockCard(byte[] cardID) {
         ByteBuffer blockBuf = newBB(ID_LEN);
-        blockBuf.put(cardID); //cardID is null -> Which card will it even block?
+        blockBuf.put(cardID);
         send(database, blockBuf);
         database.deleteCard(this);
         ByteBuffer resp;
@@ -509,9 +508,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         resp.get(msg, 0, msgLen);
         String request = new String(msg, StandardCharsets.UTF_8);
         String expected = new String(cardID) + " has been removed from cards.";
-        //System.out.println(request);
-        //System.out.println(cardID);
-        if (!request.equals(expected)) {
+        if (!request.equals(expected)) { //Potential race condition earlier that can make this fail
             errorState("Database returned wrong message after blocking card");
             rtLogger.fatal("Database returned wrong message", "blockCard", cardID);
             sendErrorAPDU(BLOCK, DATABASE_SIDE_COMMUNICATION_ERROR);

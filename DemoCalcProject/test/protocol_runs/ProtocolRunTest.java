@@ -14,6 +14,10 @@ import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * @author Matti Eisenlohr
+ * @author Egidius Mysliwietz
+ */
 public class ProtocolRunTest {
     ReceptionTerminal rt;
     Database db;

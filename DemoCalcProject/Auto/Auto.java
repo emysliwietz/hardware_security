@@ -6,7 +6,6 @@ import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import javacard.framework.AID;
-import javacard.framework.ISOException;
 import javacard.security.PrivateKey;
 import javacard.security.PublicKey;
 import rsa.CryptoImplementationExtended;
@@ -181,7 +180,7 @@ public class Auto extends CommunicatorExtended {
         msgBuf.rewind();
 
         //Message 2
-        if (apdu.getSW() == PROC_FAILED){
+        if (apdu.getSW() == PROC_FAILED) {
             autoLogger.fatal("Something went wrong", "kilometerageUpdate", cardID);
             throw new ProcessFailedException("Something has gone wrong, updating the kilometerage has failed");
         }

@@ -73,11 +73,8 @@ public interface Communicator extends ProtocolComponentLengths {
     int EAPDU_CDATA_OFFSET = 7;
     int ERESPAPDU_CDATA_OFFSET = 0;
 
-    //TODO: Remove
-    //Smartcard probably doesn't support print method
+    //Method easily enables centralized error handling
     default Object errorState(String msg) {
-        System.err.println("I don't want to be here...");
-        System.err.println(msg);
         return null;
     }
 
@@ -88,7 +85,6 @@ public interface Communicator extends ProtocolComponentLengths {
 
     default byte[] newStaticB(int len) {
         return new byte[len];
-        //return JCSystem.makeTransientByteArray((short) len, JCSystem.MEMORY_TYPE_PERSISTENT);
     }
 
     default PublicKey bytesToPubkey(byte[] bytes) {

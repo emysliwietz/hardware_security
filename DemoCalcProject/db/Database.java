@@ -64,16 +64,15 @@ public class Database extends CommunicatorExtended {
         Database db = new Database();
         ReceptionTerminal rt = db.generateTerminal();
         Auto auto = db.generateAuto();
-        //Smartcard sc = db.generateCard();
         SmartcardGUI gui = new SmartcardGUI();
-        //gui.init(sc, auto, rt);
-        //gui.launch();
         Thread t1 = new Thread(() -> Application.launch(SmartcardGUI.class, args));
         t1.start();
     }
 
-    /**Creates the necessary tables for the database if they are not present */
-    public void createDatabase(){
+    /**
+     * Creates the necessary tables for the database if they are not present
+     */
+    public void createDatabase() {
         String tableAutos = "CREATE TABLE IF NOT EXISTS autos(\n" +
                 "\t\"id\"\ttext UNIQUE,\n" +
                 "\t\"publickey\"\ttext NOT NULL,\n" +
@@ -303,8 +302,8 @@ public class Database extends CommunicatorExtended {
         byte[][] cards = new byte[counter][ID_LEN];
         int i = 0;
         try {
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql);
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
             while (rs.next()) {
                 String temp = rs.getString("id");
                 byte[] card = conv.fromHexString(temp);
@@ -320,7 +319,7 @@ public class Database extends CommunicatorExtended {
     /**
      * delete card from database
      */
-    public void deleteCard (ReceptionTerminal reception){
+    public void deleteCard(ReceptionTerminal reception) {
         ByteBuffer response;
         try {
             response = waitForInput();
@@ -369,7 +368,7 @@ public class Database extends CommunicatorExtended {
     /**
      * generate a smartcard
      */
-    public void generateCard (ReceptionTerminal reception){
+    public void generateCard(ReceptionTerminal reception) {
 
         // Create simulator
         JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
@@ -412,7 +411,7 @@ public class Database extends CommunicatorExtended {
     /**
      * generate a car
      */
-    public Auto generateAuto () {
+    public Auto generateAuto() {
         Object[] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
@@ -436,7 +435,7 @@ public class Database extends CommunicatorExtended {
     /**
      * generate a reception terminal
      */
-    public ReceptionTerminal generateTerminal () {
+    public ReceptionTerminal generateTerminal() {
         Object[] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
@@ -461,7 +460,7 @@ public class Database extends CommunicatorExtended {
     /**
      * check if a card is blocked, e.g. it does not exist in the database
      */
-    public boolean isBlocked ( byte[] cardID){
+    public boolean isBlocked(byte[] cardID) {
         String sql = "SELECT id FROM cards WHERE id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {

@@ -34,7 +34,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     //Everything here is in EEPROM (persistent)
     private SmartcardCrypto sc;
     private boolean manipulation = false;
-    private int kilometerage = 0; //TODO: Change to less storage intensive type (short)
+    private int kilometerage = 0;
 
     //TODO Move Initialization to constructor and check for out-of-memory
     // ByteBuffer operations translate directly to simple JVM operations, very little overhead,
@@ -43,7 +43,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private byte[] autoID;
     private short nonceReception;
     private short nonceCard;
-    //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
     private Smartcard(byte[] bArray, short bOffset, byte bLength) {
         register();
     }
@@ -495,7 +494,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         put(msg2Cmps, rtPubSkb, 0);
         put(msg2Cmps, receptionID, KEY_LEN);
 
-        if (!sc.verify(msg2Cmps, receptionCertHashSign, dbPubSK)) { //Step 5 //ERROR HERE. CRYPTO EXCEPTION
+        if (!sc.verify(msg2Cmps, receptionCertHashSign, dbPubSK)) { //Step 5
             errorState("ReceptionCertHash does not match expected value, check for manipulation.");
             currentAwaited = ProtocolAwaited.AUTH;
             sendErrorAPDU(AUTH_FAILED_MANIPULATION);
@@ -572,8 +571,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
 
         terminalAuthenticated = true;
         currentAwaited = ProtocolAwaited.PROC;
-        //Maybe let the terminal know how it went TODO
-
     }
 
     private void authReceptionMSOnError(short sw) {

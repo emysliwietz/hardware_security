@@ -15,8 +15,6 @@ import java.util.Arrays;
 /**
  * @author Matti Eisenlohr
  * @author Egidius Mysliwietz
- * @author Laura Philipse
- * @author Alessandra van Veen
  */
 public abstract class CommunicatorExtended implements Communicator, Receivable {
     protected static final byte[] SC_APPLET_AID = {
@@ -65,7 +63,6 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
     }
 
     protected ResponseAPDU sendAPDU(byte cla, byte ins, @NotNull byte[] data, short dataOffset, short dataLength) {
-        //logger.info("a", "b", cardID);
         CommandAPDU commandAPDU = new CommandAPDU(cla, ins, 0, 0, data, dataOffset, dataLength, 1024);
         try {
             logger.info(String.format("Sent APDU %x %x with %d bytes of data", cla, ins, dataLength), "sendAPDU", cardID);
@@ -131,7 +128,6 @@ public abstract class CommunicatorExtended implements Communicator, Receivable {
         lock.writeLock().lock();
         ByteBuffer input = inputQueue.pop();
         lock.writeLock().unlock();
-        //lock.readLock().unlock();
         return input;
     }
 
