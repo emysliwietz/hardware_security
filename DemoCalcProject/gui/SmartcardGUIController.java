@@ -155,52 +155,21 @@ public class SmartcardGUIController {
         display.setText("");
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
-        int success = rt.cardAuthenticationInitiate();
-        if (success == -1){
-            display.setText("Card is blocked.");
-            return;
-        } else if (success < -1){
-            display.setText("Something went wrong. Please try again.");
-            return;
-        }
+
+        rt.cardAuthenticationInitiate(); //needs try catch??
 
         if (state == states.INIT) {
             System.out.println("Car assignment");
-            int i = rt.carAssignmentInitiate();
-
-            if (i == 0){
-                display.setText("Your car is: Fiat Multipla with plate HN J 5099");
-            } else if (i == -1){
-                display.setText("Card is not authenticated. Please try again.");
-            } else if (i == -2){
-                display.setText("Something went wrong. Please try again.");
-            } else if (i == -3){
-                display.setText("Please request a car.");
-            }else if (i == -4){
-                display.setText("Timeout Database. Please try again.");
-            } else {
-                display.setText("Something went wrong. Please try again.");
-            }
-
+            rt.carAssignmentInitiate(); //TRY CATCH????
+            display.setText("Your car is: Fiat Multipla with plate HN J 5099");
             state = states.ASSIGNED;
             right2.setText("OK");
             r2.setCursor(Cursor.HAND);
             r2.setOnMouseClicked(event -> ok());
         } else {
             System.out.println("Car return");
-            int i = rt.carReturnInitiate();
-            if (i == 0){
-                display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: " + String.format("%.2f€", 0.30 * rt.kilometerage));
-            } else if (i == -1){
-                display.setText("Card is not authenticated. Please try again.");
-            } else if (i == -2){
-                display.setText("Something went wrong. Please try again.");
-            } else if (i == -3){
-                display.setText("Kilometerage on card is incorrect. Card has been manipulated.");
-            } else {
-                display.setText("Something went wrong. Please try again.");
-            }
-
+            int i = rt.carReturnInitiate(); // why no try catch??? WHY DOES IT NOT APPEAR
+            display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: " + String.format("%.2f€", 0.30 * rt.kilometerage));
             state = states.INIT;
             right2.setText("OK");
             r2.setCursor(Cursor.HAND);
@@ -228,10 +197,7 @@ public class SmartcardGUIController {
 
     private void carStart() {
         try {
-            int i  = a.authenticateSCInitiate();
-            if (i == -1){
-                display.setText("Something went wrong. Please try again.");
-            }
+            a.authenticateSCInitiate();
         } catch (CommunicatorExtended.CardNotInitializedException | CommunicatorExtended.AuthenticationFailedException e) {
             display.setText(e.getMessage());
             return;

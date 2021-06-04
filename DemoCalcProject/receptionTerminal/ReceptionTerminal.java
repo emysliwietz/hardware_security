@@ -68,7 +68,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             apdu = applet.transmit(commandAPDU);
         } catch (CardException e) {
             e.printStackTrace();
-            return -2;
+            throw new ProcessFailedException("Something went wrong. Please try again.");
         }
         return carReturn(apdu);
     }
@@ -80,7 +80,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
         if (!cardAuthenticated) {
             errorState("Card is not authenticated");
             rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
-            return -1;
+            throw new ProcessFailedException("Card is not authenticated. Please try again");
         }
         offset = ERESPAPDU_CDATA_OFFSET;
         //Message 1
@@ -97,7 +97,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             //TODO: send something back to smartcard. How? Who knows.
             //TODO: Like this. Not handled on smartcard side, though
             sendErrorAPDU(CAR_RETURN_M2, INVALID_CODE);
-            return -2;
+            throw new ProcessFailedException("Wrong command, expected Car Return. Please try again.");
         }
         short seqNum = getShort(msg1, offset);//msg1.getShort();
         offset += NONCE_LEN;
@@ -106,7 +106,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Wrong sequence number", "carReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(CAR_RETURN_M2, INVALID_SEQ_NUM);
-            return -2;
+            throw new ProcessFailedException("Wrong sequence number. Please try again.");
         }
         boolean manipulation = booleanFromByte(msg1[offset]);
         offset += BOOL_LEN;
@@ -121,14 +121,14 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Hashes don't match", "carReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(CAR_RETURN_M2, INVALID_HASH);
-            return -2;
+            throw new ProcessFailedException("Hashes don't match. Please try again.");
         }
         if (manipulation) {
             errorState("Kilometerage on card " + Arrays.toString(cardID) + " might have been manipulated. Please verify");
             rtLogger.warning("Kilometerage on card " + Arrays.toString(cardID) + " might have been manipulated. Please verify", "carReturn message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(CAR_RETURN_M2, POSSIBLE_MANIPULATION);
-            return -3;
+            throw new ProcessFailedException("Kilometerage on card is incorrect. Card has been manipulated.");
         }
 
         //Message 2
@@ -162,7 +162,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Wrong kilometerage nonce returned", "message 3 carReturn", cardID);
             //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(CAR_RETURN_M2, INVALID_NONCE);
-            return -1;
+            throw new ProcessFailedException("Wrong kilometerage nonce returned. Card has been manipulated.");
         }
         short seqNum3 = getShort(msg3, offset);
         offset += NONCE_LEN;
@@ -171,7 +171,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Wrong sequence number", "carReturn message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(CAR_RETURN_M2, INVALID_SEQ_NUM);
-            return -1;
+            throw new ProcessFailedException("Wrong sequence number. Card has been manipulated.");
         }
         int msg3HashSignLen = getInt(msg3, offset);//msg3.getInt();
         offset += 4;
@@ -185,7 +185,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             rtLogger.fatal("Invalid hash", "carReturn message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(CAR_RETURN_M2, INVALID_HASH);
-            return -1;
+            throw new ProcessFailedException("Invalid hash. Card has been manipulated.");
         }
 
         //Success Message
@@ -221,7 +221,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
     /**
      * Protocol 2 - Mutual Authentication between smartcard and reception terminal
      */
-    public int cardAuthenticationInitiate() throws AuthenticationFailedException {
+    public void cardAuthenticationInitiate() throws AuthenticationFailedException {
         select();
         rtLogger.info("Started Card Authentication", "cardAuthenticationInitiate", cardID);
         if (initBuffer != null) {
@@ -236,15 +236,15 @@ public class ReceptionTerminal extends CommunicatorExtended {
             apdu = applet.transmit(commandAPDU);
         } catch (CardException e) {
             e.printStackTrace();
-            return -2;
+            throw new AuthenticationFailedException(""); //TODO
         }
-        return cardAuthentication(apdu);
+        cardAuthentication(apdu);
     }
 
     /**
      * protocol 2 - mutual authentication between smartcard and reception terminal
      */
-    public int cardAuthentication(ResponseAPDU apdu) throws AuthenticationFailedException {
+    public void cardAuthentication(ResponseAPDU apdu) throws AuthenticationFailedException {
         //Message 1
         offset = ERESPAPDU_CDATA_OFFSET;
         byte[] response = apdu.getData(); //Step 2
@@ -263,7 +263,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Card is blocked");
             rtLogger.fatal("Invalid card: Card is blocked", "cardAuthentication message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -1;
+            throw new AuthenticationFailedException("Card is blocked.");
         }
 
         //Signed hash of certificate
@@ -280,7 +280,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Hash does not match known card");
             rtLogger.fatal("Invalid certificate: Hash does not match known card", "cardAuthentication message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new AuthenticationFailedException("Hash does not match known card");
         }
 
         //Message 2
@@ -309,7 +309,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong nonce in message 3 of cardAuthentication");
             rtLogger.fatal("Wrong nonce", "cardAuthentication message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new AuthenticationFailedException("Wrong nonce in message 3 of cardAuthentication");
         }
 
         int receptionNonceHashSignLen = getInt(response2, offset);//response2.getInt();
@@ -325,7 +325,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Invalid hash in message 3 of P2");
             rtLogger.fatal("Invalid Hash", "cardAuthentication message 3", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new AuthenticationFailedException("Wrong hash in message 3 of P2");
         }
 
         //Success message
@@ -339,13 +339,13 @@ public class ReceptionTerminal extends CommunicatorExtended {
         rtLogger.info("Smartcard authenticated successfully", "cardAuthentification", cardID);
         cardAuthenticated = true; //When to make it false again
 
-        return 0;
+
     }
 
     /**
      * Protocol 3 - Assignment of car to smartcard
      */
-    public int carAssignmentInitiate() throws ProcessFailedException {
+    public void carAssignmentInitiate() throws ProcessFailedException {
         select();
         CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC, CAR_ASSIGNMENT_START, 0, 0, 256);
         ResponseAPDU apdu;
@@ -353,20 +353,21 @@ public class ReceptionTerminal extends CommunicatorExtended {
             apdu = applet.transmit(commandAPDU);
         } catch (CardException e) {
             e.printStackTrace();
-            return -2;
+            throw new ProcessFailedException("Something went wrong. Please try again");
         }
-        return carAssignment(apdu);
+        carAssignment(apdu);
+        return;
     }
 
     /**
      * protocol 3 - assignment of car to smartcard
      */
-    public int carAssignment(ResponseAPDU apdu) throws ProcessFailedException {
+    public void carAssignment(ResponseAPDU apdu) throws ProcessFailedException {
         if (!cardAuthenticated) { //Step 1
             errorState("Card not authenticated");
             rtLogger.warning("Aborting: Card not authenticated", "carAssignment", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -1;
+            throw new ProcessFailedException("Aborting: Card not authenticated");
         }
 
         offset = ERESPAPDU_CDATA_OFFSET;
@@ -379,7 +380,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Expected car request");
             rtLogger.fatal("Expected car request, got " + request, "carAssignment", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -3;
+            throw new ProcessFailedException("Expected car request.");
         }
         short seqNum1 = getShort(response, offset);
         offset += 2;
@@ -387,7 +388,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong sequence number in message 1 of P3");
             rtLogger.fatal("Wrong sequence number", "carAssignment message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.;
-            return -2;
+            throw new ProcessFailedException("Wrong sequence number");
         }
 
         int giveCarHashSignLen = getInt(response, offset);
@@ -401,7 +402,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Invalid hash in message 1 of P3");
             rtLogger.fatal("Invalid Hash", "carAssingment message 1", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new ProcessFailedException("Invalid Hash");
         }
         msgBuf.clear().rewind();
         msgBuf.put(cardID);
@@ -429,7 +430,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Timeout database carAssignment");
             rtLogger.warning("Aborting: Timeout", "carAssignment database communication", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -4;
+            throw new ProcessFailedException("Timeout Database. Please try again.");
         }
         byte[] autoPubSKBytes = new byte[KEY_LEN];
         response2.get(autoPubSKBytes, 0, KEY_LEN);
@@ -466,7 +467,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong byte code, expected 0xFF");
             rtLogger.warning("Wrong byte, expected 0xFF, got " + success, "carAssignment", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new ProcessFailedException("Something went wrong. Please try again.");
         }
         short seqNum2 = getShort(succMsg, offset);
         offset += NONCE_LEN;
@@ -474,7 +475,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Wrong sequence number in success message of P3");
             rtLogger.fatal("Wrong sequence number ", "carAssignment success message", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new ProcessFailedException("Wrong sequence number.");
         }
         int succHashSignLen = getInt(succMsg, offset);
         offset += 4;
@@ -487,13 +488,13 @@ public class ReceptionTerminal extends CommunicatorExtended {
             errorState("Invalid hash in success message of P3");
             rtLogger.fatal("Invalid hash", "carAssignment success message", cardID);
             //TODO: send something back to smartcard. How? Who knows.
-            return -2;
+            throw new ProcessFailedException("Invalid hash.");
         }
         rtLogger.info("Car " + Arrays.toString(autoID) + " successfully assigned", "carAssignment", cardID);
         cardID = null;
         cardAuthenticated = false;
         deselect();
-        return 0;
+        return;
     }
 
     /**
