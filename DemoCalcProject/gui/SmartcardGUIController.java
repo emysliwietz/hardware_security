@@ -77,16 +77,7 @@ public class SmartcardGUIController {
 
     private void block() {
         //TODO: Create codes and APDU for this stuff
-        Thread t1 = new Thread(() -> rt.blockCard(new byte[]{81, 55, 62, -117, 111}));
-        Thread t2 = new Thread(() -> db.deleteCard(rt));
-        t1.start();
-        t2.start();
-        try {
-            t1.join();
-            t2.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        rt.blockCard(new byte[]{81, 55, 62, -117, 111});
         display.setText("Card successfully blocked by employee");
         left2.setText("");
         l2.setOnMouseClicked(null);

@@ -75,7 +75,7 @@ public class ProtocolRunTest {
     @Test
     void successiveFullRuns() throws CommunicatorExtended.AuthenticationFailedException, CommunicatorExtended.ProcessFailedException {
         for (int i = 0; i < 32; i++) {
-            System.out.println(" =======Run " + i + "========= ");
+            System.out.println(" ========= Run " + i + " ========= ");
             fullRun();
         }
     }
