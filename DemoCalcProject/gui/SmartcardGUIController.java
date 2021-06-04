@@ -168,7 +168,7 @@ public class SmartcardGUIController {
             r2.setOnMouseClicked(event -> ok());
         } else {
             System.out.println("Car return");
-            int i = rt.carReturnInitiate(); // why no try catch??? WHY DOES IT NOT APPEAR
+            rt.carReturnInitiate(); // why no try catch??? WHY DOES IT NOT APPEAR
             display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: " + String.format("%.2f€", 0.30 * rt.kilometerage));
             state = states.INIT;
             right2.setText("OK");

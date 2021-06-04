@@ -61,7 +61,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
     /**
      * protocol 4 - car return and kilometerage check
      */
-    public int carReturnInitiate() throws ProcessFailedException {
+    public void carReturnInitiate() throws ProcessFailedException {
         CommandAPDU commandAPDU = new CommandAPDU(CARD_PROC, CAR_RETURN_START, 0, 0, 256);
         ResponseAPDU apdu;
         try {
@@ -70,13 +70,13 @@ public class ReceptionTerminal extends CommunicatorExtended {
             e.printStackTrace();
             throw new ProcessFailedException("Something went wrong. Please try again.");
         }
-        return carReturn(apdu);
+        carReturn(apdu);
     }
 
     /**
      * protocol 4 - car return and kilometerage check
      */
-    public int carReturn(ResponseAPDU apdu) throws ProcessFailedException {
+    public void carReturn(ResponseAPDU apdu) throws ProcessFailedException {
         if (!cardAuthenticated) {
             errorState("Card is not authenticated");
             rtLogger.warning("Aborting: Card is not authenticated", "CarReturn", cardID);
@@ -215,7 +215,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         msgBuf.rewind();
         cardAuthenticated = false;
         cardID = null;
-        return kilometerage;
     }
 
     /**
