@@ -254,7 +254,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
         if (database.isBlocked(cardID)) {
             errorState("Card is blocked");
             rtLogger.fatal("Invalid card: Card is blocked", "cardAuthentication message 1", cardID);
-            sendErrorAPDU(CARD_AUTH, SMARTCARD_BLOCKED_ERROR);
+            //sendErrorAPDU(CARD_AUTH, SMARTCARD_BLOCKED_ERROR);
+            sendAPDU(CARD_EOL, BLOCK, newB(0), (short) 0, (short) 0);
             throw new AuthenticationFailedException("Card is blocked.");
         }
 

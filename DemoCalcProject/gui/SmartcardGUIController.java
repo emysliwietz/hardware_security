@@ -159,11 +159,12 @@ public class SmartcardGUIController {
             System.out.println("Car assignment");
             try {
                 rt.carAssignmentInitiate();
+                display.setText("Your car is: Fiat Multipla with plate HN J 5099");
             } catch (CommunicatorExtended.ProcessFailedException e) {
                 e.printStackTrace();
                 display.setText(e.getMessage());
             }
-            display.setText("Your car is: Fiat Multipla with plate HN J 5099");
+
 
             state = states.ASSIGNED;
             right2.setText("OK");
