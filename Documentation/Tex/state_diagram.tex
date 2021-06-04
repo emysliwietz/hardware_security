@@ -1,0 +1,14 @@
+\begin{center}\begin{tikzpicture}[->,>=stealth,auto, node distance =5.5cm,state/.style={draw, circle,
+minimum width={width("Assigned(NONE)")+3pt}},]
+\node[initial,state](s1){Empty};
+\node[state][right of=s1](s2){Assigned(NONE)};
+\node[state][right of=s2](s3){End of Life};
+\node[state][above right of =s2](s4){Assigned(Car-ID)};
+
+\path (s1) edge (s2)
+      (s2) edge [bend left=20](s4)
+      (s2) edge (s3)
+      (s4) edge [bend left=20](s2)
+      (s4) edge (s3)
+;
+\end{tikzpicture}\end{center}
