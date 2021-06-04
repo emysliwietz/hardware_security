@@ -1,0 +1,12 @@
+.bodybg {
+    -fx-background-image: url('file:DemoCalcProject/gui/atm.jpg');
+    -fx-background-size: 100% 100%;
+}
+
+.text-area, .text-area.viewport, .text-area.content {
+    -fx-background-color: transparent;
+}
+
+.text-area .scroll-bar:vertical:disabled {
+    -fx-opacity: 0;
+}
