@@ -11,7 +11,6 @@ import javafx.scene.control.TextArea;
 import receptionTerminal.ReceptionTerminal;
 
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
@@ -74,7 +73,7 @@ public class SmartcardGUIController {
     private void blockCard() {
         byte[][] cardIDs = db.getAllCards();
         System.out.println("\n\nTo Employee: Please select which card to block: \n");
-        for(int i = 0; i < cardIDs.length; i++) {
+        for (int i = 0; i < cardIDs.length; i++) {
             System.out.println(String.format("%3d", i) + ": " + Arrays.toString(cardIDs[i]));
         }
 
