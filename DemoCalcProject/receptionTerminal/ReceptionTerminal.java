@@ -529,7 +529,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
     public void initialDataForSC() {
         try {
             initBuffer = waitForInput();
-        } catch (MessageTimeoutException e) {
+        } catch (MessageTimeoutException e)
+        {
             e.printStackTrace();
             return;
         }

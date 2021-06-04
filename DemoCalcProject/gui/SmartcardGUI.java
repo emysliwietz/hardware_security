@@ -1,7 +1,6 @@
 package gui;
 
 import Auto.Auto;
-import Smartcard.Smartcard;
 import db.Database;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -15,33 +14,13 @@ import java.io.IOException;
 
 public class SmartcardGUI extends Application {
 
-    Smartcard sc;
     Auto a;
     ReceptionTerminal rt;
 
-    /*Label ins = (Label)loader.getNamespace().get("insLab");
-    Label l0 = (Label)loader.getNamespace().get("left0");
-    Label l1 = (Label)loader.getNamespace().get("left1");
-    Label l2 = (Label)loader.getNamespace().get("left2");
-    Label r0 = (Label)loader.getNamespace().get("right0");
-    Label r1 = (Label)loader.getNamespace().get("right1");
-    Label r2 = (Label)loader.getNamespace().get("right2");
-    @FXML
-    TextArea display = (TextArea)loader.getNamespace().get("display");*/
 
     public static void main(String[] args) {
-        //gui.launch();
-        //Thread t1 = new Thread(() -> Application.launch(SmartcardGUI.class, args));
-        //t1.start();
         launch(args);
     }
-
-
-    /*public void init(Smartcard sc,
-                     Auto a,
-                     ReceptionTerminal rt) {
-
-    }*/
 
     @Override
     public void start(Stage primaryStage) throws IOException {

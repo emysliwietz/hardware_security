@@ -11,7 +11,6 @@ import javafx.scene.control.TextArea;
 import receptionTerminal.ReceptionTerminal;
 
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
@@ -74,7 +73,7 @@ public class SmartcardGUIController {
     private void blockCard() {
         byte[][] cardIDs = db.getAllCards();
         System.out.println("\n\nTo Employee: Please select which card to block: \n");
-        for(int i = 0; i < cardIDs.length; i++) {
+        for (int i = 0; i < cardIDs.length; i++) {
             System.out.println(String.format("%3d", i) + ": " + Arrays.toString(cardIDs[i]));
         }
 
@@ -155,13 +154,13 @@ public class SmartcardGUIController {
         display.setText("");
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
-
         rt.cardAuthenticationInitiate(); //needs try catch??
 
         if (state == states.INIT) {
             System.out.println("Car assignment");
             rt.carAssignmentInitiate(); //TRY CATCH????
             display.setText("Your car is: Fiat Multipla with plate HN J 5099");
+
             state = states.ASSIGNED;
             right2.setText("OK");
             r2.setCursor(Cursor.HAND);
@@ -229,11 +228,11 @@ public class SmartcardGUIController {
         } catch (CommunicatorExtended.ProcessFailedException e) {
             e.printStackTrace();
         }
-        if (kmm == -1){
+        if (kmm == -1) {
             display.setText("Something went wrong. Kilometerage failed to update.");
-        } else if (kmm == -2){
+        } else if (kmm == -2) {
             display.setText("Something went wrong. Please try again.");
-        } else if (kmm == -3){
+        } else if (kmm == -3) {
             display.setText("Kilometerage does not match. Possible manipulation detected.");
         } else {
             display.setText("Current kilometerage: " + kmm + "km");
