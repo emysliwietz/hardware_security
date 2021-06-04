@@ -133,19 +133,11 @@ public class SmartcardGUIController {
         r0.setCursor(Cursor.HAND);
         l0.setOnMouseClicked(event -> carStart());
         r0.setOnMouseClicked(event -> {
-            try {
-                receptionAuth();
-            } catch (CommunicatorExtended.ProcessFailedException e) {
-                display.setText(e.getMessage());
-                e.printStackTrace();
-            } catch (CommunicatorExtended.AuthenticationFailedException e) {
-                display.setText(e.getMessage());
-                e.printStackTrace();
-            }
+            receptionAuth();
         });
     }
 
-    private void receptionAuth() throws CommunicatorExtended.ProcessFailedException, CommunicatorExtended.AuthenticationFailedException {
+    private void receptionAuth() {
         l0.setCursor(Cursor.DEFAULT);
         r0.setCursor(Cursor.DEFAULT);
         left0.setText("");
@@ -154,11 +146,21 @@ public class SmartcardGUIController {
         display.setText("");
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
-        rt.cardAuthenticationInitiate(); //needs try catch??
+        try {
+            rt.cardAuthenticationInitiate();
+        } catch (CommunicatorExtended.AuthenticationFailedException e) {
+            e.printStackTrace();
+            display.setText(e.getMessage());
+        }
 
         if (state == states.INIT) {
             System.out.println("Car assignment");
-            rt.carAssignmentInitiate(); //TRY CATCH????
+            try {
+                rt.carAssignmentInitiate();
+            } catch (CommunicatorExtended.ProcessFailedException e) {
+                e.printStackTrace();
+                display.setText(e.getMessage());
+            }
             display.setText("Your car is: Fiat Multipla with plate HN J 5099");
 
             state = states.ASSIGNED;
@@ -167,7 +169,12 @@ public class SmartcardGUIController {
             r2.setOnMouseClicked(event -> ok());
         } else {
             System.out.println("Car return");
-            rt.carReturnInitiate(); // why no try catch??? WHY DOES IT NOT APPEAR
+            try {
+                rt.carReturnInitiate();
+            } catch (CommunicatorExtended.ProcessFailedException e) {
+                e.printStackTrace();
+                display.setText(e.getMessage());
+            }
             display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: " + String.format("%.2f€", 0.30 * rt.kilometerage));
             state = states.INIT;
             right2.setText("OK");
