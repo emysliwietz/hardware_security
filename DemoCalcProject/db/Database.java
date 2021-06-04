@@ -17,6 +17,7 @@ import rsa.RSACrypto;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.UUID;
 
@@ -282,8 +283,8 @@ public class Database extends CommunicatorExtended {
             System.out.println(e.getMessage());
         }
 
-        String confirmation = conv.toHexString(cardID) + "has been removed from cards.";
-        byte[] message = prepareMessage(confirmation);
+        String confirmation = new String(cardID) + " has been removed from cards.";
+        byte[] message = confirmation.getBytes(StandardCharsets.UTF_8);
         msgBuf.put(message);
         send(reception, msgBuf);
         msgBuf.clear();

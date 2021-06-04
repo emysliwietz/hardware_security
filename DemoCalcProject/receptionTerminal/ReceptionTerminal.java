@@ -512,7 +512,7 @@ public class ReceptionTerminal extends CommunicatorExtended {
             return;
         }
 
-        int msgLen = ID_LEN + 29;
+        int msgLen = ID_LEN + 31;
         byte[] msg = new byte[msgLen];
         resp.get(msg, 0, msgLen);
         String request = new String(msg, StandardCharsets.UTF_8);
@@ -520,7 +520,8 @@ public class ReceptionTerminal extends CommunicatorExtended {
         //System.out.println("bytebuffer: " + StandardCharsets.UTF_8.decode(resp).toString());
         //System.out.println("DB msg: " + request);
         //System.out.println("rt msg: " + new String(cardID) + " has been removed from cards.");
-        if (!request.equals(new String(cardID) + " has been removed from cards.")) { //TODO this does not work
+        String expected = new String(cardID) + " has been removed from cards.";
+        if (!request.equals(expected)) { //TODO this does not work
             errorState("Database returned wrong message after blocking card");
             rtLogger.fatal("Database returned wrong message", "blockCard", cardID);
             //TODO: send something back to smartcard. How? Who knows.
