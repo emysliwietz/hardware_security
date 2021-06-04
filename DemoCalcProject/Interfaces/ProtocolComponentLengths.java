@@ -1,5 +1,8 @@
 package Interfaces;
 
+/**
+ * @author Egidius Mysliwietz
+ */
 public interface ProtocolComponentLengths {
     //defined by system
     byte SHORT_LEN = Short.BYTES;

@@ -18,6 +18,8 @@ import java.util.Arrays;
 /**
  * @author Matti Eisenlohr
  * @author Egidius Mysliwietz
+ * @author Laura Philipse
+ * @author Alessandra van Veen
  */
 public class SmartcardGUIController {
     @FXML
