@@ -156,7 +156,7 @@ public class Database extends CommunicatorExtended {
         try (
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(sqlGetKeys)) {
-            if (rs.next() == false) { //Generate keys if they do not exist yet
+            if (!rs.next()) { //Generate keys if they do not exist yet
                 Object[] dbKeyPair = generateKeyPair();
                 dbPubSK = (PublicKey) dbKeyPair[0];
                 dbPrivSK = (PrivateKey) dbKeyPair[1];
@@ -398,10 +398,10 @@ public class Database extends CommunicatorExtended {
 
         //byte[] cardID, int certLength, byte[] cardCertificate, byte[] privateKeyEncoded
         int certLen = scCERT.length;
-        int ibLen = 5 + 4 + scCERT.length + privkToBytes(scPrivSK).length + KEY_LEN;
+        int ibLen = 5 + 4 + certLen + privkToBytes(scPrivSK).length + KEY_LEN;
         ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
         installBuf.put(scID);
-        installBuf.putInt(scCERT.length);
+        installBuf.putInt(certLen);
         installBuf.put(scCERT);
         installBuf.put(privkToBytes(scPrivSK));
         installBuf.put(pubkToBytes(dbPubSK));

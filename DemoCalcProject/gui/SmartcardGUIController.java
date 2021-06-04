@@ -89,7 +89,7 @@ public class SmartcardGUIController {
         }
 
         int blockedCardSelection = Integer.parseInt(name);
-        while (blockedCardSelection < 0 || blockedCardSelection > cardIDs.length) {
+        while (blockedCardSelection < 0 || blockedCardSelection >= cardIDs.length) {
             System.out.println("Invalid choice, please type one of the following indicies, e.g. 0: ");
             try {
                 blockedCardSelection = Integer.parseInt(reader.readLine());

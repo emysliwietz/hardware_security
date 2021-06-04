@@ -224,7 +224,7 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private void init(APDU apdu) {
         offset = EAPDU_CDATA_OFFSET;
         byte[] tmp = apdu.getBuffer();
-        int dataLen = threeBytesToInt(tmp, ISO7816.OFFSET_LC); //Is this one necessary????? No, it's not necessary, but we wrote a full nice method just for this one use case... TODO
+        int dataLen = threeBytesToInt(tmp, ISO7816.OFFSET_LC);
         cardID = newStaticB(ID_LEN);
         memCpy(cardID, tmp, offset, ID_LEN);
         offset += ID_LEN;
@@ -247,12 +247,16 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     private void initOnError(short sw) {
         switch (sw) {
             case INVALID_NONCE:
-                //I failed math...
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.AUTH;
                 return;
             case INVALID_HASH:
-                //Back in my day, we used MD5...
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.AUTH;
                 return;
             default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
                 //*throws hands in air* Oh, I don't know why it's crashing either!!! :'(
         }
     }
@@ -298,7 +302,6 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
         apdu.setOutgoing();
         byte[] msgBuf = clearBuf(apdu);
         byte[] scCert = sc.getCertificate();
-        //msgBuf.put(scCert).putShort(nonceCard);
         put(msgBuf, scCert, 0);
         putShort(msgBuf, nonceCard, scCert.length);
         short msgLen = (short) (NONCE_LEN + scCert.length);
@@ -308,7 +311,12 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void insertStartOnError(short sw) {
-        //TODO: Handle errors
+        if (sw == INVALID_HASH) {
+            errorState("Invalid hash");
+        } else {
+            errorState("Something has gone wrong");
+        }
+        currentAwaited = ProtocolAwaited.AUTH;
     }
 
     /**
@@ -359,7 +367,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void insertM2OnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+        }
     }
 
     /**
@@ -403,7 +423,15 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void insertMSOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+        }
     }
 
     /**
@@ -424,7 +452,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void authReceptionOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case SMARTCARD_BLOCKED_ERROR:
+                errorState("Card is blocked");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+        }
     }
 
     /**
@@ -476,7 +516,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void authReceptionM2OnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+        }
     }
 
     /**
@@ -525,7 +577,19 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void authReceptionMSOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+        }
     }
 
     /**
@@ -557,7 +621,23 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void carAssignmentStartOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_CODE:
+                errorState("Invalid code: Something went wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.PROC;
+        }
     }
 
     /**
@@ -637,7 +717,31 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void carAssignmentM2OnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_CODE:
+                errorState("Invalid code: Something went wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_SEQ_NUM:
+                errorState("Invalid sequence number");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case DATABASE_SIDE_COMMUNICATION_ERROR:
+                errorState("Database timeout");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.PROC;
+        }
     }
 
     /**
@@ -688,7 +792,27 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void kilometerageUpdateOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case CARD_NOT_INITIALIZED:
+                errorState("Card not authenticated");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case POSSIBLE_MANIPULATION:
+                errorState("Possible manipulation detected");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.PROC;
+        }
     }
 
     /**
@@ -714,7 +838,31 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void carReturnStartOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_CODE:
+                errorState("Invalid code: Something went wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_SEQ_NUM:
+                errorState("Invalid sequence number");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case POSSIBLE_MANIPULATION:
+                errorState("Possible manipulation detected");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.PROC;
+        }
     }
 
     /**
@@ -769,7 +917,31 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void carReturnM2OnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_CODE:
+                errorState("Invalid code: Something went wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_SEQ_NUM:
+                errorState("Invalid sequence number");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case POSSIBLE_MANIPULATION:
+                errorState("Possible manipulation detected");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.PROC;
+        }
     }
 
     /**
@@ -812,7 +984,31 @@ public class Smartcard extends Applet implements Communicator, ISO7816, Extended
     }
 
     private void carReturnMSOnError(short sw) {
-        //TODO: Handle errors
+        switch (sw) {
+            case INVALID_NONCE:
+                errorState("Wrong nonce returned");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_HASH:
+                errorState("Invalid hash");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case INVALID_CODE:
+                errorState("Invalid code: Something went wrong");
+                currentAwaited = ProtocolAwaited.AUTH;
+                return;
+            case INVALID_SEQ_NUM:
+                errorState("Invalid sequence number");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            case POSSIBLE_MANIPULATION:
+                errorState("Possible manipulation detected");
+                currentAwaited = ProtocolAwaited.PROC;
+                return;
+            default:
+                errorState("Something has gone wrong");
+                currentAwaited = ProtocolAwaited.PROC;
+        }
     }
 
     public enum ProtocolAwaited {

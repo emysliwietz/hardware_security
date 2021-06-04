@@ -51,7 +51,6 @@ public class Auto extends CommunicatorExtended {
 
     }
 
-
     /**
      * protocol 1 - mutual authentication between smartcard and car
      */
@@ -101,8 +100,6 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msg1Cmps, scCertHashSign, dbPubSK)) {
             errorState("Invalid certificate: hash does not match");
             autoLogger.fatal("Invalid certificate: hash does not match", "authenticateSmartCard message 1", cardID);
-            //TODO: send something back to smartcard. How? Who knows.
-            //TODO: Like this. Look for corresponding method in smartcard, no handling implemented.
             sendErrorAPDU(INSERT_START, INVALID_HASH);
             throw new AuthenticationFailedException("Invalid certificate: hash does not match");
         }
@@ -144,7 +141,6 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msg3Cmps, autoNonceRespHashSign, scPubSK)) {
             errorState("Wrong nonce in P1 msg3 returned");
             autoLogger.fatal("Wrong nonce returned", "authenticateSmartCard message 3", cardID);
-            //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(INSERT_M2, INVALID_NONCE);
             throw new AuthenticationFailedException("Wrong nonce returned, authentication between auto and card failed");
         } else {
@@ -165,7 +161,6 @@ public class Auto extends CommunicatorExtended {
             }
 
         }
-        return;
     }
 
     /**
@@ -175,7 +170,6 @@ public class Auto extends CommunicatorExtended {
         if (!cardAuthenticated) {
             errorState("Card not authenticated in kilometerageUpdate");
             autoLogger.warning("Aborting: Card not authenticated", "kilometerageUpdate", cardID);
-            //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(KMM_UPDATE, CARD_NOT_INITIALIZED);
             throw new ProcessFailedException("Aborting: Card not authenticated");
         }
@@ -202,7 +196,6 @@ public class Auto extends CommunicatorExtended {
         if (kilometerage != curKmmCard) {
             errorState("Kilometerage does not match");
             autoLogger.warning("Kilometerage does not match, possible tampering. Please check.", "kilometerageUpdate", cardID);
-            //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(KMM_UPDATE, POSSIBLE_MANIPULATION);
             throw new ProcessFailedException("Kilometerage does not match. We detected possible tampering");
         }
@@ -216,7 +209,6 @@ public class Auto extends CommunicatorExtended {
         if (!ac.verify(msgCmps, confHashSigned, scPubSK)) {
             errorState("Invalid Hash in kilometerageUpdate");
             autoLogger.fatal("Invalid Hash", "kilometerageUpdate", cardID);
-            //TODO: send something back to smartcard. How? Who knows.
             sendErrorAPDU(KMM_UPDATE, INVALID_HASH);
             throw new ProcessFailedException("Something has gone wrong. Please try again");
         } else {

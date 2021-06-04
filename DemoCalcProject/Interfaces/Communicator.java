@@ -58,7 +58,7 @@ public interface Communicator extends ProtocolComponentLengths {
 
     // Terminal -> Smartcard Error codes
     short GENERIC_ERROR                     = 0x2000;
-    short SMARTCARD_SIDE_ERROR              = 0x2100;
+    short SMARTCARD_BLOCKED_ERROR              = 0x2100;
     short INVALID_HASH                      = 0x2101;
     short INVALID_NONCE                     = 0x2102;
     short INVALID_SEQ_NUM                   = 0x2103;
