@@ -156,10 +156,10 @@ public class SmartcardGUIController {
         l0.setOnMouseClicked(null);
         r0.setOnMouseClicked(null);
         int success = rt.cardAuthenticationInitiate();
-        if (success == -1){
+        if (success == -1) {
             display.setText("Card is blocked.");
             return;
-        } else if (success < -1){
+        } else if (success < -1) {
             display.setText("Something went wrong. Please try again.");
             return;
         }
@@ -168,15 +168,15 @@ public class SmartcardGUIController {
             System.out.println("Car assignment");
             int i = rt.carAssignmentInitiate();
 
-            if (i == 0){
+            if (i == 0) {
                 display.setText("Your car is: Fiat Multipla with plate HN J 5099");
-            } else if (i == -1){
+            } else if (i == -1) {
                 display.setText("Card is not authenticated. Please try again.");
-            } else if (i == -2){
+            } else if (i == -2) {
                 display.setText("Something went wrong. Please try again.");
-            } else if (i == -3){
+            } else if (i == -3) {
                 display.setText("Please request a car.");
-            }else if (i == -4){
+            } else if (i == -4) {
                 display.setText("Timeout Database. Please try again.");
             } else {
                 display.setText("Something went wrong. Please try again.");
@@ -189,13 +189,13 @@ public class SmartcardGUIController {
         } else {
             System.out.println("Car return");
             int i = rt.carReturnInitiate();
-            if (i == 0){
+            if (i == 0) {
                 display.setText("Total kilometers driven: " + rt.kilometerage + "km\nPrice: " + String.format("%.2f€", 0.30 * rt.kilometerage));
-            } else if (i == -1){
+            } else if (i == -1) {
                 display.setText("Card is not authenticated. Please try again.");
-            } else if (i == -2){
+            } else if (i == -2) {
                 display.setText("Something went wrong. Please try again.");
-            } else if (i == -3){
+            } else if (i == -3) {
                 display.setText("Kilometerage on card is incorrect. Card has been manipulated.");
             } else {
                 display.setText("Something went wrong. Please try again.");
@@ -228,8 +228,8 @@ public class SmartcardGUIController {
 
     private void carStart() {
         try {
-            int i  = a.authenticateSCInitiate();
-            if (i == -1){
+            int i = a.authenticateSCInitiate();
+            if (i == -1) {
                 display.setText("Something went wrong. Please try again.");
             }
         } catch (CommunicatorExtended.CardNotInitializedException | CommunicatorExtended.AuthenticationFailedException e) {
@@ -263,11 +263,11 @@ public class SmartcardGUIController {
         } catch (CommunicatorExtended.ProcessFailedException e) {
             e.printStackTrace();
         }
-        if (kmm == -1){
+        if (kmm == -1) {
             display.setText("Something went wrong. Kilometerage failed to update.");
-        } else if (kmm == -2){
+        } else if (kmm == -2) {
             display.setText("Something went wrong. Please try again.");
-        } else if (kmm == -3){
+        } else if (kmm == -3) {
             display.setText("Kilometerage does not match. Possible manipulation detected.");
         } else {
             display.setText("Current kilometerage: " + kmm + "km");
