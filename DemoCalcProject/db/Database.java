@@ -242,10 +242,38 @@ public class Database extends CommunicatorExtended {
         //Terminal might need to receive this message. We'll fix later. :) TODO
     }
 
+    public byte[][] getAllCards() {
+        String sql = "SELECT id FROM cards";
+        String counterSql = "SELECT COUNT(id) FROM cards";
+        int counter = 0;
+        try {
+            Statement cstmt = conn.createStatement();
+            ResultSet rs = cstmt.executeQuery(counterSql);
+            counter = rs.getInt("COUNT(id)");
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        byte[][] cards = new byte[counter][ID_LEN];
+        int i = 0;
+        try {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                String temp = rs.getString("id");
+                byte[] card = conv.fromHexString(temp);
+                cards[i] = card;
+                i++;
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return cards;
+    }
+
     /**
      * delete card from database
      */
-    public void deleteCard(ReceptionTerminal reception) {
+    public void deleteCard (ReceptionTerminal reception){
         ByteBuffer response;
         try {
             response = waitForInput();
@@ -294,7 +322,7 @@ public class Database extends CommunicatorExtended {
     /**
      * generate a smartcard
      */
-    public void generateCard(ReceptionTerminal reception) {
+    public void generateCard (ReceptionTerminal reception){
 
         // Create simulator
         JavaxSmartCardInterface simulator = new JavaxSmartCardInterface();
@@ -327,8 +355,6 @@ public class Database extends CommunicatorExtended {
         ByteBuffer installBuf = ByteBuffer.allocate(ibLen);
         installBuf.put(scID);
         installBuf.putInt(scCERT.length);
-        System.out.println(scCERT.length);
-        System.out.println(getInt(installBuf.array(), ID_LEN));
         installBuf.put(scCERT);
         installBuf.put(privkToBytes(scPrivSK));
         installBuf.put(pubkToBytes(dbPubSK));
@@ -339,7 +365,7 @@ public class Database extends CommunicatorExtended {
     /**
      * generate a car
      */
-    public Auto generateAuto() {
+    public Auto generateAuto () {
         Object[] autoKeyPair = generateKeyPair();
         PublicKey autoPubSK = (PublicKey) autoKeyPair[0];
         PrivateKey autoPrivSK = (PrivateKey) autoKeyPair[1];
@@ -363,7 +389,7 @@ public class Database extends CommunicatorExtended {
     /**
      * generate a reception terminal
      */
-    public ReceptionTerminal generateTerminal() {
+    public ReceptionTerminal generateTerminal () {
         Object[] rtKeyPair = generateKeyPair();
         PublicKey rtPubSK = (PublicKey) rtKeyPair[0];
         PrivateKey rtPrivSK = (PrivateKey) rtKeyPair[1];
@@ -388,7 +414,7 @@ public class Database extends CommunicatorExtended {
     /**
      * check if a card is blocked, e.g. it does not exist in the database
      */
-    public boolean isBlocked(byte[] cardID) {
+    public boolean isBlocked ( byte[] cardID){
         String sql = "SELECT id FROM cards WHERE id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {

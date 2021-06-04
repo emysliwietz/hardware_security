@@ -10,6 +10,12 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.control.TextArea;
 import receptionTerminal.ReceptionTerminal;
 
+import java.io.BufferedReader;
+import java.io.Console;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+
 /**
  * @author Matti Eisenlohr
  * @author Egidius Mysliwietz
@@ -66,18 +72,43 @@ public class SmartcardGUIController {
 
     @FXML
     private void blockCard() {
+        byte[][] cardIDs = db.getAllCards();
+        System.out.println("\n\nTo Employee: Please select which card to block: \n");
+        for(int i = 0; i < cardIDs.length; i++) {
+            System.out.println(String.format("%3d", i) + ": " + Arrays.toString(cardIDs[i]));
+        }
+
+        BufferedReader reader =
+                new BufferedReader(new InputStreamReader(System.in));
+        String name = null;
+        try {
+            name = reader.readLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        int blockedCardSelection = Integer.parseInt(name);
+        while (blockedCardSelection < 0 || blockedCardSelection > cardIDs.length) {
+            System.out.println("Invalid choice, please type one of the following indicies, e.g. 0: ");
+            try {
+                blockedCardSelection = Integer.parseInt(reader.readLine());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        byte[] blockedCard = cardIDs[blockedCardSelection];
         display.setWrapText(true);
-        display.setText("Do you wish to report the theft of your card?");
+        display.setText("Do you wish to report the theft of your card? (See console)");
         right2.setText("Confirm");
         left2.setText("Abort");
         l2.setCursor(Cursor.HAND);
-        r2.setOnMouseClicked(event -> block());
+        r2.setOnMouseClicked(event -> block(blockedCard));
         l2.setOnMouseClicked(event -> ok());
     }
 
-    private void block() {
+    private void block(byte[] cardID) {
         //TODO: Create codes and APDU for this stuff
-        rt.blockCard(new byte[]{81, 55, 62, -117, 111});
+        rt.blockCard(cardID);
         display.setText("Card successfully blocked by employee");
         left2.setText("");
         l2.setOnMouseClicked(null);

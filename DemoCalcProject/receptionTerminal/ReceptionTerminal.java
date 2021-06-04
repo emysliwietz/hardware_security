@@ -516,10 +516,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
         byte[] msg = new byte[msgLen];
         resp.get(msg, 0, msgLen);
         String request = new String(msg, StandardCharsets.UTF_8);
-        //String request = Base64.getEncoder().encodeToString(msg);
-        //System.out.println("bytebuffer: " + StandardCharsets.UTF_8.decode(resp).toString());
-        //System.out.println("DB msg: " + request);
-        //System.out.println("rt msg: " + new String(cardID) + " has been removed from cards.");
         String expected = new String(cardID) + " has been removed from cards.";
         if (!request.equals(expected)) { //TODO this does not work
             errorState("Database returned wrong message after blocking card");
@@ -537,7 +533,6 @@ public class ReceptionTerminal extends CommunicatorExtended {
             e.printStackTrace();
             return;
         }
-        System.out.println(getInt(initBuffer.array(), 5));
     }
 
     private void select() {
